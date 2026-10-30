@@ -35,10 +35,13 @@ Say which skill you loaded. One canonical skill per stage.
 ## Gates (exact commands, run them, paste the output)
 
 ```bash
-cd app && flutter analyze          # zero issues
-cd app && flutter test             # all green
-cd app && dart run tool/spec_audit.dart   # spec ↔ test traceability (once it exists)
+cd app && dart run tool/gate.dart   # the one gate: analyse + test across all packages, schema checks
 ```
+
+`gate.dart` is the published gate (Dave, 2026-10-30). It runs, per package, exactly
+`dart analyze` and `dart test`, plus the schema/migration checks — so a green gate cannot skip a
+package it does not know about. Individual commands remain valid for a local loop, but the gate
+is what CI runs and what a PR reports.
 
 Physics changes additionally require a **golden test**: a case whose expected value comes
 from a cited source (published equation, Bob's worked example, a hand calculation in
