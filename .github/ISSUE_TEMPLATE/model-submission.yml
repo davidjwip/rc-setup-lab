@@ -1,0 +1,103 @@
+name: Chassis model submission
+description: Submit a measured chassis model for Setup Lab's community library
+title: "Model: <manufacturer> <chassis> <variant>"
+labels: ["model-data"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you — a measured model is the most valuable thing anyone can give this project.
+
+        **Before you start:** read the procedure at `docs/procedures/measurement-session.md`.
+        Every measured value needs a source, and a model with three known gaps is worth more than one
+        with three invented numbers.
+
+  - type: input
+    id: chassis
+    attributes:
+      label: "Chassis and variant"
+      description: "Be specific — 'Xray X4 24, kit build, aluminium bulkheads' not 'Xray X4'"
+      placeholder: "Manufacturer, chassis, year/variant, any build notes"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: class
+    attributes:
+      label: "Class"
+      options:
+        - "1/10 touring car (4WD)"
+        - "1/10 touring car (FWD)"
+        - "1/10 buggy (2WD)"
+        - "1/10 buggy (4WD)"
+        - "1/12 pan car"
+        - "Other (say which below)"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: armtype
+    attributes:
+      label: "Suspension type"
+      description: "Hinge lower arm with a single camber link is the common touring-car layout"
+      options:
+        - "Hinge lower arm + single camber link"
+        - "Double wishbone (two A-arms)"
+        - "Other / mixed"
+    validations:
+      required: true
+
+  - type: textarea
+    id: model
+    attributes:
+      label: "The model file"
+      description: "Paste the JSON here, or attach the file in a comment after opening this issue (drag and drop works)"
+      render: json
+    validations:
+      required: false
+
+  - type: textarea
+    id: sources
+    attributes:
+      label: "Where the numbers came from"
+      description: "One line per group, for example 'all hardpoints — caliper, 2026-11-02'; 'ARB rate — bench test, 2.1 N/mm at the link'; 'CG height — plumb line'"
+    validations:
+      required: true
+
+  - type: textarea
+    id: setup
+    attributes:
+      label: "Conditions the car was measured in"
+      description: "Ride height, tyre radius, tyre pressure, battery and motor fitted, ambient temperature, anything not at race spec"
+    validations:
+      required: true
+
+  - type: textarea
+    id: gaps
+    attributes:
+      label: "What you could not measure, and why"
+      description: "Honest gaps are fine. Guessed numbers are not."
+    validations:
+      required: true
+
+  - type: textarea
+    id: photos
+    attributes:
+      label: "Photos"
+      description: "Attach one photo per corner from outside and above, the chassis edge with the caliper on it, and the damper internals if you opened one. Drag them into a comment after opening this issue."
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: confirm
+    attributes:
+      label: "Confirmation"
+      options:
+        - label: "I measured this car myself, or have permission to publish these numbers."
+          required: true
+        - label: "This model contains no manufacturer confidential data and nothing copied from another app or database (including RC Crew Chief)."
+          required: true
+        - label: "I agree to publish under CC BY 4.0 with my name in contributors[]."
+          required: true
+        - label: "I have read the review bar in docs/procedures/community-model-submission.md and understand a second person may ask to verify three hardpoints from my photos."
+          required: true
