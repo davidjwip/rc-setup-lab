@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="en-GB" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Setup Lab — wireframes</title>
+<style>
+/* ---------- tokens ---------- */
+:root{
+  color-scheme: dark;
+  --bg:#0B0C09;
+  --surface:#121410;
+  --s-low:#171A14;
+  --s-cont:#1C1F18;
+  --s-high:#24281F;
+  --s-highest:#2D3127;
+  --on-surface:#E8EADF;
+  --on-surface-var:#A8AD9C;
+  --outline:#767C69;
+  --outline-var:#3C4034;
+  --primary:#C6EF6E;
+  --on-primary:#1A2100;
+  --primary-container:#38480C;
+  --on-primary-container:#DCF9A4;
+  --secondary:#A9C9BC;
+  --tertiary:#E4B78C;
+  --error:#FFB4A2;
+  --on-error:#5C1600;
+  --warn:#E9C46A;
+  --delta-up:#C6EF6E;
+  --delta-down:#9FC8C0;
+  --grid:#2A2E24;
+  --ink-dim:#6E7462;
+  --desk:#050604;
+  --rail:#8D937F;
+  --shadow: 0 24px 60px rgba(0,0,0,.55);
+  --nav-bg:#121410E6;
+  --scrim:#0000;
+}
+[data-theme="light"]{
+  color-scheme: light;
+  --bg:#F5F5ED;
+  --surface:#FBFBF4;
+  --s-low:#FFFFFF;
+  --s-cont:#EFEFE6;
+  --s-high:#E8E9DE;
+  --s-highest:#E1E2D6;
+  --on-surface:#1A1C14;
+  --on-surface-var:#4B5041;
+  --outline:#767C68;
+  --outline-var:#C7CBBA;
+  --primary:#445E06;
+  --on-primary:#FFFFFF;
+  --primary-container:#D3F190;
+  --on-primary-container:#182200;
+  --secondary:#3D6156;
+  --tertiary:#7A5530;
+  --error:#B3261E;
+  --on-error:#FFFFFF;
+  --warn:#7A5000;
+  --delta-up:#3F5A05;
+  --delta-down:#2F5A50;
+  --grid:#D5D8C8;
+  --ink-dim:#767C68;
+  --desk:#E7E7DC;
+  --rail:#5D6353;
+  --shadow: 0 24px 60px rgba(30,32,24,.18);
+  --nav-bg:#FBFBF4E6;
+  --scrim:#0000;
+}
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:'Roboto','Inter',system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;
+  background:var(--desk);
+  color:var(--on-surface);
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+  display:flex; align-items:flex-start; justify-content:center;
+  gap:40px; padding:40px 32px 64px;
+  min-height:100%;
+  font-size:16px; line-height:1.5;
+  font-variant-numeric: tabular-nums;
+}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+:focus-visible{outline:2px solid var(--primary);outline-offset:2px;border-radius:4px}
+
+/* ---------- phone shell ---------- */
+.device{
+  width:390px;height:844px;flex:0 0 auto;
+  background:var(--surface);
+  border:1px solid var(--outline-var);
+  border-radius:44px;
+  box-shadow:var(--shadow);
+  position:relative;overflow:hidden;
+  display:flex;flex-direction:column;
+}
+.status{
+  height:46px;flex:0 0 auto;display:flex;align-items:flex-end;justify-content:space-between;
+  padding:0 26px 6px;font-size:13px;font-weight:600;letter-spacing:.2px;color:var(--on-surface);
+}
+.status .right{display:flex;align-items:center;gap:6px}
+.status svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.8}
+.batt{width:22px;height:11px;border:1.4px solid currentColor;border-radius:3px;position:relative;opacity:.9}
+.batt::after{content:"";position:absolute;left:1.5px;top:1.5px;bottom:1.5px;width:13px;background:currentColor;border-radius:1px}
+.homebar{position:absolute;bottom:7px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:var(--on-surface);opacity:.22;z-index:60}
+
+.screen{flex:1 1 auto;overflow-y:auto;overflow-x:hidden;scrollbar-width:none;padding-bottom:8px;position:relative}
+.screen::-webkit-scrollbar{display:none}
+
+/* ---------- app bar ---------- */
+.appbar{
+  position:sticky;top:0;z-index:40;
+  background:color-mix(in srgb, var(--surface) 92%, transparent);
+  backdrop-filter:blur(12px);
+  display:flex;align-items:center;gap:4px;
+  padding:4px 8px 4px 8px;min-height:56px;
+}
+.appbar .title{font-size:20px;line-height:26px;font-weight:500;letter-spacing:-.1px;flex:1;padding-left:8px}
+.appbar .sub{display:block;font-size:12px;line-height:16px;font-weight:400;color:var(--on-surface-var);letter-spacing:0}
+.iconbtn{
+  width:44px;height:44px;display:grid;place-items:center;border-radius:22px;
+  color:var(--on-surface);flex:0 0 auto;
+}
+.iconbtn:hover{background:var(--s-high)}
+.iconbtn svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+
+/* ---------- layout helpers ---------- */
+.body-pad{padding:0 16px 24px}
+.stack{display:flex;flex-direction:column}
+.gap-4{gap:4px}.gap-8{gap:8px}.gap-12{gap:12px}.gap-16{gap:16px}.gap-24{gap:24px}
+.row{display:flex;align-items:center}
+.between{justify-content:space-between}
+.muted{color:var(--on-surface-var)}
+.eyebrow{font-size:11px;line-height:14px;font-weight:500;letter-spacing:.6px;text-transform:uppercase;color:var(--on-surface-var)}
+.section-head{display:flex;align-items:baseline;justify-content:space-between;margin:24px 4px 8px}
+.section-head h2{font-size:20px;line-height:26px;font-weight:500;letter-spacing:-.1px}
+.section-head .count{font-size:12px;color:var(--on-surface-var);letter-spacing:.3px}
+.divider{height:1px;background:var(--outline-var);border:0}
+
+/* ---------- type for numbers ---------- */
+.num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1,"lnum" 1}
+.num-hero{font-size:34px;line-height:38px;font-weight:400;letter-spacing:-.6px}
+.num-lg{font-size:28px;line-height:32px;font-weight:500;letter-spacing:-.4px}
+.num-md{font-size:20px;line-height:24px;font-weight:500;letter-spacing:-.1px}
+.unit{font-size:12px;line-height:16px;font-weight:500;letter-spacing:.3px;color:var(--on-surface-var);margin-left:4px}
+
+/* ---------- cards ---------- */
+.card{
+  background:var(--s-cont);border:1px solid var(--outline-var);border-radius:16px;
+  padding:16px;position:relative;
+}
+.card.flat{background:var(--s-low);border-color:transparent}
+.card.tap:hover{background:var(--s-high)}
+.card-title{font-size:18px;line-height:24px;font-weight:500;letter-spacing:-.1px}
+.card-sub{font-size:13px;line-height:18px;color:var(--on-surface-var)}
+
+/* ---------- chips ---------- */
+.chip{
+  display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:8px;
+  border:1px solid var(--outline-var);background:transparent;
+  font-size:12px;line-height:16px;font-weight:500;letter-spacing:.3px;color:var(--on-surface-var);
+  white-space:nowrap;
+}
+.chip.solid{background:var(--s-high);border-color:transparent;color:var(--on-surface)}
+.chip.accent{background:var(--primary-container);border-color:transparent;color:var(--on-primary-container)}
+.chip.warn{border-color:color-mix(in srgb,var(--warn) 45%,transparent);color:var(--warn);background:color-mix(in srgb,var(--warn) 10%,transparent)}
+.chip.sm{height:24px;padding:0 8px;font-size:11px;letter-spacing:.4px;border-radius:6px}
+.chip svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.8}
+
+.delta{
+  display:inline-flex;align-items:center;gap:2px;height:24px;padding:0 8px;border-radius:6px;
+  background:var(--s-high);font-size:12px;line-height:16px;font-weight:500;letter-spacing:.2px;
+  font-variant-numeric:tabular-nums;color:var(--on-surface);white-space:nowrap;
+}
+.delta .arw{font-size:11px;line-height:1}
+.delta.up .arw{color:var(--delta-up)}
+.delta.down .arw{color:var(--delta-down)}
+.delta.zero{color:var(--on-surface-var)}
+.delta.none{background:transparent;border:1px dashed var(--outline-var);color:var(--on-surface-var)}
+
+/* ---------- buttons ---------- */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  min-height:48px;padding:0 20px;border-radius:12px;
+  font-size:14px;font-weight:500;letter-spacing:.1px;
+  border:1px solid transparent;background:var(--primary);color:var(--on-primary);
+}
+.btn:hover{filter:brightness(1.06)}
+.btn.outline{background:transparent;color:var(--primary);border-color:color-mix(in srgb,var(--primary) 45%,transparent)}
+.btn.tonal{background:var(--s-high);color:var(--on-surface)}
+.btn.block{display:flex;width:100%}
+.btn.sm{min-height:44px;padding:0 16px}
+.btn svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+
+/* ---------- bottom nav ---------- */
+.navbar{
+  flex:0 0 auto;height:72px;display:grid;grid-template-columns:repeat(4,1fr);
+  border-top:1px solid var(--outline-var);
+  background:var(--nav-bg);backdrop-filter:blur(14px);padding-bottom:0;
+}
+.navbar a{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:var(--on-surface-var);font-size:11px;font-weight:500;letter-spacing:.3px;position:relative}
+.navbar a svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.navbar a[aria-current="page"]{color:var(--primary)}
+.navbar a[aria-current="page"] .dot{position:absolute;top:10px;width:4px;height:4px;border-radius:2px;background:var(--primary);display:none}
+
+/* ---------- annotation rail ---------- */
+.rail{width:300px;flex:0 0 auto;padding-top:8px;color:var(--rail)}
+.rail .kicker{font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:var(--rail);opacity:.7}
+.rail h1{font-size:22px;line-height:28px;font-weight:500;color:var(--on-surface);margin:6px 0 4px;letter-spacing:-.2px}
+.rail p{font-size:13px;line-height:20px;color:var(--rail);margin-bottom:16px}
+.rail ul{list-style:none;display:flex;flex-direction:column;gap:10px;margin:0 0 20px}
+.rail li{font-size:12.5px;line-height:18px;color:var(--rail);padding-left:14px;position:relative}
+.rail li::before{content:"";position:absolute;left:0;top:7px;width:5px;height:5px;border-radius:1px;background:var(--primary);opacity:.8}
+.rail .ctrl{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}
+.tg{
+  height:34px;padding:0 12px;border-radius:8px;border:1px solid var(--outline-var);color:var(--rail);
+  font-size:12px;letter-spacing:.2px;display:inline-flex;align-items:center;gap:6px;background:transparent;
+}
+.tg[aria-pressed="true"]{background:var(--s-high);color:var(--on-surface);border-color:transparent}
+.rail .meta{font-size:11px;line-height:16px;color:var(--rail);opacity:.75;border-top:1px solid var(--outline-var);padding-top:12px;margin-top:4px}
+.rail a.link{color:var(--on-surface);border-bottom:1px solid var(--outline);font-size:12px}
+
+@media (max-width: 780px){
+  body{padding:0;display:block;background:var(--surface)}
+  .device{width:100vw;height:100dvh;border-radius:0;border:0;box-shadow:none}
+  .rail{display:none}
+  .homebar{display:none}
+}
+
+/* ---------- reduced motion ---------- */
+@media (prefers-reduced-motion: reduce){
+  *{transition-duration:.001ms !important;animation-duration:.001ms !important}
+}
+
+body{display:block;padding:48px 40px 80px;max-width:1080px;margin:0 auto}
+.top{display:flex;justify-content:space-between;align-items:flex-start;gap:24px;margin-bottom:8px}
+h1{font-size:34px;line-height:40px;font-weight:500;letter-spacing:-.8px}
+.kick{font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:var(--on-surface-var);font-weight:600}
+.lede{font-size:15px;line-height:24px;color:var(--on-surface-var);max-width:620px;margin:10px 0 32px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+.card{display:flex;flex-direction:column;gap:4px;background:var(--s-cont);border:1px solid var(--outline-var);border-radius:16px;padding:18px 18px 20px;min-height:150px}
+.card:hover{background:var(--s-high)}
+.card .k{font-size:11px;letter-spacing:1px;color:var(--primary);font-weight:600}
+.card b{font-size:19px;line-height:25px;font-weight:500;letter-spacing:-.2px;margin-top:2px}
+.card .sub{font-size:12px;line-height:16px;color:var(--on-surface-var);letter-spacing:.2px}
+.card .desc{font-size:13px;line-height:19px;color:var(--on-surface-var);margin-top:auto;padding-top:14px}
+.foot{margin-top:36px;font-size:12.5px;line-height:19px;color:var(--on-surface-var);border-top:1px solid var(--outline-var);padding-top:18px;max-width:680px}
+.foot b{color:var(--on-surface);font-weight:500}
+.tg{height:36px;padding:0 14px;border-radius:9px;border:1px solid var(--outline-var);color:var(--on-surface);font-size:12px}
+</style>
+</head>
+<body>
+<div class="top">
+  <div>
+    <div class="kick">Setup Lab · visual design</div>
+    <h1>Six screens, one language</h1>
+  </div>
+  <button class="tg" id="themeBtn">☀ Light</button>
+</div>
+<p class="lede">Static, offline HTML wireframes at 390×844. Each file is self-contained — no build step, no CDN, no web fonts. Press <b>T</b> in any screen to flip between the dark and light themes.</p>
+<div class="grid">
+<a class="card" href="garage.html">
+      <span class="k">A</span>
+      <b>Garage</b>
+      <span class="sub">Car list, completeness, empty state</span>
+      <span class="desc">The landing surface: which car, how complete, what it last did.</span>
+    </a>
+<a class="card" href="hardpoints.html">
+      <span class="k">B</span>
+      <b>Car model</b>
+      <span class="sub">Measured hardpoints, 3D in plain language</span>
+      <span class="desc">Pinned schematic, one corner at a time, honest progress.</span>
+    </a>
+<a class="card" href="setup-editor.html">
+      <span class="k">C</span>
+      <b>Setup editor</b>
+      <span class="sub">Springs, bars, dampers, alignment</span>
+      <span class="desc">One gesture per change, consequence printed underneath.</span>
+    </a>
+<a class="card" href="analysis.html">
+      <span class="k">D</span>
+      <b>Analysis</b>
+      <span class="sub">Computed properties + equations</span>
+      <span class="desc">Balance first, then geometry; every number opens its maths.</span>
+    </a>
+<a class="card" href="compare.html">
+      <span class="k">E</span>
+      <b>Compare</b>
+      <span class="sub">Two setups, deltas, why it matters</span>
+      <span class="desc">Aligned columns, neutral deltas, one written consequence.</span>
+    </a>
+<a class="card" href="learn.html">
+      <span class="k">F</span>
+      <b>Learn</b>
+      <span class="sub">Roll centre and camber gain</span>
+      <span class="desc">One concept, one diagram, the user's own number at the end.</span>
+    </a>
+<a class="card" href="design-notes.html">
+  <span class="k">+</span>
+  <b>Tokens</b>
+  <span class="sub">Colour, type, spacing, radii</span>
+  <span class="desc">The palette with computed contrast ratios, and the type and spacing scales the Flutter theme is built from.</span>
+</a>
+</div>
+<div class="foot"><b>Read me first:</b> these are wireframes, not production code. Values are illustrative and internally consistent — every equation on the Analysis and Learn screens evaluates to the number shown. The app's physics lives in a pure Dart package; nothing here is a model of record.</div>
+<script>
+(function(){
+  var b=document.getElementById('themeBtn'), root=document.documentElement;
+  function set(t){ root.setAttribute('data-theme',t); b.textContent = t==='dark'?'☀ Light':'☾ Dark';
+    try{localStorage.setItem('sl-theme',t)}catch(e){} }
+  var s='dark'; try{s=localStorage.getItem('sl-theme')||'dark'}catch(e){} set(s);
+  b.addEventListener('click',function(){ set(root.getAttribute('data-theme')==='dark'?'light':'dark'); });
+})();
+</script>
+</body>
+</html>

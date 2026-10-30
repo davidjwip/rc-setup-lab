@@ -1,0 +1,570 @@
+<!doctype html>
+<html lang="en-GB" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark light">
+<title>Setup editor — Setup Lab wireframe</title>
+<style>
+/* ---------- tokens ---------- */
+:root{
+  color-scheme: dark;
+  --bg:#0B0C09;
+  --surface:#121410;
+  --s-low:#171A14;
+  --s-cont:#1C1F18;
+  --s-high:#24281F;
+  --s-highest:#2D3127;
+  --on-surface:#E8EADF;
+  --on-surface-var:#A8AD9C;
+  --outline:#767C69;
+  --outline-var:#3C4034;
+  --primary:#C6EF6E;
+  --on-primary:#1A2100;
+  --primary-container:#38480C;
+  --on-primary-container:#DCF9A4;
+  --secondary:#A9C9BC;
+  --tertiary:#E4B78C;
+  --error:#FFB4A2;
+  --on-error:#5C1600;
+  --warn:#E9C46A;
+  --delta-up:#C6EF6E;
+  --delta-down:#9FC8C0;
+  --grid:#2A2E24;
+  --ink-dim:#6E7462;
+  --desk:#050604;
+  --rail:#8D937F;
+  --shadow: 0 24px 60px rgba(0,0,0,.55);
+  --nav-bg:#121410E6;
+  --scrim:#0000;
+}
+[data-theme="light"]{
+  color-scheme: light;
+  --bg:#F5F5ED;
+  --surface:#FBFBF4;
+  --s-low:#FFFFFF;
+  --s-cont:#EFEFE6;
+  --s-high:#E8E9DE;
+  --s-highest:#E1E2D6;
+  --on-surface:#1A1C14;
+  --on-surface-var:#4B5041;
+  --outline:#767C68;
+  --outline-var:#C7CBBA;
+  --primary:#445E06;
+  --on-primary:#FFFFFF;
+  --primary-container:#D3F190;
+  --on-primary-container:#182200;
+  --secondary:#3D6156;
+  --tertiary:#7A5530;
+  --error:#B3261E;
+  --on-error:#FFFFFF;
+  --warn:#7A5000;
+  --delta-up:#3F5A05;
+  --delta-down:#2F5A50;
+  --grid:#D5D8C8;
+  --ink-dim:#767C68;
+  --desk:#E7E7DC;
+  --rail:#5D6353;
+  --shadow: 0 24px 60px rgba(30,32,24,.18);
+  --nav-bg:#FBFBF4E6;
+  --scrim:#0000;
+}
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:'Roboto','Inter',system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;
+  background:var(--desk);
+  color:var(--on-surface);
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+  display:flex; align-items:flex-start; justify-content:center;
+  gap:40px; padding:40px 32px 64px;
+  min-height:100%;
+  font-size:16px; line-height:1.5;
+  font-variant-numeric: tabular-nums;
+}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+:focus-visible{outline:2px solid var(--primary);outline-offset:2px;border-radius:4px}
+
+/* ---------- phone shell ---------- */
+.device{
+  width:390px;height:844px;flex:0 0 auto;
+  background:var(--surface);
+  border:1px solid var(--outline-var);
+  border-radius:44px;
+  box-shadow:var(--shadow);
+  position:relative;overflow:hidden;
+  display:flex;flex-direction:column;
+}
+.status{
+  height:46px;flex:0 0 auto;display:flex;align-items:flex-end;justify-content:space-between;
+  padding:0 26px 6px;font-size:13px;font-weight:600;letter-spacing:.2px;color:var(--on-surface);
+}
+.status .right{display:flex;align-items:center;gap:6px}
+.status svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.8}
+.batt{width:22px;height:11px;border:1.4px solid currentColor;border-radius:3px;position:relative;opacity:.9}
+.batt::after{content:"";position:absolute;left:1.5px;top:1.5px;bottom:1.5px;width:13px;background:currentColor;border-radius:1px}
+.homebar{position:absolute;bottom:7px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:var(--on-surface);opacity:.22;z-index:60}
+
+.screen{flex:1 1 auto;overflow-y:auto;overflow-x:hidden;scrollbar-width:none;padding-bottom:8px;position:relative}
+.screen::-webkit-scrollbar{display:none}
+
+/* ---------- app bar ---------- */
+.appbar{
+  position:sticky;top:0;z-index:40;
+  background:color-mix(in srgb, var(--surface) 92%, transparent);
+  backdrop-filter:blur(12px);
+  display:flex;align-items:center;gap:4px;
+  padding:4px 8px 4px 8px;min-height:56px;
+}
+.appbar .title{font-size:20px;line-height:26px;font-weight:500;letter-spacing:-.1px;flex:1;padding-left:8px}
+.appbar .sub{display:block;font-size:12px;line-height:16px;font-weight:400;color:var(--on-surface-var);letter-spacing:0}
+.iconbtn{
+  width:44px;height:44px;display:grid;place-items:center;border-radius:22px;
+  color:var(--on-surface);flex:0 0 auto;
+}
+.iconbtn:hover{background:var(--s-high)}
+.iconbtn svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+
+/* ---------- layout helpers ---------- */
+.body-pad{padding:0 16px 24px}
+.stack{display:flex;flex-direction:column}
+.gap-4{gap:4px}.gap-8{gap:8px}.gap-12{gap:12px}.gap-16{gap:16px}.gap-24{gap:24px}
+.row{display:flex;align-items:center}
+.between{justify-content:space-between}
+.muted{color:var(--on-surface-var)}
+.eyebrow{font-size:11px;line-height:14px;font-weight:500;letter-spacing:.6px;text-transform:uppercase;color:var(--on-surface-var)}
+.section-head{display:flex;align-items:baseline;justify-content:space-between;margin:24px 4px 8px}
+.section-head h2{font-size:20px;line-height:26px;font-weight:500;letter-spacing:-.1px}
+.section-head .count{font-size:12px;color:var(--on-surface-var);letter-spacing:.3px}
+.divider{height:1px;background:var(--outline-var);border:0}
+
+/* ---------- type for numbers ---------- */
+.num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1,"lnum" 1}
+.num-hero{font-size:34px;line-height:38px;font-weight:400;letter-spacing:-.6px}
+.num-lg{font-size:28px;line-height:32px;font-weight:500;letter-spacing:-.4px}
+.num-md{font-size:20px;line-height:24px;font-weight:500;letter-spacing:-.1px}
+.unit{font-size:12px;line-height:16px;font-weight:500;letter-spacing:.3px;color:var(--on-surface-var);margin-left:4px}
+
+/* ---------- cards ---------- */
+.card{
+  background:var(--s-cont);border:1px solid var(--outline-var);border-radius:16px;
+  padding:16px;position:relative;
+}
+.card.flat{background:var(--s-low);border-color:transparent}
+.card.tap:hover{background:var(--s-high)}
+.card-title{font-size:18px;line-height:24px;font-weight:500;letter-spacing:-.1px}
+.card-sub{font-size:13px;line-height:18px;color:var(--on-surface-var)}
+
+/* ---------- chips ---------- */
+.chip{
+  display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:8px;
+  border:1px solid var(--outline-var);background:transparent;
+  font-size:12px;line-height:16px;font-weight:500;letter-spacing:.3px;color:var(--on-surface-var);
+  white-space:nowrap;
+}
+.chip.solid{background:var(--s-high);border-color:transparent;color:var(--on-surface)}
+.chip.accent{background:var(--primary-container);border-color:transparent;color:var(--on-primary-container)}
+.chip.warn{border-color:color-mix(in srgb,var(--warn) 45%,transparent);color:var(--warn);background:color-mix(in srgb,var(--warn) 10%,transparent)}
+.chip.sm{height:24px;padding:0 8px;font-size:11px;letter-spacing:.4px;border-radius:6px}
+.chip svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.8}
+
+.delta{
+  display:inline-flex;align-items:center;gap:2px;height:24px;padding:0 8px;border-radius:6px;
+  background:var(--s-high);font-size:12px;line-height:16px;font-weight:500;letter-spacing:.2px;
+  font-variant-numeric:tabular-nums;color:var(--on-surface);white-space:nowrap;
+}
+.delta .arw{font-size:11px;line-height:1}
+.delta.up .arw{color:var(--delta-up)}
+.delta.down .arw{color:var(--delta-down)}
+.delta.zero{color:var(--on-surface-var)}
+.delta.none{background:transparent;border:1px dashed var(--outline-var);color:var(--on-surface-var)}
+
+/* ---------- buttons ---------- */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  min-height:48px;padding:0 20px;border-radius:12px;
+  font-size:14px;font-weight:500;letter-spacing:.1px;
+  border:1px solid transparent;background:var(--primary);color:var(--on-primary);
+}
+.btn:hover{filter:brightness(1.06)}
+.btn.outline{background:transparent;color:var(--primary);border-color:color-mix(in srgb,var(--primary) 45%,transparent)}
+.btn.tonal{background:var(--s-high);color:var(--on-surface)}
+.btn.block{display:flex;width:100%}
+.btn.sm{min-height:44px;padding:0 16px}
+.btn svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+
+/* ---------- bottom nav ---------- */
+.navbar{
+  flex:0 0 auto;height:72px;display:grid;grid-template-columns:repeat(4,1fr);
+  border-top:1px solid var(--outline-var);
+  background:var(--nav-bg);backdrop-filter:blur(14px);padding-bottom:0;
+}
+.navbar a{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:var(--on-surface-var);font-size:11px;font-weight:500;letter-spacing:.3px;position:relative}
+.navbar a svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.navbar a[aria-current="page"]{color:var(--primary)}
+.navbar a[aria-current="page"] .dot{position:absolute;top:10px;width:4px;height:4px;border-radius:2px;background:var(--primary);display:none}
+
+/* ---------- annotation rail ---------- */
+.rail{width:300px;flex:0 0 auto;padding-top:8px;color:var(--rail)}
+.rail .kicker{font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:var(--rail);opacity:.7}
+.rail h1{font-size:22px;line-height:28px;font-weight:500;color:var(--on-surface);margin:6px 0 4px;letter-spacing:-.2px}
+.rail p{font-size:13px;line-height:20px;color:var(--rail);margin-bottom:16px}
+.rail ul{list-style:none;display:flex;flex-direction:column;gap:10px;margin:0 0 20px}
+.rail li{font-size:12.5px;line-height:18px;color:var(--rail);padding-left:14px;position:relative}
+.rail li::before{content:"";position:absolute;left:0;top:7px;width:5px;height:5px;border-radius:1px;background:var(--primary);opacity:.8}
+.rail .ctrl{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}
+.tg{
+  height:34px;padding:0 12px;border-radius:8px;border:1px solid var(--outline-var);color:var(--rail);
+  font-size:12px;letter-spacing:.2px;display:inline-flex;align-items:center;gap:6px;background:transparent;
+}
+.tg[aria-pressed="true"]{background:var(--s-high);color:var(--on-surface);border-color:transparent}
+.rail .meta{font-size:11px;line-height:16px;color:var(--rail);opacity:.75;border-top:1px solid var(--outline-var);padding-top:12px;margin-top:4px}
+.rail a.link{color:var(--on-surface);border-bottom:1px solid var(--outline);font-size:12px}
+
+@media (max-width: 780px){
+  body{padding:0;display:block;background:var(--surface)}
+  .device{width:100vw;height:100dvh;border-radius:0;border:0;box-shadow:none}
+  .rail{display:none}
+  .homebar{display:none}
+}
+
+/* ---------- reduced motion ---------- */
+@media (prefers-reduced-motion: reduce){
+  *{transition-duration:.001ms !important;animation-duration:.001ms !important}
+}
+
+.screen{padding-bottom:0;display:flex;flex-direction:column}
+#hd{position:relative}
+.seg{display:flex;gap:4px;padding:4px;margin:4px 16px 8px;background:var(--s-low);border-radius:12px;border:1px solid var(--outline-var)}
+.seg button{flex:1;height:40px;border-radius:9px;font-size:13px;font-weight:500;letter-spacing:.2px;color:var(--on-surface-var)}
+.seg button[aria-selected="true"]{background:var(--s-high);color:var(--on-surface)}
+
+.panel{display:none;padding:8px 16px 24px}
+.panel.on{display:block}
+.lead{font-size:12.5px;line-height:18px;color:var(--on-surface-var);padding:8px 4px 12px}
+
+.ctl{background:var(--s-cont);border:1px solid var(--outline-var);border-radius:16px;padding:14px 16px 12px;margin-bottom:12px}
+.ctl-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+.ctl-l{font-size:15px;line-height:20px;font-weight:500;letter-spacing:-.1px}
+.ctl-sub{font-size:12px;line-height:16px;color:var(--on-surface-var);margin-top:1px}
+.ctl-v{display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex:0 0 auto}
+.vbtn{display:inline-flex;align-items:baseline;gap:3px;padding:2px 0 1px;border-bottom:1px dashed var(--outline);min-height:32px}
+.vbtn .n{font-size:22px;line-height:26px;font-weight:500;letter-spacing:-.3px;font-variant-numeric:tabular-nums}
+.vbtn .u{font-size:12px;font-weight:500;color:var(--on-surface-var);letter-spacing:.3px}
+
+.sld{padding:8px 0 2px}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:44px;background:transparent;cursor:pointer;display:block}
+input[type=range]::-webkit-slider-runnable-track{height:5px;border-radius:3px;background:linear-gradient(to right,var(--primary) 0 var(--pct,60%),var(--outline-var) var(--pct,60%) 100%)}
+input[type=range]::-moz-range-track{height:5px;border-radius:3px;background:var(--outline-var)}
+input[type=range]::-moz-range-progress{height:5px;border-radius:3px;background:var(--primary)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:11px;background:var(--primary);border:3px solid var(--surface);margin-top:-8.5px;box-shadow:0 0 0 1px var(--primary)}
+input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:9px;background:var(--primary);border:3px solid var(--surface)}
+.rng{display:flex;justify-content:space-between;font-size:11px;line-height:14px;color:var(--on-surface-var);letter-spacing:.3px;margin-top:-2px}
+.derived{font-size:12px;line-height:17px;color:var(--on-surface-var);margin-top:10px;padding-top:10px;border-top:1px solid var(--outline-var)}
+.derived b{color:var(--on-surface);font-weight:500;font-variant-numeric:tabular-nums}
+
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.ch{min-height:44px;padding:0 14px;border-radius:10px;border:1px solid var(--outline-var);font-size:13px;font-weight:500;color:var(--on-surface-var);font-variant-numeric:tabular-nums}
+.ch[aria-pressed="true"]{background:var(--primary-container);border-color:transparent;color:var(--on-primary-container)}
+
+.srow{display:flex;align-items:center;gap:8px;padding:6px 16px 6px 16px;min-height:56px}
+.srow+.srow{border-top:1px solid var(--outline-var)}
+.srow .sl{flex:1;min-width:0}
+.srow .sl b{display:block;font-size:14px;font-weight:500;line-height:19px}
+.srow .sl span{display:block;font-size:11.5px;line-height:15px;color:var(--on-surface-var)}
+.stepb{width:44px;height:44px;border-radius:22px;display:grid;place-items:center;border:1px solid var(--outline-var);color:var(--on-surface);font-size:19px;font-weight:400;line-height:1;flex:0 0 auto}
+.stepb:active{background:var(--s-high)}
+.sval{width:78px;text-align:center;font-size:18px;line-height:22px;font-weight:500;font-variant-numeric:tabular-nums;letter-spacing:-.2px}
+.sval i{font-style:normal;font-size:11.5px;color:var(--on-surface-var);margin-left:2px;font-weight:500}
+
+.card{background:var(--s-cont);border:1px solid var(--outline-var);border-radius:16px;overflow:hidden;margin-bottom:12px}
+.card>.chd{padding:14px 16px 8px;display:flex;justify-content:space-between;align-items:baseline}
+.card>.chd h3{font-size:15px;line-height:20px;font-weight:500}
+.card>.chd span{font-size:11px;letter-spacing:.5px;text-transform:uppercase;color:var(--on-surface-var)}
+
+.savebar{flex:0 0 auto;margin-top:auto;display:flex;align-items:center;gap:8px;padding:10px 16px 20px;background:var(--surface);border-top:1px solid var(--outline-var)}
+.savebar .btn{flex:0 0 auto;min-width:148px}
+.savebar .rev{min-height:48px;padding:0 4px;font-size:13px;font-weight:500;color:var(--on-surface-var)}
+.savebar .cnt{flex:1;font-size:12px;line-height:16px;letter-spacing:.2px;color:var(--on-surface-var);padding-left:10px}
+.savebar .cnt b{color:var(--on-surface);font-weight:500}
+</style>
+</head>
+<body class="">
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+ <defs>
+  <symbol id="i-car" viewBox="0 0 24 24"><path d="M4 16.2v-3.4l1.8-4.4A2 2 0 0 1 7.7 7h8.6a2 2 0 0 1 1.9 1.4L20 12.8v3.4"/><path d="M4 13h16"/><circle cx="7.6" cy="17.6" r="1.7"/><circle cx="16.4" cy="17.6" r="1.7"/></symbol>
+  <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/><circle cx="9" cy="7" r="2.1"/><circle cx="15" cy="12" r="2.1"/><circle cx="8" cy="17" r="2.1"/></symbol>
+  <symbol id="i-compare" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="7" height="15" rx="1.6"/><rect x="13.5" y="4.5" width="7" height="15" rx="1.6"/><path d="M6 9h2M6 13h2M16 9h2M16 13h2"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M12 6.6C10.4 5.1 7.9 4.6 4 4.6v13.6c3.9 0 6.4.5 8 2 1.6-1.5 4.1-2 8-2V4.6c-3.9 0-6.4.5-8 2z"/><path d="M12 6.6v13.6"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5.2v13.6M5.2 12h13.6"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="M9.5 6l6 6-6 6"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M19 12H5.5M11 6l-6 6 6 6"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6.5L9.3 17.2 4 11.9"/></symbol>
+  <symbol id="i-ruler" viewBox="0 0 24 24"><path d="M3.6 15.2L15.2 3.6l5.2 5.2L8.8 20.4z"/><path d="M7.4 11l1.8 1.8M10.2 8.2l1.8 1.8M13 5.4l1.8 1.8"/></symbol>
+  <symbol id="i-cog" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.1"/><path d="M12 3.2v2.6M12 18.2v2.6M3.2 12h2.6M18.2 12h2.6M5.8 5.8l1.9 1.9M16.3 16.3l1.9 1.9M18.2 5.8l-1.9 1.9M7.7 16.3l-1.9 1.9"/></symbol>
+  <symbol id="i-more" viewBox="0 0 24 24"><circle cx="12" cy="6" r="1.1" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.1" fill="currentColor" stroke="none"/><circle cx="12" cy="18" r="1.1" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-swap" viewBox="0 0 24 24"><path d="M4.5 8.5h14l-3.2-3.2M19.5 15.5h-14l3.2 3.2"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.6"/><path d="M12 11.2v5.4M12 7.7v.2"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 4.4L20.6 19.6H3.4z"/><path d="M12 10v4.1M12 16.9v.2"/></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="M12 5v13M6.5 12.5L12 18l5.5-5.5"/></symbol>
+ </defs>
+</svg>
+
+<main class="device" id="device">
+  
+<div class="status" aria-hidden="true">
+  <span>9:41</span>
+  <span class="right">
+    <svg viewBox="0 0 24 24"><path d="M3 17h3v3H3zM9 13h3v7H9zM15 9h3v11h-3z" fill="currentColor" stroke="none"/></svg>
+    <svg viewBox="0 0 24 24"><path d="M2.5 9.2a14 14 0 0 1 19 0M6 12.4a9 9 0 0 1 12 0M9.4 15.6a4.2 4.2 0 0 1 5.2 0"/><circle cx="12" cy="18.6" r="1" fill="currentColor" stroke="none"/></svg>
+    <span class="batt"></span>
+  </span>
+</div>
+  <div class="screen" id="screen">
+  
+<header class="appbar" id="hd">
+  <button class="iconbtn" aria-label="Back to garage"><svg><use href="#i-back"/></svg></button>
+  <div class="title">Wed club<span class="sub">Xray T4 '24 · edited just now</span></div>
+  <button class="iconbtn" aria-label="More"><svg><use href="#i-more"/></svg></button>
+</header>
+
+<div class="seg" role="tablist" aria-label="Setup sections">
+  <button role="tab" aria-selected="true" data-t="springs">Springs</button>
+  <button role="tab" aria-selected="false" data-t="bars">Bars</button>
+  <button role="tab" aria-selected="false" data-t="dampers">Dampers</button>
+  <button role="tab" aria-selected="false" data-t="align">Alignment</button>
+</div>
+
+<div class="panel on" id="p-springs">
+  <p class="lead">Rate at the spring. The wheel sees roughly a third of it, which is why a big spring change can feel small from the driver's seat.</p>
+  
+  <div class="ctl">
+    <div class="ctl-top">
+      <div><div class="ctl-l">Front</div><div class="ctl-sub">Spring rate</div></div>
+      <div class="ctl-v">
+        <button class="vbtn" aria-label="Edit value"><span class="n" data-v>2.8</span><span class="u">lb/in</span></button>
+        <span class="delta up" data-d><span class="arw">▲</span><span data-dd>0.2</span></span>
+      </div>
+    </div>
+    <div class="sld">
+      <input type="range" min="2.0" max="4.5" step="0.05" value="2.8" style="--pct:34%" aria-label="Front">
+      <div class="rng"><span>2.0</span><span>4.5 lb/in</span></div>
+    </div>
+    <div class="derived">Wheel rate <b>1.08 lb/in</b> · motion ratio 0.62</div>
+  </div>
+  <div class="ctl">
+    <div class="ctl-top">
+      <div><div class="ctl-l">Rear</div><div class="ctl-sub">Spring rate</div></div>
+      <div class="ctl-v">
+        <button class="vbtn" aria-label="Edit value"><span class="n" data-v>2.9</span><span class="u">lb/in</span></button>
+        <span class="delta up" data-d><span class="arw">▲</span><span data-dd>0.2</span></span>
+      </div>
+    </div>
+    <div class="sld">
+      <input type="range" min="2.0" max="4.5" step="0.05" value="2.9" style="--pct:36%" aria-label="Rear">
+      <div class="rng"><span>2.0</span><span>4.5 lb/in</span></div>
+    </div>
+    <div class="derived">Wheel rate <b>0.98 lb/in</b> · motion ratio 0.58</div>
+  </div>
+</div>
+
+<div class="panel" id="p-bars">
+  <p class="lead">Bars add roll stiffness without adding ride stiffness. Diameter matters far more than it looks: stiffness rises with the fourth power of the wire.</p>
+  <div class="ctl">
+    <div class="ctl-top">
+      <div><div class="ctl-l">Front bar</div><div class="ctl-sub">Anti-roll bar diameter</div></div>
+      <div class="ctl-v">
+        <button class="vbtn"><span class="n">1.2</span><span class="u">mm</span></button>
+      </div>
+    </div>
+    <div class="sld">
+      <input type="range" min="0" max="1.6" step="0.05" value="1.2" style="--pct:75%" aria-label="Front anti-roll bar diameter">
+      <div class="rng"><span>none</span><span>1.6 mm</span></div>
+    </div>
+    <div class="derived">Carries <b>38%</b> of the front roll stiffness · 62% comes from the spring</div>
+  </div>
+  <div class="ctl">
+    <div class="ctl-top">
+      <div><div class="ctl-l">Rear bar</div><div class="ctl-sub">Anti-roll bar diameter</div></div>
+      <div class="ctl-v">
+        <button class="vbtn"><span class="n">none</span></button>
+      </div>
+    </div>
+    <div class="sld">
+      <input type="range" min="0" max="1.6" step="0.05" value="0" style="--pct:0%" aria-label="Rear anti-roll bar diameter">
+      <div class="rng"><span>none</span><span>1.6 mm</span></div>
+    </div>
+    <div class="derived">No rear bar. Rear roll stiffness comes from springs alone.</div>
+  </div>
+  <p class="lead" style="padding-top:4px">A bar is a spring that only works in roll. It moves load across the axle without changing how the car sits.</p>
+</div>
+
+<div class="panel" id="p-dampers">
+  <p class="lead">Oil and piston are one decision, not two. Thicker oil with more holes can behave like thin oil with fewer.</p>
+
+  <div class="ctl">
+    <div class="ctl-top"><div><div class="ctl-l">Front oil</div><div class="ctl-sub">Viscosity</div></div>
+      <span class="delta up"><span class="arw">▲</span>50</span></div>
+    <div class="chips" role="group" aria-label="Front damper oil">
+      <button class="ch" aria-pressed="false">300</button>
+      <button class="ch" aria-pressed="true">350</button>
+      <button class="ch" aria-pressed="false">400</button>
+      <button class="ch" aria-pressed="false">450</button>
+    </div>
+    <div class="derived">cSt at 40 °C · damping ratio <b>0.42</b></div>
+  </div>
+
+  <div class="ctl">
+    <div class="ctl-top"><div><div class="ctl-l">Front piston</div><div class="ctl-sub">Holes in the piston</div></div>
+      </div>
+    <div class="chips" role="group" aria-label="Front piston holes">
+      <button class="ch" aria-pressed="false">1 hole</button>
+      <button class="ch" aria-pressed="true">2 holes</button>
+      <button class="ch" aria-pressed="false">3 holes</button>
+    </div>
+    <div class="derived">More holes = less low-speed damping. Rebound and bump are set separately on the shock.</div>
+  </div>
+
+  <div class="ctl">
+    <div class="ctl-top"><div><div class="ctl-l">Rear oil</div><div class="ctl-sub">Viscosity</div></div>
+      <span class="delta down"><span class="arw">▼</span>50</span></div>
+    <div class="chips" role="group" aria-label="Rear damper oil">
+      <button class="ch" aria-pressed="false">300</button>
+      <button class="ch" aria-pressed="false">350</button>
+      <button class="ch" aria-pressed="true">400</button>
+      <button class="ch" aria-pressed="false">450</button>
+    </div>
+    <div class="derived">cSt at 40 °C · damping ratio <b>0.38</b></div>
+  </div>
+</div>
+
+<div class="panel" id="p-align">
+  <p class="lead">Measured on the setup station with the car at ride height. Camber and toe are per wheel; droop is measured at the shock shaft.</p>
+
+  <div class="card">
+    <div class="chd"><h3>Camber</h3><span>°</span></div>
+    <div class="srow"><div class="sl"><b>Front</b><span>0.2° more than saved</span></div>
+      <button class="stepb" aria-label="Less front camber">−</button><span class="sval">−1.5<i>°</i></span><button class="stepb" aria-label="More front camber">+</button></div>
+    <div class="srow"><div class="sl"><b>Rear</b><span>unchanged</span></div>
+      <button class="stepb" aria-label="Less rear camber">−</button><span class="sval">−2.0<i>°</i></span><button class="stepb" aria-label="More rear camber">+</button></div>
+  </div>
+
+  <div class="card">
+    <div class="chd"><h3>Toe</h3><span>° per side</span></div>
+    <div class="srow"><div class="sl"><b>Front</b><span>toe-out per side · unchanged</span></div>
+      <button class="stepb" aria-label="Less front toe">−</button><span class="sval">0.5<i>°</i></span><button class="stepb" aria-label="More front toe">+</button></div>
+    <div class="srow"><div class="sl"><b>Rear</b><span>toe-in per side · unchanged</span></div>
+      <button class="stepb" aria-label="Less rear toe">−</button><span class="sval">2.0<i>°</i></span><button class="stepb" aria-label="More rear toe">+</button></div>
+  </div>
+
+  <div class="card">
+    <div class="chd"><h3>Droop</h3><span>mm</span></div>
+    <div class="srow"><div class="sl"><b>Front</b><span>At the shock shaft</span></div>
+      <button class="stepb" aria-label="Less front droop">−</button><span class="sval">4.0<i>mm</i></span><button class="stepb" aria-label="More front droop">+</button></div>
+    <div class="srow"><div class="sl"><b>Rear</b><span>At the shock shaft</span></div>
+      <button class="stepb" aria-label="Less rear droop">−</button><span class="sval">5.0<i>mm</i></span><button class="stepb" aria-label="More rear droop">+</button></div>
+  </div>
+
+  <div class="card">
+    <div class="chd"><h3>Ride height</h3><span>mm</span></div>
+    <div class="srow"><div class="sl"><b>Front</b><span>Chassis to floor, under the axle</span></div>
+      <button class="stepb" aria-label="Lower front ride height">−</button><span class="sval">5.5<i>mm</i></span><button class="stepb" aria-label="Raise front ride height">+</button></div>
+    <div class="srow"><div class="sl"><b>Rear</b><span>Chassis to floor, under the axle</span></div>
+      <button class="stepb" aria-label="Lower rear ride height">−</button><span class="sval">6.0<i>mm</i></span><button class="stepb" aria-label="Raise rear ride height">+</button></div>
+  </div>
+</div>
+
+<div class="savebar">
+  <button class="rev" id="rev">Revert</button>
+  <span class="cnt"><b>1</b> change not saved</span>
+  <button class="btn" id="save">Save setup</button>
+</div>
+
+  </div>
+  
+  <div class="homebar" aria-hidden="true"></div>
+</main>
+<aside class="rail">
+  <div class="kicker">Setup Lab · wireframe C</div>
+  <h1>Setup editor</h1>
+  <p>Four groups, one thumb, nothing else. A change should be one gesture and the consequence should be visible on the same row — never a separate screen to check whether it worked.</p>
+  <ul><li>The number is the control. Drag the rail or tap the number to type; there is no duplicate stepper next to every slider.</li><li>Every rate row carries its own consequence underneath: wheel rate, motion ratio, share of roll stiffness.</li><li>Discrete values (oil, piston holes) are chips, not sliders. Continuous values are sliders. Never mix.</li><li>Units are always visible next to the number, at 12 px, and never inside the input.</li><li>The save bar states how many changes are pending; nothing is auto-saved silently over a baseline setup.</li></ul>
+  <div class="ctrl">
+    <button class="tg" id="themeBtn" aria-pressed="false">☾ Dark</button>
+    
+  </div>
+  <div class="meta">Tabs switch groups in place — no nested navigation, no page push. The four groups are the whole editor.<br><a class="link" href="index.html">All screens →</a> &nbsp; <a class="link" href="design-notes.html">Token check →</a></div>
+</aside>
+<script>
+(function(){
+  var root=document.documentElement, btn=document.getElementById('themeBtn');
+  function setTheme(t){
+    root.setAttribute('data-theme',t);
+    if(btn){ btn.textContent = t==='dark' ? '☀ Light' : '☾ Dark';
+              btn.setAttribute('aria-pressed', t==='light' ? 'true':'false'); }
+    try{localStorage.setItem('sl-theme',t)}catch(e){}
+  }
+  var saved='dark'; try{saved=localStorage.getItem('sl-theme')||'dark'}catch(e){}
+  setTheme(saved);
+  if(btn) btn.addEventListener('click',function(){ setTheme(root.getAttribute('data-theme')==='dark'?'light':'dark'); });
+  window.addEventListener('keydown',function(e){ if(e.key==='t') setTheme(root.getAttribute('data-theme')==='dark'?'light':'dark'); });
+  window.slSetTheme=setTheme;
+})();
+
+(function(){
+  // tabs
+  var tabs=[].slice.call(document.querySelectorAll('.seg button'));
+  tabs.forEach(function(b){
+    b.addEventListener('click',function(){
+      tabs.forEach(function(x){x.setAttribute('aria-selected', x===b ? 'true':'false');});
+      ['springs','bars','dampers','align'].forEach(function(k){
+        var p=document.getElementById('p-'+k); if(p) p.classList.toggle('on', k===b.dataset.t);
+      });
+    });
+  });
+  // chips
+  [].forEach.call(document.querySelectorAll('.chips'),function(g){
+    [].forEach.call(g.querySelectorAll('.ch'),function(c){
+      c.addEventListener('click',function(){
+        [].forEach.call(g.querySelectorAll('.ch'),function(x){x.setAttribute('aria-pressed', x===c?'true':'false');});
+      });
+    });
+  });
+  // sliders -> value, delta, wheel rate
+  [].forEach.call(document.querySelectorAll('.ctl'),function(ctl){
+    var inp=ctl.querySelector('input[type=range]'); if(!inp) return;
+    var out=ctl.querySelector('[data-v]'), d=ctl.querySelector('[data-d]'), dd=ctl.querySelector('[data-dd]');
+    var der=ctl.querySelector('.derived');
+    var base=ctl===document.querySelectorAll('.ctl')[0]?2.6:(ctl===document.querySelectorAll('.ctl')[1]?2.9:null);
+    function paint(){
+      var v=parseFloat(inp.value), pc=(v-parseFloat(inp.min))/(parseFloat(inp.max)-parseFloat(inp.min))*100;
+      inp.style.setProperty('--pct', pc.toFixed(1)+'%');
+      if(out) out.textContent = v===0 ? 'none' : v.toFixed(1);
+      if(dd && base!==null){
+        var dl=+(v-base).toFixed(2);
+        var moves=Math.abs(dl)>0.005;
+        d.style.display=moves?'inline-flex':'none';
+        if(moves){
+          dd.textContent=(dl>0?'+':'')+Math.abs(dl).toFixed(1);
+          d.className='delta '+(dl>0?'up':'down');
+          d.querySelector('.arw').textContent = dl>0?'▲':'▼';
+        }
+      }
+      if(der && base!==null){
+        var mr = ctl.querySelector('.ctl-l').textContent==='Front'?0.62:0.58;
+        der.innerHTML='Wheel rate <b>'+(v*mr*mr).toFixed(2)+' lb/in</b> · motion ratio '+mr;
+      }
+      document.getElementById('rev').hidden=false;
+    }
+    inp.addEventListener('input',paint); paint();
+  });
+})();
+
+</script>
+</body>
+</html>

@@ -349,34 +349,38 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 <div class="diagram">
   <div class="dbox">
     
-<svg viewBox="0 0 340 132" aria-label="Front view of the front-left corner with six numbered hardpoints" role="img" id="cornerMap">
-  <g stroke="var(--grid)" stroke-width="1">
-    <path d="M0 108h340" stroke-dasharray="0"/>
-  </g>
+<svg viewBox="0 0 340 132" aria-label="Front view of the front-left corner with six lettered hardpoints" role="img" id="cornerMap">
   <path d="M0 132h340" stroke="var(--outline)" stroke-width="1.5"/>
-  <text x="8" y="128" fill="var(--on-surface-var)" font-size="9" font-family="Roboto, system-ui" letter-spacing=".5">GROUND</text>
-  <path d="M56 34v74" stroke="var(--outline)" stroke-width="2"/>
-  <text x="52" y="30" fill="var(--on-surface-var)" font-size="9" font-family="Roboto, system-ui" text-anchor="middle">CL</text>
-  <circle cx="262" cy="96" r="32" fill="none" stroke="var(--outline)" stroke-width="1.6"/>
-  <circle cx="262" cy="96" r="17" fill="none" stroke="var(--outline-var)" stroke-width="1.2"/>
-  <path d="M262 96v36" stroke="var(--outline-var)" stroke-dasharray="3 3"/>
-  <text x="268" y="118" fill="var(--on-surface-var)" font-size="9" font-family="Roboto, system-ui">RH 5.5</text>
+  <text x="8" y="127" fill="var(--on-surface-var)" font-size="8.5" font-family="Roboto, system-ui" letter-spacing=".6">GROUND</text>
+
+  <path d="M26 26v106" stroke="var(--outline-var)" stroke-width="1" stroke-dasharray="4 4"/>
+  <text x="26" y="21" fill="var(--on-surface-var)" font-size="8.5" font-family="Roboto, system-ui" text-anchor="middle">CL</text>
+
+  <path d="M58 40v62" stroke="var(--outline)" stroke-width="3" stroke-linecap="round"/>
+  <path d="M58 40h12M58 102h12" stroke="var(--outline)" stroke-width="1.4"/>
+
+  <circle cx="262" cy="96" r="31" fill="none" stroke="var(--outline)" stroke-width="1.6"/>
+  <circle cx="262" cy="96" r="16" fill="none" stroke="var(--outline-var)" stroke-width="1.2"/>
+
+  <path d="M26 116h236" stroke="var(--outline-var)" stroke-width="1" stroke-dasharray="2 3"/>
+  <path d="M26 112v8M262 112v8" stroke="var(--outline-var)" stroke-width="1"/>
+  <text x="130" y="111" fill="var(--on-surface-var)" font-size="8.5" font-family="Roboto, system-ui" text-anchor="middle" letter-spacing=".4">½ TRACK</text>
+
   <g stroke="var(--on-surface-var)" stroke-width="2.4" stroke-linecap="round">
     <path d="M64 92L238 90"/>
     <path d="M64 56L240 66"/>
     <path d="M240 66L238 90"/>
   </g>
-  <g stroke="var(--on-surface)" stroke-width="2" stroke-linecap="round">
-    <path d="M134 44L206 88"/>
-    <path d="M134 44L142 38"/>
-  </g>
-  <g id="dots" font-family="Roboto, system-ui" font-size="9" font-weight="600" text-anchor="middle">
-    <g data-hp="a"><circle cx="64" cy="92" r="7.5" fill="var(--surface)" stroke="var(--on-surface-var)" stroke-width="1.6"/><text x="64" y="95" fill="var(--on-surface-var)">A</text></g>
-    <g data-hp="b"><circle cx="238" cy="90" r="7.5" fill="var(--surface)" stroke="var(--on-surface-var)" stroke-width="1.6"/><text x="238" y="93" fill="var(--on-surface-var)">B</text></g>
-    <g data-hp="c"><circle cx="64" cy="56" r="7.5" fill="var(--surface)" stroke="var(--on-surface-var)" stroke-width="1.6"/><text x="64" y="59" fill="var(--on-surface-var)">C</text></g>
-    <g data-hp="d"><circle cx="240" cy="66" r="7.5" fill="var(--surface)" stroke="var(--on-surface-var)" stroke-width="1.6"/><text x="240" y="69" fill="var(--on-surface-var)">D</text></g>
-    <g data-hp="e"><circle cx="206" cy="88" r="7.5" fill="var(--surface)" stroke="var(--on-surface-var)" stroke-width="1.6"/><text x="206" y="91" fill="var(--on-surface-var)">E</text></g>
-    <g data-hp="f"><circle cx="134" cy="44" r="7.5" fill="var(--surface)" stroke="var(--on-surface-var)" stroke-width="1.6"/><text x="134" y="47" fill="var(--on-surface-var)">F</text></g>
+  <path d="M196 42L206 88" stroke="var(--on-surface)" stroke-width="4.4" stroke-linecap="round"/>
+  <path d="M199 54h6M199 62h6M199 70h6" stroke="var(--surface)" stroke-width="1.1"/>
+
+  <g id="dots" font-family="Roboto, system-ui" font-size="10" font-weight="600" text-anchor="middle">
+    <g data-hp="a"><circle cx="64" cy="92" r="8.2" fill="var(--surface)" stroke="var(--on-surface-var)" stroke-width="1.6"/><text x="64" y="95" fill="var(--on-surface-var)">A</text></g>
+    <g data-hp="b"><circle cx="238" cy="90" r="8.2" fill="var(--surface)" stroke="var(--on-surface-var)" stroke-width="1.6"/><text x="238" y="93" fill="var(--on-surface-var)">B</text></g>
+    <g data-hp="c"><circle cx="64" cy="56" r="8.2" fill="var(--surface)" stroke="var(--on-surface-var)" stroke-width="1.6"/><text x="64" y="59" fill="var(--on-surface-var)">C</text></g>
+    <g data-hp="d"><circle cx="240" cy="66" r="8.2" fill="var(--surface)" stroke="var(--on-surface-var)" stroke-width="1.6"/><text x="240" y="69" fill="var(--on-surface-var)">D</text></g>
+    <g data-hp="e"><circle cx="206" cy="88" r="8.2" fill="var(--surface)" stroke="var(--on-surface-var)" stroke-width="1.6"/><text x="206" y="91" fill="var(--on-surface-var)">E</text></g>
+    <g data-hp="f"><circle cx="196" cy="42" r="8.2" fill="var(--surface)" stroke="var(--on-surface-var)" stroke-width="1.6"/><text x="196" y="45" fill="var(--on-surface-var)">F</text></g>
   </g>
 </svg>
     <div class="dcap"><span>Front left · from the front</span><em id="dsel">B · lower arm, outer</em></div>
@@ -389,7 +393,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 </div>
 
 <div class="grp">
-  <h2><span>Front left</span><span>0 of 0 datum set</span></h2>
+  <h2><span>Front left</span><span>5 of 6 measured</span></h2>
 
   <div class="hp" data-hp="a">
     <button class="hrow" aria-expanded="false">
@@ -411,7 +415,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
         <label class="field"><span class="fx">Y · out</span><input value="78.0" inputmode="decimal" aria-label="Y, outboard from centreline, millimetres"><span class="fu">mm</span></label>
         <label class="field"><span class="fx">Z · up</span><input value="20.0" inputmode="decimal" aria-label="Z, up from ground, millimetres"><span class="fu">mm</span></label>
       </div>
-      <p class="hint">The inner hinge pin is the datum for this corner. Measure from the <b>centre of the pin</b>, not the face of the arm.</p>
+      <p class="hint">Measure to <b>pin centre</b>. X runs forward from the front axle, Y out from the centreline, Z up from the floor.</p>
       <div class="act"><button class="mini"><svg><use href="#i-ruler"/></svg> Show me where</button></div>
     </div>
   </div>

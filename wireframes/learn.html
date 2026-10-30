@@ -1,0 +1,473 @@
+<!doctype html>
+<html lang="en-GB" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark light">
+<title>Learn — Setup Lab wireframe</title>
+<style>
+/* ---------- tokens ---------- */
+:root{
+  color-scheme: dark;
+  --bg:#0B0C09;
+  --surface:#121410;
+  --s-low:#171A14;
+  --s-cont:#1C1F18;
+  --s-high:#24281F;
+  --s-highest:#2D3127;
+  --on-surface:#E8EADF;
+  --on-surface-var:#A8AD9C;
+  --outline:#767C69;
+  --outline-var:#3C4034;
+  --primary:#C6EF6E;
+  --on-primary:#1A2100;
+  --primary-container:#38480C;
+  --on-primary-container:#DCF9A4;
+  --secondary:#A9C9BC;
+  --tertiary:#E4B78C;
+  --error:#FFB4A2;
+  --on-error:#5C1600;
+  --warn:#E9C46A;
+  --delta-up:#C6EF6E;
+  --delta-down:#9FC8C0;
+  --grid:#2A2E24;
+  --ink-dim:#6E7462;
+  --desk:#050604;
+  --rail:#8D937F;
+  --shadow: 0 24px 60px rgba(0,0,0,.55);
+  --nav-bg:#121410E6;
+  --scrim:#0000;
+}
+[data-theme="light"]{
+  color-scheme: light;
+  --bg:#F5F5ED;
+  --surface:#FBFBF4;
+  --s-low:#FFFFFF;
+  --s-cont:#EFEFE6;
+  --s-high:#E8E9DE;
+  --s-highest:#E1E2D6;
+  --on-surface:#1A1C14;
+  --on-surface-var:#4B5041;
+  --outline:#767C68;
+  --outline-var:#C7CBBA;
+  --primary:#445E06;
+  --on-primary:#FFFFFF;
+  --primary-container:#D3F190;
+  --on-primary-container:#182200;
+  --secondary:#3D6156;
+  --tertiary:#7A5530;
+  --error:#B3261E;
+  --on-error:#FFFFFF;
+  --warn:#7A5000;
+  --delta-up:#3F5A05;
+  --delta-down:#2F5A50;
+  --grid:#D5D8C8;
+  --ink-dim:#767C68;
+  --desk:#E7E7DC;
+  --rail:#5D6353;
+  --shadow: 0 24px 60px rgba(30,32,24,.18);
+  --nav-bg:#FBFBF4E6;
+  --scrim:#0000;
+}
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:'Roboto','Inter',system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;
+  background:var(--desk);
+  color:var(--on-surface);
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+  display:flex; align-items:flex-start; justify-content:center;
+  gap:40px; padding:40px 32px 64px;
+  min-height:100%;
+  font-size:16px; line-height:1.5;
+  font-variant-numeric: tabular-nums;
+}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+:focus-visible{outline:2px solid var(--primary);outline-offset:2px;border-radius:4px}
+
+/* ---------- phone shell ---------- */
+.device{
+  width:390px;height:844px;flex:0 0 auto;
+  background:var(--surface);
+  border:1px solid var(--outline-var);
+  border-radius:44px;
+  box-shadow:var(--shadow);
+  position:relative;overflow:hidden;
+  display:flex;flex-direction:column;
+}
+.status{
+  height:46px;flex:0 0 auto;display:flex;align-items:flex-end;justify-content:space-between;
+  padding:0 26px 6px;font-size:13px;font-weight:600;letter-spacing:.2px;color:var(--on-surface);
+}
+.status .right{display:flex;align-items:center;gap:6px}
+.status svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.8}
+.batt{width:22px;height:11px;border:1.4px solid currentColor;border-radius:3px;position:relative;opacity:.9}
+.batt::after{content:"";position:absolute;left:1.5px;top:1.5px;bottom:1.5px;width:13px;background:currentColor;border-radius:1px}
+.homebar{position:absolute;bottom:7px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:var(--on-surface);opacity:.22;z-index:60}
+
+.screen{flex:1 1 auto;overflow-y:auto;overflow-x:hidden;scrollbar-width:none;padding-bottom:8px;position:relative}
+.screen::-webkit-scrollbar{display:none}
+
+/* ---------- app bar ---------- */
+.appbar{
+  position:sticky;top:0;z-index:40;
+  background:color-mix(in srgb, var(--surface) 92%, transparent);
+  backdrop-filter:blur(12px);
+  display:flex;align-items:center;gap:4px;
+  padding:4px 8px 4px 8px;min-height:56px;
+}
+.appbar .title{font-size:20px;line-height:26px;font-weight:500;letter-spacing:-.1px;flex:1;padding-left:8px}
+.appbar .sub{display:block;font-size:12px;line-height:16px;font-weight:400;color:var(--on-surface-var);letter-spacing:0}
+.iconbtn{
+  width:44px;height:44px;display:grid;place-items:center;border-radius:22px;
+  color:var(--on-surface);flex:0 0 auto;
+}
+.iconbtn:hover{background:var(--s-high)}
+.iconbtn svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+
+/* ---------- layout helpers ---------- */
+.body-pad{padding:0 16px 24px}
+.stack{display:flex;flex-direction:column}
+.gap-4{gap:4px}.gap-8{gap:8px}.gap-12{gap:12px}.gap-16{gap:16px}.gap-24{gap:24px}
+.row{display:flex;align-items:center}
+.between{justify-content:space-between}
+.muted{color:var(--on-surface-var)}
+.eyebrow{font-size:11px;line-height:14px;font-weight:500;letter-spacing:.6px;text-transform:uppercase;color:var(--on-surface-var)}
+.section-head{display:flex;align-items:baseline;justify-content:space-between;margin:24px 4px 8px}
+.section-head h2{font-size:20px;line-height:26px;font-weight:500;letter-spacing:-.1px}
+.section-head .count{font-size:12px;color:var(--on-surface-var);letter-spacing:.3px}
+.divider{height:1px;background:var(--outline-var);border:0}
+
+/* ---------- type for numbers ---------- */
+.num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1,"lnum" 1}
+.num-hero{font-size:34px;line-height:38px;font-weight:400;letter-spacing:-.6px}
+.num-lg{font-size:28px;line-height:32px;font-weight:500;letter-spacing:-.4px}
+.num-md{font-size:20px;line-height:24px;font-weight:500;letter-spacing:-.1px}
+.unit{font-size:12px;line-height:16px;font-weight:500;letter-spacing:.3px;color:var(--on-surface-var);margin-left:4px}
+
+/* ---------- cards ---------- */
+.card{
+  background:var(--s-cont);border:1px solid var(--outline-var);border-radius:16px;
+  padding:16px;position:relative;
+}
+.card.flat{background:var(--s-low);border-color:transparent}
+.card.tap:hover{background:var(--s-high)}
+.card-title{font-size:18px;line-height:24px;font-weight:500;letter-spacing:-.1px}
+.card-sub{font-size:13px;line-height:18px;color:var(--on-surface-var)}
+
+/* ---------- chips ---------- */
+.chip{
+  display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:8px;
+  border:1px solid var(--outline-var);background:transparent;
+  font-size:12px;line-height:16px;font-weight:500;letter-spacing:.3px;color:var(--on-surface-var);
+  white-space:nowrap;
+}
+.chip.solid{background:var(--s-high);border-color:transparent;color:var(--on-surface)}
+.chip.accent{background:var(--primary-container);border-color:transparent;color:var(--on-primary-container)}
+.chip.warn{border-color:color-mix(in srgb,var(--warn) 45%,transparent);color:var(--warn);background:color-mix(in srgb,var(--warn) 10%,transparent)}
+.chip.sm{height:24px;padding:0 8px;font-size:11px;letter-spacing:.4px;border-radius:6px}
+.chip svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.8}
+
+.delta{
+  display:inline-flex;align-items:center;gap:2px;height:24px;padding:0 8px;border-radius:6px;
+  background:var(--s-high);font-size:12px;line-height:16px;font-weight:500;letter-spacing:.2px;
+  font-variant-numeric:tabular-nums;color:var(--on-surface);white-space:nowrap;
+}
+.delta .arw{font-size:11px;line-height:1}
+.delta.up .arw{color:var(--delta-up)}
+.delta.down .arw{color:var(--delta-down)}
+.delta.zero{color:var(--on-surface-var)}
+.delta.none{background:transparent;border:1px dashed var(--outline-var);color:var(--on-surface-var)}
+
+/* ---------- buttons ---------- */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  min-height:48px;padding:0 20px;border-radius:12px;
+  font-size:14px;font-weight:500;letter-spacing:.1px;
+  border:1px solid transparent;background:var(--primary);color:var(--on-primary);
+}
+.btn:hover{filter:brightness(1.06)}
+.btn.outline{background:transparent;color:var(--primary);border-color:color-mix(in srgb,var(--primary) 45%,transparent)}
+.btn.tonal{background:var(--s-high);color:var(--on-surface)}
+.btn.block{display:flex;width:100%}
+.btn.sm{min-height:44px;padding:0 16px}
+.btn svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+
+/* ---------- bottom nav ---------- */
+.navbar{
+  flex:0 0 auto;height:72px;display:grid;grid-template-columns:repeat(4,1fr);
+  border-top:1px solid var(--outline-var);
+  background:var(--nav-bg);backdrop-filter:blur(14px);padding-bottom:0;
+}
+.navbar a{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:var(--on-surface-var);font-size:11px;font-weight:500;letter-spacing:.3px;position:relative}
+.navbar a svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.navbar a[aria-current="page"]{color:var(--primary)}
+.navbar a[aria-current="page"] .dot{position:absolute;top:10px;width:4px;height:4px;border-radius:2px;background:var(--primary);display:none}
+
+/* ---------- annotation rail ---------- */
+.rail{width:300px;flex:0 0 auto;padding-top:8px;color:var(--rail)}
+.rail .kicker{font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:var(--rail);opacity:.7}
+.rail h1{font-size:22px;line-height:28px;font-weight:500;color:var(--on-surface);margin:6px 0 4px;letter-spacing:-.2px}
+.rail p{font-size:13px;line-height:20px;color:var(--rail);margin-bottom:16px}
+.rail ul{list-style:none;display:flex;flex-direction:column;gap:10px;margin:0 0 20px}
+.rail li{font-size:12.5px;line-height:18px;color:var(--rail);padding-left:14px;position:relative}
+.rail li::before{content:"";position:absolute;left:0;top:7px;width:5px;height:5px;border-radius:1px;background:var(--primary);opacity:.8}
+.rail .ctrl{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}
+.tg{
+  height:34px;padding:0 12px;border-radius:8px;border:1px solid var(--outline-var);color:var(--rail);
+  font-size:12px;letter-spacing:.2px;display:inline-flex;align-items:center;gap:6px;background:transparent;
+}
+.tg[aria-pressed="true"]{background:var(--s-high);color:var(--on-surface);border-color:transparent}
+.rail .meta{font-size:11px;line-height:16px;color:var(--rail);opacity:.75;border-top:1px solid var(--outline-var);padding-top:12px;margin-top:4px}
+.rail a.link{color:var(--on-surface);border-bottom:1px solid var(--outline);font-size:12px}
+
+@media (max-width: 780px){
+  body{padding:0;display:block;background:var(--surface)}
+  .device{width:100vw;height:100dvh;border-radius:0;border:0;box-shadow:none}
+  .rail{display:none}
+  .homebar{display:none}
+}
+
+/* ---------- reduced motion ---------- */
+@media (prefers-reduced-motion: reduce){
+  *{transition-duration:.001ms !important;animation-duration:.001ms !important}
+}
+
+#hd{position:relative}
+.article{padding:8px 20px 0}
+.kicker{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--on-surface-var);font-weight:500}
+.article h1{font-size:30px;line-height:36px;font-weight:500;letter-spacing:-.6px;margin:8px 0 10px;text-wrap:balance}
+.stand{font-size:16px;line-height:25px;color:var(--on-surface-var);letter-spacing:-.1px}
+.byline{display:flex;align-items:center;gap:8px;margin:14px 0 4px;font-size:11.5px;color:var(--on-surface-var);letter-spacing:.3px}
+.byline .dot{width:3px;height:3px;border-radius:2px;background:var(--outline)}
+.article p{font-size:15.5px;line-height:25px;color:var(--on-surface);margin:14px 0;letter-spacing:-.1px}
+.article p.muted{color:var(--on-surface-var)}
+.article h2{font-size:20px;line-height:26px;font-weight:500;letter-spacing:-.2px;margin:26px 0 2px}
+
+.fig{margin:16px 0 4px;background:var(--s-low);border:1px solid var(--outline-var);border-radius:16px;padding:6px 6px 0}
+.fig svg{display:block;width:100%;height:auto}
+.fig{margin-bottom:20px}
+.figcap{display:flex;justify-content:space-between;align-items:center;padding:6px 10px 10px;font-size:11px;line-height:15px;color:var(--on-surface-var);letter-spacing:.2px}
+.figcap b{color:var(--on-surface);font-weight:500}
+.toggle{display:flex;gap:6px;padding:10px 10px 2px}
+.tg2{height:34px;padding:0 12px;border-radius:8px;border:1px solid var(--outline-var);font-size:12px;font-weight:500;color:var(--on-surface-var)}
+.tg2[aria-pressed="true"]{background:var(--s-high);border-color:transparent;color:var(--on-surface)}
+
+.eqblock{margin:18px 0;background:var(--s-cont);border:1px solid var(--outline-var);border-radius:14px;overflow:hidden}
+.eqblock .lbl{font-size:10.5px;letter-spacing:.9px;text-transform:uppercase;color:var(--on-surface-var);padding:12px 14px 0;font-weight:600}
+.eqblock .eq{font-family:ui-monospace,'SFMono-Regular',Menlo,Consolas,monospace;font-size:12.5px;line-height:21px;white-space:pre;overflow-x:auto;padding:8px 14px 12px;color:var(--on-surface);letter-spacing:-.2px}
+.eqblock .defs{border-top:1px solid var(--outline-var);padding:10px 14px;font-size:11.5px;line-height:17px;color:var(--on-surface-var)}
+.eqblock .defs b{color:var(--on-surface);font-weight:500}
+
+.callout{margin:18px 0;padding:14px 16px;border-radius:14px;background:var(--primary-container);color:var(--on-primary-container)}
+.callout .k{font-size:10.5px;letter-spacing:.9px;text-transform:uppercase;opacity:.8;font-weight:600}
+.callout p{color:inherit;font-size:14px;line-height:21px;margin:6px 0 10px;opacity:.95}
+.callout .go{display:inline-flex;align-items:center;gap:6px;min-height:44px;font-size:13px;font-weight:500;color:inherit;border-bottom:1px solid currentColor;padding:0 2px}
+.callout svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2}
+
+.next{display:block;margin:22px 16px 8px;padding:16px;border:1px solid var(--outline-var);border-radius:14px;background:var(--s-cont)}
+.next .k{font-size:10.5px;letter-spacing:.9px;text-transform:uppercase;color:var(--on-surface-var);font-weight:600}
+.next b{display:block;font-size:17px;line-height:23px;font-weight:500;margin-top:6px;letter-spacing:-.2px}
+.next span{display:block;font-size:12.5px;line-height:18px;color:var(--on-surface-var);margin-top:4px}
+</style>
+</head>
+<body class="">
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+ <defs>
+  <symbol id="i-car" viewBox="0 0 24 24"><path d="M4 16.2v-3.4l1.8-4.4A2 2 0 0 1 7.7 7h8.6a2 2 0 0 1 1.9 1.4L20 12.8v3.4"/><path d="M4 13h16"/><circle cx="7.6" cy="17.6" r="1.7"/><circle cx="16.4" cy="17.6" r="1.7"/></symbol>
+  <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/><circle cx="9" cy="7" r="2.1"/><circle cx="15" cy="12" r="2.1"/><circle cx="8" cy="17" r="2.1"/></symbol>
+  <symbol id="i-compare" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="7" height="15" rx="1.6"/><rect x="13.5" y="4.5" width="7" height="15" rx="1.6"/><path d="M6 9h2M6 13h2M16 9h2M16 13h2"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M12 6.6C10.4 5.1 7.9 4.6 4 4.6v13.6c3.9 0 6.4.5 8 2 1.6-1.5 4.1-2 8-2V4.6c-3.9 0-6.4.5-8 2z"/><path d="M12 6.6v13.6"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5.2v13.6M5.2 12h13.6"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="M9.5 6l6 6-6 6"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M19 12H5.5M11 6l-6 6 6 6"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6.5L9.3 17.2 4 11.9"/></symbol>
+  <symbol id="i-ruler" viewBox="0 0 24 24"><path d="M3.6 15.2L15.2 3.6l5.2 5.2L8.8 20.4z"/><path d="M7.4 11l1.8 1.8M10.2 8.2l1.8 1.8M13 5.4l1.8 1.8"/></symbol>
+  <symbol id="i-cog" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.1"/><path d="M12 3.2v2.6M12 18.2v2.6M3.2 12h2.6M18.2 12h2.6M5.8 5.8l1.9 1.9M16.3 16.3l1.9 1.9M18.2 5.8l-1.9 1.9M7.7 16.3l-1.9 1.9"/></symbol>
+  <symbol id="i-more" viewBox="0 0 24 24"><circle cx="12" cy="6" r="1.1" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.1" fill="currentColor" stroke="none"/><circle cx="12" cy="18" r="1.1" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-swap" viewBox="0 0 24 24"><path d="M4.5 8.5h14l-3.2-3.2M19.5 15.5h-14l3.2 3.2"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.6"/><path d="M12 11.2v5.4M12 7.7v.2"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 4.4L20.6 19.6H3.4z"/><path d="M12 10v4.1M12 16.9v.2"/></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="M12 5v13M6.5 12.5L12 18l5.5-5.5"/></symbol>
+ </defs>
+</svg>
+
+<main class="device" id="device">
+  
+<div class="status" aria-hidden="true">
+  <span>9:41</span>
+  <span class="right">
+    <svg viewBox="0 0 24 24"><path d="M3 17h3v3H3zM9 13h3v7H9zM15 9h3v11h-3z" fill="currentColor" stroke="none"/></svg>
+    <svg viewBox="0 0 24 24"><path d="M2.5 9.2a14 14 0 0 1 19 0M6 12.4a9 9 0 0 1 12 0M9.4 15.6a4.2 4.2 0 0 1 5.2 0"/><circle cx="12" cy="18.6" r="1" fill="currentColor" stroke="none"/></svg>
+    <span class="batt"></span>
+  </span>
+</div>
+  <div class="screen" id="screen">
+  
+<header class="appbar" id="hd">
+  <button class="iconbtn" aria-label="Back"><svg><use href="#i-back"/></svg></button>
+  <div class="title">Learn</div>
+  <button class="iconbtn" aria-label="Saved articles"><svg><use href="#i-book"/></svg></button>
+</header>
+
+<article class="article">
+  <div class="kicker">Suspension geometry · 4 min</div>
+  <h1>Where the car actually rolls</h1>
+  <p class="stand">Not around its centre of gravity. Each end of the car pivots around its own roll centre — and where those two points sit decides which end runs out of grip first.</p>
+  <div class="byline"><span>Built from published vehicle dynamics</span><span class="dot"></span><span>No prior maths needed</span></div>
+
+
+<div class="fig">
+  <div class="toggle">
+    <button class="tg2" id="tConv" aria-pressed="true">Links converging</button>
+    <button class="tg2" id="tPar" aria-pressed="false">Links parallel</button>
+  </div>
+  <svg viewBox="0 0 340 250" role="img" aria-label="Front view of a car showing how the roll centre is constructed from the two instant centres">
+    <path d="M0 214h340" stroke="var(--outline)" stroke-width="1.4"/>
+    <text x="6" y="209" fill="var(--on-surface-var)" font-size="8.5" font-family="Roboto, system-ui" letter-spacing=".5">GROUND</text>
+    <path d="M170 26v188" stroke="var(--outline-var)" stroke-width="1" stroke-dasharray="4 4"/>
+    <text x="170" y="20" fill="var(--on-surface-var)" font-size="8.5" font-family="Roboto, system-ui" text-anchor="middle" letter-spacing=".5">CENTRELINE</text>
+
+    <!-- wheels -->
+    <circle cx="52" cy="186" r="28" fill="none" stroke="var(--outline)" stroke-width="1.5"/>
+    <circle cx="288" cy="186" r="28" fill="none" stroke="var(--outline)" stroke-width="1.5"/>
+
+    <g id="gConv">
+      <!-- construction lines -->
+      <path d="M52 214L244 188M288 214L95.6 188" stroke="var(--warn)" stroke-width="1.1" stroke-dasharray="3 3" opacity=".85"/>
+      <!-- arms -->
+      <g stroke="var(--on-surface-var)" stroke-width="2.4" stroke-linecap="round">
+        <path d="M146 196L58 203"/><path d="M146 168L68 152"/>
+        <path d="M194 196L282 203"/><path d="M194 168L270 152"/>
+        <path d="M58 203L68 152"/><path d="M282 203L270 152"/>
+      </g>
+      <!-- instant centres -->
+      <circle cx="244" cy="188" r="3.4" fill="var(--warn)"/>
+      <circle cx="95.6" cy="188" r="3.4" fill="var(--warn)"/>
+      <text x="250" y="184" fill="var(--warn)" font-size="9" font-family="Roboto, system-ui" font-weight="600">IC</text>
+      <text x="76" y="184" fill="var(--warn)" font-size="9" font-family="Roboto, system-ui" font-weight="600" text-anchor="end">IC</text>
+      <!-- roll centre -->
+      <path d="M170 198v16" stroke="var(--primary)" stroke-width="1" stroke-dasharray="2 2"/>
+      <circle cx="170" cy="198" r="5.5" fill="var(--primary)"/>
+      <circle cx="170" cy="198" r="10" fill="none" stroke="var(--primary)" stroke-width="1" opacity=".45"/>
+      <text x="182" y="201" fill="var(--primary)" font-size="10" font-family="Roboto, system-ui" font-weight="700" letter-spacing=".3">RC</text>
+    </g>
+
+    <g id="gPar" style="display:none">
+      <g stroke="var(--on-surface-var)" stroke-width="2.4" stroke-linecap="round">
+        <path d="M146 196L58 203"/><path d="M146 168L58 175"/>
+        <path d="M194 196L282 203"/><path d="M194 168L282 175"/>
+        <path d="M58 203L58 175"/><path d="M282 203L282 175"/>
+      </g>
+      <path d="M58 189H20M282 189H320" stroke="var(--warn)" stroke-width="1.1" stroke-dasharray="3 3" opacity=".85"/>
+      <text x="20" y="186" fill="var(--warn)" font-size="15" font-family="Roboto, system-ui" text-anchor="middle">&#8734;</text>
+      <text x="320" y="186" fill="var(--warn)" font-size="15" font-family="Roboto, system-ui" text-anchor="middle">&#8734;</text>
+      <text x="170" y="150" fill="var(--warn)" font-size="9.5" font-family="Roboto, system-ui" font-weight="600" text-anchor="middle" letter-spacing=".3">instant centres run to infinity</text>
+      <text x="170" y="168" fill="var(--on-surface-var)" font-size="9" font-family="Roboto, system-ui" text-anchor="middle" letter-spacing=".3">no crossing point to report</text>
+    </g>
+  </svg>
+  <div class="figcap"><span id="fcapA"><b>Converging links.</b> The two construction lines cross on the centreline.</span><span id="fcapB" style="display:none"><b>Parallel links.</b> The construction never closes, so there is no height to report.</span></div>
+</div>
+
+  <p>Extend the upper and lower link on one side until the lines meet. That meeting point is the instant centre for that corner — the single pivot the wheel appears to swing around at this instant of travel. Draw a line from the bottom of the tyre through it, do the same on the other side, and the crossing point is the roll centre for that end of the car.</p>
+
+  <p class="muted">Two things fall out of this picture. A roll centre near the ground means the car leans more for the same cornering force. A roll centre that sits high resists roll — but it also pulls the tyre sideways as the suspension moves, which is felt as a sudden loss of grip.</p>
+
+  <h2>The height, in one line</h2>
+
+  <div class="eqblock">
+    <div class="lbl">Roll centre height</div>
+    <div class="eq">h_rc = (z_ic / y_ic) × (t / 2)</div>
+    <div class="defs"><b>z<sub>ic</sub></b> instant centre height over the contact patch · <b>y<sub>ic</sub></b> its inboard distance · <b>t</b> track width</div>
+  </div>
+
+  <p>Two levers change it, and they pull in opposite directions. Raising the inner pickup lifts the instant centre, which lifts the roll centre. Widening the track lowers the roll centre for the same geometry, which is why a wider car rolls more before it takes a set.</p>
+
+  <div class="callout">
+    <div class="k">On your car</div>
+    <p>Front roll centre is sitting at <b>22 mm</b>, three millimetres higher than the saved setup. The rear is at 31 mm, so the car will lean on the front tyre first.</p>
+    <a class="go" href="analysis.html">Open the numbers <svg><use href="#i-chev"/></svg></a>
+  </div>
+
+  <h2>Camber gain is the same picture</h2>
+
+  <p>As the wheel swings around that instant centre it also tilts, and the tyre leans with it. Camber gain is how much tilt you get per millimetre of travel — the geometry quietly correcting the camber the body roll just took away.</p>
+
+  <div class="eqblock">
+    <div class="lbl">Camber gain</div>
+    <div class="eq">dγ/dz ≈ 1 / L<sub>swing</sub>   (rad per mm)
+Δγ/Δφ = (t/2 × π/180) × dγ/dz</div>
+    <div class="defs"><b>L<sub>swing</sub></b> distance from contact patch to instant centre · <b>φ</b> body roll in degrees</div>
+  </div>
+
+  <p class="muted">Move the inner camber link up and the instant centre moves, so the roll centre and the camber gain move together. You cannot change one without the other — which is exactly why “add more camber link” is not free.</p>
+</article>
+
+<a class="next" href="analysis.html">
+  <span class="k">Next</span>
+  <b>Load transfer split</b>
+  <span>Why the same total load moved can still mean understeer or oversteer, depending on which end takes it.</span>
+</a>
+<div style="height:20px"></div>
+
+  </div>
+  <nav class="navbar" aria-label="Primary"><a href="garage.html"><svg><use href="#index-car"/></svg><span>Garage</span></a><a href="setup-editor.html"><svg><use href="#i-sliders"/></svg><span>Setup</span></a><a href="compare.html"><svg><use href="#i-compare"/></svg><span>Compare</span></a><a href="learn.html" aria-current="page"><svg><use href="#i-book"/></svg><span>Learn</span></a></nav>
+  <div class="homebar" aria-hidden="true"></div>
+</main>
+<aside class="rail">
+  <div class="kicker">Setup Lab · wireframe F</div>
+  <h1>Learn</h1>
+  <p>One concept, one diagram, one equation, and the user's own number at the end of it. Reading happens at the point of use — the article is reachable from the analysis row, not buried in a manual.</p>
+  <ul><li>The diagram is the argument. Two states — converging and parallel — teach the construction and the degenerate case in the same picture.</li><li>Prose is 15.5/25 at a 45-character measure. Long-form reading is a different typographic mode from a dashboard.</li><li>The equation block is monospaced with a named-symbol legend underneath, never a wall of algebra.</li><li>A single callout ties the concept to this car's real number, so the page ends in the app, not in theory.</li></ul>
+  <div class="ctrl">
+    <button class="tg" id="themeBtn" aria-pressed="false">☾ Dark</button>
+    <button class="tg" id="parBtn" aria-pressed="false">Parallel case</button>
+  </div>
+  <div class="meta">Try “Parallel case”: the instant centre runs to infinity, the construction collapses, and the app reports undefined rather than a number it cannot defend.<br><a class="link" href="index.html">All screens →</a> &nbsp; <a class="link" href="design-notes.html">Token check →</a></div>
+</aside>
+<script>
+(function(){
+  var root=document.documentElement, btn=document.getElementById('themeBtn');
+  function setTheme(t){
+    root.setAttribute('data-theme',t);
+    if(btn){ btn.textContent = t==='dark' ? '☀ Light' : '☾ Dark';
+              btn.setAttribute('aria-pressed', t==='light' ? 'true':'false'); }
+    try{localStorage.setItem('sl-theme',t)}catch(e){}
+  }
+  var saved='dark'; try{saved=localStorage.getItem('sl-theme')||'dark'}catch(e){}
+  setTheme(saved);
+  if(btn) btn.addEventListener('click',function(){ setTheme(root.getAttribute('data-theme')==='dark'?'light':'dark'); });
+  window.addEventListener('keydown',function(e){ if(e.key==='t') setTheme(root.getAttribute('data-theme')==='dark'?'light':'dark'); });
+  window.slSetTheme=setTheme;
+})();
+
+(function(){
+  var a=document.getElementById('tConv'), b=document.getElementById('tPar');
+  var g1=document.getElementById('gConv'), g2=document.getElementById('gPar');
+  var c1=document.getElementById('fcapA'), c2=document.getElementById('fcapB');
+  function set(par){
+    a.setAttribute('aria-pressed', par?'false':'true');
+    b.setAttribute('aria-pressed', par?'true':'false');
+    g1.style.display = par?'none':'';
+    g2.style.display = par?'':'none';
+    c1.style.display = par?'none':'';
+    c2.style.display = par?'':'none';
+  }
+  a.addEventListener('click',function(){set(false)});
+  b.addEventListener('click',function(){set(true)});
+  var rp=document.getElementById('parBtn');
+  if(rp) rp.addEventListener('click',function(){
+    var par=rp.getAttribute('aria-pressed')!=='true';
+    rp.setAttribute('aria-pressed', par?'true':'false');
+    set(par);
+  });
+})();
+
+</script>
+</body>
+</html>

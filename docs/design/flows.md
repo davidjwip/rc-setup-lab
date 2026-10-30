@@ -18,7 +18,8 @@ developer implements with `go_router` and Riverpod.
 
 Three design consequences that shape every flow below:
 
-1. **The at-track loop must be reachable in two taps from app launch** (car → analysis).
+1. **The at-track loop must be reachable in two taps from app launch** — tap the car, tap its
+   latest setup, and it opens on the analysis. No menus on the way.
 2. **Nothing may require reading to use.** Values first, words on demand.
 3. **A number the app cannot stand behind is never shown.** No dash, no zero, no guess
    dressed up as a result.
@@ -38,6 +39,19 @@ drill-down inside each destination.**
   can hit blind, and each maps to one verb: *my car*, *what changed*, *what does it mean*.
 - The car → setup → analysis path is a **linear push stack**, not a set of peer tabs. There
   is exactly one obvious "back".
+
+**Known conflict, to be arbitrated by the owner.** The throwaway wireframes in `wireframes/`
+draw a four-item bar — *Garage · Setup · Compare · Learn* — with *Setup* as a peer destination.
+That is a defensible alternative: setup editing is the most frequent act at the track, and a
+permanent tab makes it one tap. It is rejected here for one reason: a *Setup* branch has no car
+until one is chosen, so it opens on a picker or on the last car used, and the user has to hold
+"which car is this tab showing?" in their head — the same ambiguity that makes the old app's
+multiple setup pages confusing. With three destinations, "my car" is one object and everything
+else hangs off it.
+
+If the owner prefers four, the change is small and local: add a fourth branch whose root is
+`/car/:carId/setup/:lastSetupId/analysis`, keep every sub-route below it unchanged, and accept
+the "no car yet" empty state on that branch. No screen or state in this document changes.
 
 ### 2.2 Why not the alternatives
 
@@ -99,8 +113,8 @@ app opens Garage with a one-line notice: "That car isn't on this device." — no
 
 ## 3. The data spine: one owner per number
 
-The most-repeated complaint in the source thread is the same value existing in two places
-("Tire Dia and Tire Width … they are also in Setup page!? How is that handled?"). The rule:
+A complaint that recurs in the source thread is one value living in two places ("Tire Dia and
+Tire Width … they are also in Setup page!? How is that handled?"). The rule:
 
 > **A value is owned by exactly one of Car or Setup. The other side shows it as inherited,
 > with a link to the owner, never as a second editable copy.**
@@ -118,8 +132,9 @@ Two consequences the flows depend on:
 
 - **Effective geometry = car hardpoints + setup shim offsets.** Analysis always runs on the
   effective geometry, so "add a 1 mm shim" is a setup edit, not a re-measurement.
-- **Droop is derived**, never asked for twice: `droop = ride height − droop-stop travel`, both
-  of which are already owned.
+- **Droop is one field, not two.** It is stored per corner (spec §4.3.1 `corners.<c>.droop`);
+  when ride height and the droop stop are already known, the app *offers* the derived value
+  (`ride height − droop-stop travel`) pre-filled, so the user confirms instead of re-measuring.
 
 ### 3.1 The three inputs RC3 made the user guess
 
@@ -131,7 +146,7 @@ input**. Setup Lab inverts that:
 | Old input | Setup Lab behaviour |
 |---|---|
 | "Arm movement" | Never asked. Motion ratio is computed from the shock mount points. The wizard offers an optional **verification**: move the wheel 10 mm, read shock travel with the calipers; the app compares your reading to its computed value and says "within 4% — model agrees" or "off by 23% — one of these three points is probably wrong" and links them. |
-| "Unsprung weight" | Never asked as a number. The app offers a **weighing recipe** (block the chassis, weigh the corner, subtract the sprung share) and, until the user does it, uses a library estimate flagged `estimated` — visibly approximate everywhere it is used. |
+| "Unsprung weight" | Never asked as a bare number. The app offers a **weighing recipe** (block the chassis, weigh the corner, subtract the sprung share). Until then it follows the spec (absent → 0, with a visible assumption on the card and in every export); a library estimate is offered only as an explicit opt-in and is then flagged `estimated` wherever it is used. |
 | "Where is the chassis mount if the arm is swept?" | The mount is a 3-axis point. Fore/aft offset is a first-class field, so a swept arm is modelled as swept, not approximated by choosing "the closest hole". |
 
 ---
@@ -215,6 +230,9 @@ do you want my bellcrank pivot".
 The wizard is ordered so the car is taken apart once and put back together once. A racer will
 not remove all four wheels, measure, refit, then remove them again — so physics order
 (which would start with hardpoints) is the wrong order for the bench.
+
+Task counts below are for the **Full model**; the Quick model takes a marked 14-task subset
+(one per row where possible).
 
 | Group | State of the car | What is measured | Typical tasks |
 |---|---|---|---|
@@ -388,8 +406,9 @@ versioned snapshot per heat costs nothing and makes Flow 6 (compare) exact.
 | 6 | **Wheel rate** | N/mm each end | "The spring rate the tyre actually feels" |
 | 7 | **Damping ratio** | ζ each end | "Whether the shock is controlling the spring" |
 
-Motion ratio, roll angle, camber-at-roll and toe-at-roll are **inside** cards 3–6, one level
-down. They are never headline cards; that is how the screen stays under eight properties.
+Motion ratio, ride frequency, roll angle, roll-centre migration, camber-at-roll, toe-at-roll and
+Ackermann are **inside** cards 3–6, one level down (`docs/specs/spec.md` §4.4 lists them all as
+outputs; they are outputs, not headlines). That is how the screen stays under eight properties.
 
 Each card carries, in this order: property name · front value · rear value · **delta vs
 baseline** (arrow + number, only when a baseline exists and differs) · a confidence chip
@@ -402,20 +421,26 @@ transfer forward." Direction and size, not handling adjectives.
 ### 8.2 What a card looks like in each state
 
 ```
-COMPUTED                     MISSING INPUT                 UNDEFINED GEOMETRY
-┌──────────────────────┐    ┌ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┐    ┌──────────────────────┐
-│ Roll centre       ? │     │ Roll centre           │     │ Roll centre        ? │
-│ 22 mm      34 mm    │     │ Not computable yet    │     │ Undefined for this   │
-│ ▲ +4 mm vs baseline │     │ Needs: front upper    │     │ geometry             │
-└──────────────────────┘     │ inner pivot · height  │     │ Links parallel in    │
-                             │            Add it ›   │     │ front view           │
-                             └ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┘     │        What to check │
-                                                           └──────────────────────┘
+COMPUTED                    MISSING INPUT               UNDEFINED GEOMETRY
+┌────────────────────────┐  ┌────────────────────────┐  ┌────────────────────────┐
+│ Roll centre          ? │  │ Roll centre            │  │ Roll centre          ? │
+│ 22 mm      34 mm       │  │ Not computable yet     │  │ Undefined for this     │
+│ ▲ +4 mm vs baseline    │  │ Needs: front upper     │  │ geometry: links        │
+└────────────────────────┘  │   inner pivot height   │  │ parallel in front view │
+                            │             Add it ›   │  │      What to check ›   │
+                            └────────────────────────┘  └────────────────────────┘
 ```
 
-Dashed border and no numerals for missing; no numerals and a "why" link for undefined. The two
-are never visually confused, because "add a measurement" and "your geometry has no answer" are
-different jobs.
+Three treatments, three meanings, never mixed:
+
+- **computed** — solid border, values in the largest type on the card, delta underneath.
+- **missing** — dashed border, no numerals anywhere, first missing input named, whole card taps
+  through to that measurement task.
+- **undefined** — hollow border, a faint diagonal hatch behind the value area, no numerals, the
+  geometry reason in words and a *What to check* link to the two fields involved.
+
+The distinction matters because "add a measurement" and "your geometry has no answer" are
+different jobs with different fixes.
 
 ### 8.3 From a surprising number to its explanation
 
@@ -430,10 +455,10 @@ height, dismissible by swipe or scrim. Contents, in fixed order:
 2. **Your numbers, in the equation.** The equation written in words with the user's own
    values substituted, and the arithmetic shown: "Load transfer = mass × cornering force × CG
    height ÷ track width = 1.35 kg × 1.0 g × 30 mm ÷ 172 mm = 236 g at 1 g."
-3. **Why this direction.** The rule, then the counter-intuitive case spelled out — the single
-   most-asked question in the source thread is why *raising* the front roll centre puts *more*
-   weight on the front, and the answer is that reducing the front roll moment makes that end
-   behave stiffer. The app states the mechanism, not just the rule.
+3. **Why this direction.** The rule, then the counter-intuitive case spelled out. A question the
+   thread returns to is why *raising* the front roll centre puts *more* weight on the front:
+   reducing the front roll moment makes that end behave stiffer, so it takes a bigger share of
+   a total that has not changed. The app states the mechanism, not just the rule.
 4. **What else moves.** Coupling, named: "This also changes camber gain by 0.3°/10 mm."
 5. **Read more ›** — dismisses the sheet and pushes the full concept.
 
@@ -460,8 +485,9 @@ it can show "on your car" values in a live card.
 ### 8.5 The 90-second test
 
 A user who launched the app 90 seconds ago, with a modelled car and two setups, must be able
-to answer "what did that shim do?" by: tap Garage → tap car → analysis is the default segment
-→ tap Compare → read four changed rows. Four taps, no typing, no menu.
+to answer "what did that shim do?" by: tap the car, then tap Compare — the analysis is the
+default segment, and Compare opens on baseline-versus-current without asking. Two taps, no
+typing, no menu. Three if the Compare tab was left showing a different pair.
 
 ---
 
@@ -606,9 +632,9 @@ display unit never changes stored values.
 
 ---
 
-## 12. Publishing a setup (the thing the thread asked for for eleven years)
+## 12. Publishing a setup (asked for in the thread's first month, and again ever after)
 
-"Also a print your setup option" appears in the first fifty posts and never stops. Ship it as
+"Also a print your setup option" appears within the first fifty posts. Ship it as
 a first-class action, not a settings toggle:
 
 - **Export sheet** (from the setup overflow, and from Compare): a one-page A4/Letter PDF with
@@ -692,10 +718,11 @@ there. Drafts are persisted to local storage on every change, with the last writ
 
 ## 14. Open questions
 
-1. **The measured field list must be signed off by the physics spec.** This document names
-   groups and representative fields; the authoritative set (and the degenerate-geometry rules
-   per property) belongs to `docs/specs/physics/`. Until that exists, the wizard's task list
-   is a design proposal, not a contract.
+1. **Reconcile the wizard's task list against the spec's field tables.** `docs/specs/spec.md`
+   §4.2.1 and §4.3.1 now carry the authoritative field names (`lower_arm.inboard_front` …
+   `upper_link_inner_shims`). This document's groups and task counts are a design estimate of
+   how those fields are *asked for*, and must be re-derived from the field table before sprint
+   planning — the count may go up, and every added task is 40 seconds of a 20-minute budget.
 2. **Coordinate datum.** The flows assume a per-car datum (ground plane + axle centreline +
    car centreline). Absolute vs span-based measurement changes the wizard's wording
    everywhere, and span-based is friendlier with calipers but harder to reconcile with a
@@ -715,5 +742,9 @@ there. Drafts are persisted to local storage on every change, with the last writ
 7. **Damping ratio needs shock dyno data** to be more than a geometric estimate from oil and
    piston. v1's honest offer is "damping ratio from the shock model, which you may not have" —
    is an estimate with a loud chip acceptable, or is card 7 absent until damper data exists?
-8. **Naming.** "Setup Lab" is a working title; the tab labels ("Garage", "Compare", "Learn")
+8. **Three tabs or four?** The wireframes in `wireframes/` show four (Garage · Setup · Compare ·
+   Learn). This document recommends three (Garage · Compare · Learn) for the reason in §2.1: a
+   Setup branch has no car until one is chosen. Owner's call; the migration is described in §2.1
+   and costs no screen changes.
+9. **Naming.** "Setup Lab" is a working title; the tab labels ("Garage", "Compare", "Learn")
    are chosen for shortness and should be re-tested with 5 club racers before they are frozen.

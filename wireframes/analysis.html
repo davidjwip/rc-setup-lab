@@ -1,0 +1,604 @@
+<!doctype html>
+<html lang="en-GB" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark light">
+<title>Analysis — Setup Lab wireframe</title>
+<style>
+/* ---------- tokens ---------- */
+:root{
+  color-scheme: dark;
+  --bg:#0B0C09;
+  --surface:#121410;
+  --s-low:#171A14;
+  --s-cont:#1C1F18;
+  --s-high:#24281F;
+  --s-highest:#2D3127;
+  --on-surface:#E8EADF;
+  --on-surface-var:#A8AD9C;
+  --outline:#767C69;
+  --outline-var:#3C4034;
+  --primary:#C6EF6E;
+  --on-primary:#1A2100;
+  --primary-container:#38480C;
+  --on-primary-container:#DCF9A4;
+  --secondary:#A9C9BC;
+  --tertiary:#E4B78C;
+  --error:#FFB4A2;
+  --on-error:#5C1600;
+  --warn:#E9C46A;
+  --delta-up:#C6EF6E;
+  --delta-down:#9FC8C0;
+  --grid:#2A2E24;
+  --ink-dim:#6E7462;
+  --desk:#050604;
+  --rail:#8D937F;
+  --shadow: 0 24px 60px rgba(0,0,0,.55);
+  --nav-bg:#121410E6;
+  --scrim:#0000;
+}
+[data-theme="light"]{
+  color-scheme: light;
+  --bg:#F5F5ED;
+  --surface:#FBFBF4;
+  --s-low:#FFFFFF;
+  --s-cont:#EFEFE6;
+  --s-high:#E8E9DE;
+  --s-highest:#E1E2D6;
+  --on-surface:#1A1C14;
+  --on-surface-var:#4B5041;
+  --outline:#767C68;
+  --outline-var:#C7CBBA;
+  --primary:#445E06;
+  --on-primary:#FFFFFF;
+  --primary-container:#D3F190;
+  --on-primary-container:#182200;
+  --secondary:#3D6156;
+  --tertiary:#7A5530;
+  --error:#B3261E;
+  --on-error:#FFFFFF;
+  --warn:#7A5000;
+  --delta-up:#3F5A05;
+  --delta-down:#2F5A50;
+  --grid:#D5D8C8;
+  --ink-dim:#767C68;
+  --desk:#E7E7DC;
+  --rail:#5D6353;
+  --shadow: 0 24px 60px rgba(30,32,24,.18);
+  --nav-bg:#FBFBF4E6;
+  --scrim:#0000;
+}
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:'Roboto','Inter',system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;
+  background:var(--desk);
+  color:var(--on-surface);
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+  display:flex; align-items:flex-start; justify-content:center;
+  gap:40px; padding:40px 32px 64px;
+  min-height:100%;
+  font-size:16px; line-height:1.5;
+  font-variant-numeric: tabular-nums;
+}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+:focus-visible{outline:2px solid var(--primary);outline-offset:2px;border-radius:4px}
+
+/* ---------- phone shell ---------- */
+.device{
+  width:390px;height:844px;flex:0 0 auto;
+  background:var(--surface);
+  border:1px solid var(--outline-var);
+  border-radius:44px;
+  box-shadow:var(--shadow);
+  position:relative;overflow:hidden;
+  display:flex;flex-direction:column;
+}
+.status{
+  height:46px;flex:0 0 auto;display:flex;align-items:flex-end;justify-content:space-between;
+  padding:0 26px 6px;font-size:13px;font-weight:600;letter-spacing:.2px;color:var(--on-surface);
+}
+.status .right{display:flex;align-items:center;gap:6px}
+.status svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.8}
+.batt{width:22px;height:11px;border:1.4px solid currentColor;border-radius:3px;position:relative;opacity:.9}
+.batt::after{content:"";position:absolute;left:1.5px;top:1.5px;bottom:1.5px;width:13px;background:currentColor;border-radius:1px}
+.homebar{position:absolute;bottom:7px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:var(--on-surface);opacity:.22;z-index:60}
+
+.screen{flex:1 1 auto;overflow-y:auto;overflow-x:hidden;scrollbar-width:none;padding-bottom:8px;position:relative}
+.screen::-webkit-scrollbar{display:none}
+
+/* ---------- app bar ---------- */
+.appbar{
+  position:sticky;top:0;z-index:40;
+  background:color-mix(in srgb, var(--surface) 92%, transparent);
+  backdrop-filter:blur(12px);
+  display:flex;align-items:center;gap:4px;
+  padding:4px 8px 4px 8px;min-height:56px;
+}
+.appbar .title{font-size:20px;line-height:26px;font-weight:500;letter-spacing:-.1px;flex:1;padding-left:8px}
+.appbar .sub{display:block;font-size:12px;line-height:16px;font-weight:400;color:var(--on-surface-var);letter-spacing:0}
+.iconbtn{
+  width:44px;height:44px;display:grid;place-items:center;border-radius:22px;
+  color:var(--on-surface);flex:0 0 auto;
+}
+.iconbtn:hover{background:var(--s-high)}
+.iconbtn svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+
+/* ---------- layout helpers ---------- */
+.body-pad{padding:0 16px 24px}
+.stack{display:flex;flex-direction:column}
+.gap-4{gap:4px}.gap-8{gap:8px}.gap-12{gap:12px}.gap-16{gap:16px}.gap-24{gap:24px}
+.row{display:flex;align-items:center}
+.between{justify-content:space-between}
+.muted{color:var(--on-surface-var)}
+.eyebrow{font-size:11px;line-height:14px;font-weight:500;letter-spacing:.6px;text-transform:uppercase;color:var(--on-surface-var)}
+.section-head{display:flex;align-items:baseline;justify-content:space-between;margin:24px 4px 8px}
+.section-head h2{font-size:20px;line-height:26px;font-weight:500;letter-spacing:-.1px}
+.section-head .count{font-size:12px;color:var(--on-surface-var);letter-spacing:.3px}
+.divider{height:1px;background:var(--outline-var);border:0}
+
+/* ---------- type for numbers ---------- */
+.num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1,"lnum" 1}
+.num-hero{font-size:34px;line-height:38px;font-weight:400;letter-spacing:-.6px}
+.num-lg{font-size:28px;line-height:32px;font-weight:500;letter-spacing:-.4px}
+.num-md{font-size:20px;line-height:24px;font-weight:500;letter-spacing:-.1px}
+.unit{font-size:12px;line-height:16px;font-weight:500;letter-spacing:.3px;color:var(--on-surface-var);margin-left:4px}
+
+/* ---------- cards ---------- */
+.card{
+  background:var(--s-cont);border:1px solid var(--outline-var);border-radius:16px;
+  padding:16px;position:relative;
+}
+.card.flat{background:var(--s-low);border-color:transparent}
+.card.tap:hover{background:var(--s-high)}
+.card-title{font-size:18px;line-height:24px;font-weight:500;letter-spacing:-.1px}
+.card-sub{font-size:13px;line-height:18px;color:var(--on-surface-var)}
+
+/* ---------- chips ---------- */
+.chip{
+  display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:8px;
+  border:1px solid var(--outline-var);background:transparent;
+  font-size:12px;line-height:16px;font-weight:500;letter-spacing:.3px;color:var(--on-surface-var);
+  white-space:nowrap;
+}
+.chip.solid{background:var(--s-high);border-color:transparent;color:var(--on-surface)}
+.chip.accent{background:var(--primary-container);border-color:transparent;color:var(--on-primary-container)}
+.chip.warn{border-color:color-mix(in srgb,var(--warn) 45%,transparent);color:var(--warn);background:color-mix(in srgb,var(--warn) 10%,transparent)}
+.chip.sm{height:24px;padding:0 8px;font-size:11px;letter-spacing:.4px;border-radius:6px}
+.chip svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.8}
+
+.delta{
+  display:inline-flex;align-items:center;gap:2px;height:24px;padding:0 8px;border-radius:6px;
+  background:var(--s-high);font-size:12px;line-height:16px;font-weight:500;letter-spacing:.2px;
+  font-variant-numeric:tabular-nums;color:var(--on-surface);white-space:nowrap;
+}
+.delta .arw{font-size:11px;line-height:1}
+.delta.up .arw{color:var(--delta-up)}
+.delta.down .arw{color:var(--delta-down)}
+.delta.zero{color:var(--on-surface-var)}
+.delta.none{background:transparent;border:1px dashed var(--outline-var);color:var(--on-surface-var)}
+
+/* ---------- buttons ---------- */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  min-height:48px;padding:0 20px;border-radius:12px;
+  font-size:14px;font-weight:500;letter-spacing:.1px;
+  border:1px solid transparent;background:var(--primary);color:var(--on-primary);
+}
+.btn:hover{filter:brightness(1.06)}
+.btn.outline{background:transparent;color:var(--primary);border-color:color-mix(in srgb,var(--primary) 45%,transparent)}
+.btn.tonal{background:var(--s-high);color:var(--on-surface)}
+.btn.block{display:flex;width:100%}
+.btn.sm{min-height:44px;padding:0 16px}
+.btn svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+
+/* ---------- bottom nav ---------- */
+.navbar{
+  flex:0 0 auto;height:72px;display:grid;grid-template-columns:repeat(4,1fr);
+  border-top:1px solid var(--outline-var);
+  background:var(--nav-bg);backdrop-filter:blur(14px);padding-bottom:0;
+}
+.navbar a{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:var(--on-surface-var);font-size:11px;font-weight:500;letter-spacing:.3px;position:relative}
+.navbar a svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.navbar a[aria-current="page"]{color:var(--primary)}
+.navbar a[aria-current="page"] .dot{position:absolute;top:10px;width:4px;height:4px;border-radius:2px;background:var(--primary);display:none}
+
+/* ---------- annotation rail ---------- */
+.rail{width:300px;flex:0 0 auto;padding-top:8px;color:var(--rail)}
+.rail .kicker{font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:var(--rail);opacity:.7}
+.rail h1{font-size:22px;line-height:28px;font-weight:500;color:var(--on-surface);margin:6px 0 4px;letter-spacing:-.2px}
+.rail p{font-size:13px;line-height:20px;color:var(--rail);margin-bottom:16px}
+.rail ul{list-style:none;display:flex;flex-direction:column;gap:10px;margin:0 0 20px}
+.rail li{font-size:12.5px;line-height:18px;color:var(--rail);padding-left:14px;position:relative}
+.rail li::before{content:"";position:absolute;left:0;top:7px;width:5px;height:5px;border-radius:1px;background:var(--primary);opacity:.8}
+.rail .ctrl{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}
+.tg{
+  height:34px;padding:0 12px;border-radius:8px;border:1px solid var(--outline-var);color:var(--rail);
+  font-size:12px;letter-spacing:.2px;display:inline-flex;align-items:center;gap:6px;background:transparent;
+}
+.tg[aria-pressed="true"]{background:var(--s-high);color:var(--on-surface);border-color:transparent}
+.rail .meta{font-size:11px;line-height:16px;color:var(--rail);opacity:.75;border-top:1px solid var(--outline-var);padding-top:12px;margin-top:4px}
+.rail a.link{color:var(--on-surface);border-bottom:1px solid var(--outline);font-size:12px}
+
+@media (max-width: 780px){
+  body{padding:0;display:block;background:var(--surface)}
+  .device{width:100vw;height:100dvh;border-radius:0;border:0;box-shadow:none}
+  .rail{display:none}
+  .homebar{display:none}
+}
+
+/* ---------- reduced motion ---------- */
+@media (prefers-reduced-motion: reduce){
+  *{transition-duration:.001ms !important;animation-duration:.001ms !important}
+}
+
+#hd{position:relative}
+.banner{display:none;margin:0 16px 10px;padding:12px 14px;border-radius:12px;border:1px solid color-mix(in srgb,var(--warn) 45%,transparent);background:color-mix(in srgb,var(--warn) 9%,transparent)}
+.banner svg{width:20px;height:20px;stroke:var(--warn);fill:none;stroke-width:1.7;flex:0 0 auto;margin-top:1px}
+.banner b{display:block;font-size:13.5px;line-height:18px;font-weight:500;color:var(--warn)}
+.banner p{font-size:12px;line-height:17px;color:var(--on-surface-var);margin-top:2px}
+.banner button{font-size:12px;font-weight:500;color:var(--primary);min-height:44px;margin-top:2px;text-align:left}
+.banner .b-miss,.banner .b-undef{display:none}
+.device.st-missing .banner,.device.st-undefined .banner{display:flex;gap:12px;align-items:flex-start}
+.device.st-missing .banner .b-miss{display:block}
+.device.st-undefined .banner .b-undef{display:block}
+
+.head{padding:2px 20px 16px}
+.head h1{font-size:24px;line-height:30px;font-weight:500;letter-spacing:-.3px}
+.head .meta{display:flex;align-items:center;gap:8px;margin-top:8px;font-size:11.5px;color:var(--on-surface-var);letter-spacing:.2px}
+.head .meta .sep{width:3px;height:3px;border-radius:2px;background:var(--outline)}
+.head .gchip{display:inline-flex;align-items:center;gap:4px;height:24px;padding:0 8px;border-radius:6px;background:var(--s-high);color:var(--on-surface);font-weight:500;font-size:11px}
+
+.hero{margin:0 16px 4px;padding:16px;background:var(--s-cont);border:1px solid var(--outline-var);border-radius:16px}
+.hero .top{display:flex;justify-content:space-between;align-items:flex-start}
+.hero h2{font-size:12px;letter-spacing:.7px;text-transform:uppercase;color:var(--on-surface-var);font-weight:500}
+.hero .tag{font-size:11px;letter-spacing:.3px;color:var(--on-surface-var)}
+.hero .nums{display:flex;align-items:flex-end;gap:10px;margin:10px 0 12px}
+.hero .nums .n{font-size:36px;line-height:38px;font-weight:400;letter-spacing:-1.2px;font-variant-numeric:tabular-nums}
+.hero .nums .u{font-size:13px;color:var(--on-surface-var);font-weight:500;padding-bottom:6px;letter-spacing:.3px}
+.hero .nums .div{flex:1}
+.hero .nums .rear{font-size:15px;font-weight:500;color:var(--on-surface-var);padding-bottom:6px;font-variant-numeric:tabular-nums}
+.split{display:flex;height:10px;border-radius:5px;overflow:hidden;gap:2px}
+.split .f{background:var(--primary);border-radius:5px 2px 2px 5px}
+.split .r{background:var(--s-highest);border:1px solid var(--outline-var);border-radius:2px 5px 5px 2px}
+.hero .foot{display:flex;justify-content:space-between;margin-top:8px;font-size:11.5px;letter-spacing:.3px;color:var(--on-surface-var)}
+.hero .foot b{color:var(--on-surface);font-weight:500}
+.hero .why{font-size:12.5px;line-height:18px;color:var(--on-surface-var);margin:12px 0 0;padding-top:12px;border-top:1px solid var(--outline-var)}
+.hero .why b{color:var(--on-surface);font-weight:500}
+
+.sec{display:flex;justify-content:space-between;align-items:baseline;margin:20px 20px 8px}
+.sec h2{font-size:11px;letter-spacing:.8px;text-transform:uppercase;color:var(--on-surface-var);font-weight:500}
+.sec span{font-size:11px;color:var(--on-surface-var);letter-spacing:.3px}
+
+details.pc{background:var(--s-cont);border:1px solid var(--outline-var);border-radius:14px;margin:0 16px 8px;overflow:hidden}
+details.pc>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:8px;padding:12px 12px 12px 14px;min-height:78px}
+details.pc>summary::-webkit-details-marker{display:none}
+details.pc[open]{background:var(--s-low)}
+.pl{flex:0 0 92px;min-width:0;padding-right:2px}
+.pl b{display:block;font-size:14px;line-height:18px;font-weight:500;letter-spacing:-.1px}
+.pl span{display:block;font-size:10.5px;line-height:14px;color:var(--on-surface-var);margin-top:3px}
+.pair{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:4px;min-width:0}
+.pcol{display:flex;flex-direction:column;align-items:flex-end;gap:2px}
+.pcol .k{font-size:9px;letter-spacing:.9px;color:var(--on-surface-var);font-weight:600}
+.pv{display:flex;align-items:baseline;gap:2px}
+.pv .n{font-size:20px;line-height:24px;font-weight:500;letter-spacing:-.4px;font-variant-numeric:tabular-nums}
+.pv .u{font-size:10px;font-weight:500;color:var(--on-surface-var);letter-spacing:.2px}
+.pcol .delta{height:19px;font-size:10.5px;padding:0 5px;border-radius:4px;background:var(--s-high);color:var(--on-surface);gap:1px}
+.pcol .delta:empty{display:none}
+.pcol .delta[data-eq]{background:transparent}
+.pcol .delta .arw{font-size:8px}
+.pcol .vmiss,.pcol .vundef{display:none;font-size:10.5px;line-height:13px;font-weight:500;color:var(--warn);text-align:right;max-width:100px}
+.device.st-missing .pcol .vmiss{display:block}
+.device.st-undefined .pcol .vundef{display:block}
+.device.st-missing .pcol.can-fail .pv,.device.st-missing .pcol.can-fail .delta,
+.device.st-undefined .pcol.can-fail .pv,.device.st-undefined .pcol.can-fail .delta{display:none}
+.chev{width:16px;height:16px;stroke:var(--on-surface-var);fill:none;stroke-width:2;flex:0 0 auto;transition:transform .22s cubic-bezier(.2,0,0,1)}
+details[open] .chev{transform:rotate(90deg)}
+.mb{padding:0 14px 14px;border-top:1px solid var(--outline-var)}
+.eq{font-family:ui-monospace,'SFMono-Regular',Menlo,Consolas,monospace;font-size:11.5px;line-height:19px;color:var(--on-surface);white-space:pre;overflow-x:auto;padding:10px 0 0;letter-spacing:-.1px}
+.mb .note{font-size:11.5px;line-height:16px;color:var(--on-surface-var);margin-top:8px}
+.mb .note b{color:var(--on-surface);font-weight:500}
+.whybox{display:none;margin-top:10px;padding:10px 12px;border-radius:10px;background:color-mix(in srgb,var(--warn) 10%,transparent);border:1px solid color-mix(in srgb,var(--warn) 35%,transparent)}
+.whybox p{font-size:11.5px;line-height:16px;color:var(--warn);margin:0}
+.device.st-missing .whybox.m,.device.st-undefined .whybox.u{display:block}
+.device.st-missing .eq.m-hide,.device.st-undefined .eq.u-hide{display:none}
+</style>
+</head>
+<body class="">
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+ <defs>
+  <symbol id="i-car" viewBox="0 0 24 24"><path d="M4 16.2v-3.4l1.8-4.4A2 2 0 0 1 7.7 7h8.6a2 2 0 0 1 1.9 1.4L20 12.8v3.4"/><path d="M4 13h16"/><circle cx="7.6" cy="17.6" r="1.7"/><circle cx="16.4" cy="17.6" r="1.7"/></symbol>
+  <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/><circle cx="9" cy="7" r="2.1"/><circle cx="15" cy="12" r="2.1"/><circle cx="8" cy="17" r="2.1"/></symbol>
+  <symbol id="i-compare" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="7" height="15" rx="1.6"/><rect x="13.5" y="4.5" width="7" height="15" rx="1.6"/><path d="M6 9h2M6 13h2M16 9h2M16 13h2"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M12 6.6C10.4 5.1 7.9 4.6 4 4.6v13.6c3.9 0 6.4.5 8 2 1.6-1.5 4.1-2 8-2V4.6c-3.9 0-6.4.5-8 2z"/><path d="M12 6.6v13.6"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5.2v13.6M5.2 12h13.6"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="M9.5 6l6 6-6 6"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M19 12H5.5M11 6l-6 6 6 6"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6.5L9.3 17.2 4 11.9"/></symbol>
+  <symbol id="i-ruler" viewBox="0 0 24 24"><path d="M3.6 15.2L15.2 3.6l5.2 5.2L8.8 20.4z"/><path d="M7.4 11l1.8 1.8M10.2 8.2l1.8 1.8M13 5.4l1.8 1.8"/></symbol>
+  <symbol id="i-cog" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.1"/><path d="M12 3.2v2.6M12 18.2v2.6M3.2 12h2.6M18.2 12h2.6M5.8 5.8l1.9 1.9M16.3 16.3l1.9 1.9M18.2 5.8l-1.9 1.9M7.7 16.3l-1.9 1.9"/></symbol>
+  <symbol id="i-more" viewBox="0 0 24 24"><circle cx="12" cy="6" r="1.1" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.1" fill="currentColor" stroke="none"/><circle cx="12" cy="18" r="1.1" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-swap" viewBox="0 0 24 24"><path d="M4.5 8.5h14l-3.2-3.2M19.5 15.5h-14l3.2 3.2"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.6"/><path d="M12 11.2v5.4M12 7.7v.2"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 4.4L20.6 19.6H3.4z"/><path d="M12 10v4.1M12 16.9v.2"/></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="M12 5v13M6.5 12.5L12 18l5.5-5.5"/></symbol>
+ </defs>
+</svg>
+
+<main class="device" id="device">
+  
+<div class="status" aria-hidden="true">
+  <span>9:41</span>
+  <span class="right">
+    <svg viewBox="0 0 24 24"><path d="M3 17h3v3H3zM9 13h3v7H9zM15 9h3v11h-3z" fill="currentColor" stroke="none"/></svg>
+    <svg viewBox="0 0 24 24"><path d="M2.5 9.2a14 14 0 0 1 19 0M6 12.4a9 9 0 0 1 12 0M9.4 15.6a4.2 4.2 0 0 1 5.2 0"/><circle cx="12" cy="18.6" r="1" fill="currentColor" stroke="none"/></svg>
+    <span class="batt"></span>
+  </span>
+</div>
+  <div class="screen" id="screen">
+  
+<header class="appbar" id="hd">
+  <button class="iconbtn" aria-label="Back"><svg><use href="#i-back"/></svg></button>
+  <div class="title">Analysis<span class="sub">Xray T4 '24 · Wed club</span></div>
+  <button class="iconbtn" aria-label="More"><svg><use href="#i-more"/></svg></button>
+</header>
+
+<div class="banner" role="status">
+  <svg><use href="#i-alert"/></svg>
+  <div>
+    <div class="b-miss">
+      <b>Two hardpoints are missing</b>
+      <p>Front upper arm, outer joint, and the steering link end. Roll centre and bump steer have no solution until both are measured.</p>
+      <button>Measure them →</button>
+    </div>
+    <div class="b-undef">
+      <b>Front geometry is undefined</b>
+      <p>The upper and lower links are parallel, so the instant centre sits at infinity and the construction has no crossing point.</p>
+      <button>What to check →</button>
+    </div>
+  </div>
+</div>
+
+<div class="head">
+  <h1>Wed club</h1>
+  <div class="meta">
+    <span class="gchip">1.0 g</span>
+    <span>vs S01 baseline</span><span class="sep"></span><span id="health">7 of 7 computed</span>
+  </div>
+</div>
+
+<div class="hero">
+  <div class="top"><h2>Load transfer</h2><span class="tag">front share</span></div>
+  <div class="nums">
+    <span class="n">57.5</span><span class="u">% front</span>
+    <span class="div"></span>
+    <span class="rear">42.5% rear</span>
+  </div>
+  <div class="split" role="img" aria-label="57.5 percent of load transfer happens at the front axle"><span class="f" style="width:57.5%"></span><span class="r" style="flex:1"></span></div>
+  <div class="foot"><span><b>+1.5</b> vs baseline</span><span>4.05 N total at 1.0 g</span></div>
+  <p class="why">More of the sideways load moves at the front, so the front tyres reach their limit first and the car pushes wide before the rear lets go.</p>
+</div>
+
+<div class="sec"><h2>Geometry</h2><span>front · rear</span></div>
+
+<details class="pc" data-card="roll">
+  <summary>
+    <span class="pl"><b>Roll centre</b><span>height, mm</span></span>
+    <span class="pair">
+      <span class="pcol can-fail">
+        <span class="k">FRONT</span>
+        <span class="pv"><span class="n">22</span><span class="u">mm</span></span>
+        <span class="vmiss">Not computable</span><span class="vundef">Undefined</span>
+        <span class="delta up"><span class="arw">▲</span>+3</span>
+      </span>
+      <span class="pcol">
+        <span class="k">REAR</span>
+        <span class="pv"><span class="n">31</span><span class="u">mm</span></span>
+        
+      </span>
+    </span>
+    <svg class="chev"><use href="#i-chev"/></svg>
+  </summary>
+  <div class="mb">
+    <div class="whybox m"><p>No upper outer point means no upper link, so there is no instant centre and no height.</p></div><div class="whybox u"><p>Parallel links put the instant centre at infinity. The construction has no crossing point, so there is no height to report.</p></div>
+    <div class="eq">h<sub>rc</sub> = (z<sub>ic</sub> / y<sub>ic</sub>) × (t / 2)
+     = (46.0 / 188.0) × 90.0
+     = 22.0 mm</div>
+    <p class="note">Migration over ±10 mm of travel is <b>+1.2 mm</b>: the roll centre drifts up as the car rolls. The rear sits 9 mm higher, which is why it carries less of the transfer.</p>
+  </div>
+</details>
+<details class="pc" data-card="camber">
+  <summary>
+    <span class="pl"><b>Camber gain</b><span>per 10 mm, °</span></span>
+    <span class="pair">
+      <span class="pcol">
+        <span class="k">FRONT</span>
+        <span class="pv"><span class="n">3.95</span><span class="u">°/10</span></span>
+        
+        <span class="delta down"><span class="arw">▼</span>−0.20</span>
+      </span>
+      <span class="pcol">
+        <span class="k">REAR</span>
+        <span class="pv"><span class="n">3.50</span><span class="u">°/10</span></span>
+        
+      </span>
+    </span>
+    <svg class="chev"><use href="#i-chev"/></svg>
+  </summary>
+  <div class="mb">
+    
+    <div class="eq">Δγ / 10 mm = dγ/dz × 10
+           = (1.571 / 188.0) × 57.3 × 10
+           = 0.395 × 10
+           = 3.95 ° per 10 mm
+    also    = 0.62 ° per degree of roll</div>
+    <p class="note">Inside this card: the curve over bump, and camber at 1 g of roll. More gain than this and the tyre spends the corner on its inside edge.</p>
+  </div>
+</details>
+<details class="pc" data-card="bump">
+  <summary>
+    <span class="pl"><b>Bump steer</b><span>mm toe per 10 mm</span></span>
+    <span class="pair">
+      <span class="pcol can-fail">
+        <span class="k">FRONT</span>
+        <span class="pv"><span class="n">0.09</span><span class="u">mm</span></span>
+        <span class="vmiss">Not computable</span><span class="vundef">Undefined</span>
+        <span class="delta up"><span class="arw">▲</span>+0.01</span>
+      </span>
+      <span class="pcol">
+        <span class="k">REAR</span>
+        <span class="pv"><span class="n">0.04</span><span class="u">mm</span></span>
+        
+      </span>
+    </span>
+    <svg class="chev"><use href="#i-chev"/></svg>
+  </summary>
+  <div class="mb">
+    <div class="whybox m"><p>The steering link's inner point is unmeasured, so its rise cannot be compared with the hub's.</p></div><div class="whybox u"><p>The steering link runs parallel to the construction line, so the toe change has no finite value.</p></div>
+    <div class="eq">toe = 2 × r<sub>tyre</sub> × tan(δ)
+    = 2 × 31.0 × tan(0.08°)
+    = 0.09 mm per 10 mm
+    (0.08° of steer per 10 mm)</div>
+    <p class="note">Toe change as the suspension moves. Past about 0.3 mm it starts to be felt as the car steering itself over bumps.</p>
+  </div>
+</details>
+<div class="sec"><h2>Rates</h2><span>at the wheel</span></div>
+
+<details class="pc" data-card="stiff">
+  <summary>
+    <span class="pl"><b>Roll stiffness</b><span>N·m per degree</span></span>
+    <span class="pair">
+      <span class="pcol">
+        <span class="k">FRONT</span>
+        <span class="pv"><span class="n">0.124</span><span class="u">N·m/°</span></span>
+        
+        <span class="delta up"><span class="arw">▲</span>+0.006</span>
+      </span>
+      <span class="pcol">
+        <span class="k">REAR</span>
+        <span class="pv"><span class="n">0.091</span><span class="u">N·m/°</span></span>
+        
+      </span>
+    </span>
+    <svg class="chev"><use href="#i-chev"/></svg>
+  </summary>
+  <div class="mb">
+    
+    <div class="eq">K = K<sub>spring</sub> + K<sub>bar</sub>
+K<sub>f</sub> = 7.08 N·m/rad = 0.124 N·m/deg
+K<sub>r</sub> = 5.23 N·m/rad = 0.091 N·m/deg
+roll = m·g·h / (K<sub>f</sub> + K<sub>r</sub>) = 3.4 °/g</div>
+    <p class="note">Springs and bars together. The front/rear split is the load-transfer share above; the total sets how far the car rolls.</p>
+  </div>
+</details>
+<details class="pc" data-card="wheel">
+  <summary>
+    <span class="pl"><b>Wheel rate</b><span>lb/in</span></span>
+    <span class="pair">
+      <span class="pcol">
+        <span class="k">FRONT</span>
+        <span class="pv"><span class="n">1.08</span><span class="u">lb/in</span></span>
+        
+        <span class="delta up"><span class="arw">▲</span>+0.15</span>
+      </span>
+      <span class="pcol">
+        <span class="k">REAR</span>
+        <span class="pv"><span class="n">0.98</span><span class="u">lb/in</span></span>
+        <span class="delta up"><span class="arw">▲</span>+0.10</span>
+      </span>
+    </span>
+    <svg class="chev"><use href="#i-chev"/></svg>
+  </summary>
+  <div class="mb">
+    
+    <div class="eq">k<sub>w</sub> = k<sub>s</sub> × MR²
+    = 2.8 × 0.62²  = 1.08 lb/in
+    = 0.19 N/mm
+MR = 62.0 / 100.0 = 0.62</div>
+    <p class="note">The rate the tyre actually feels. Motion ratio, ride frequency and the wheel-rate curve live inside this card.</p>
+  </div>
+</details>
+<details class="pc" data-card="damp">
+  <summary>
+    <span class="pl"><b>Damping ratio</b><span>ζ</span></span>
+    <span class="pair">
+      <span class="pcol">
+        <span class="k">FRONT</span>
+        <span class="pv"><span class="n">0.42</span><span class="u"></span></span>
+        
+        <span class="delta down"><span class="arw">▼</span>−0.03</span>
+      </span>
+      <span class="pcol">
+        <span class="k">REAR</span>
+        <span class="pv"><span class="n">0.38</span><span class="u"></span></span>
+        
+      </span>
+    </span>
+    <svg class="chev"><use href="#i-chev"/></svg>
+  </summary>
+  <div class="mb">
+    
+    <div class="eq">ζ = c / (2 × √(k<sub>w</sub> · m))
+  = 7.2 / (2 × √(189 × 0.385))
+  = 0.42</div>
+    <p class="note">0.3–0.5 is the usable band for a 1/10 car. Above 0.6 the car skips over bumps instead of following them.</p>
+  </div>
+</details>
+<div style="height:26px"></div>
+
+  </div>
+  <nav class="navbar" aria-label="Primary"><a href="garage.html"><svg><use href="#index-car"/></svg><span>Garage</span></a><a href="setup-editor.html" aria-current="page"><svg><use href="#i-sliders"/></svg><span>Setup</span></a><a href="compare.html"><svg><use href="#i-compare"/></svg><span>Compare</span></a><a href="learn.html"><svg><use href="#i-book"/></svg><span>Learn</span></a></nav>
+  <div class="homebar" aria-hidden="true"></div>
+</main>
+<aside class="rail">
+  <div class="kicker">Setup Lab · wireframe D</div>
+  <h1>Analysis</h1>
+  <p>Seven properties, front and rear, against a baseline. The answer first, then the geometry that produced it, and every number openable to its equation without leaving the page.</p>
+  <ul><li>Seven cards and no eighth: motion ratio, ride frequency and roll-centre migration are drill-downs inside the card they belong to.</li><li>Front and rear sit in the same card at the same weight — a racer compares ends, not properties.</li><li>Values are large, units are small and always present. Deltas are against the last saved setup, never the last render.</li><li>Tap a card for the equation, its substitution and one sentence of meaning. The maths is inline, never a separate screen.</li><li>Both failure states are designed: a missing input reads “Not computable yet”, a degenerate geometry reads “Undefined for this geometry”.</li></ul>
+  <div class="ctrl">
+    <button class="tg" id="themeBtn" aria-pressed="false">☾ Dark</button>
+    <button class="tg" data-state="missing" aria-pressed="false">Missing input</button><button class="tg" data-state="undefined" aria-pressed="false">Parallel links</button>
+  </div>
+  <div class="meta">The two toggles are the states the analysis has to survive. Only the affected cards change; the rest keep their numbers.<br><a class="link" href="index.html">All screens →</a> &nbsp; <a class="link" href="design-notes.html">Token check →</a></div>
+</aside>
+<script>
+(function(){
+  var root=document.documentElement, btn=document.getElementById('themeBtn');
+  function setTheme(t){
+    root.setAttribute('data-theme',t);
+    if(btn){ btn.textContent = t==='dark' ? '☀ Light' : '☾ Dark';
+              btn.setAttribute('aria-pressed', t==='light' ? 'true':'false'); }
+    try{localStorage.setItem('sl-theme',t)}catch(e){}
+  }
+  var saved='dark'; try{saved=localStorage.getItem('sl-theme')||'dark'}catch(e){}
+  setTheme(saved);
+  if(btn) btn.addEventListener('click',function(){ setTheme(root.getAttribute('data-theme')==='dark'?'light':'dark'); });
+  window.addEventListener('keydown',function(e){ if(e.key==='t') setTheme(root.getAttribute('data-theme')==='dark'?'light':'dark'); });
+  window.slSetTheme=setTheme;
+})();
+
+(function(){
+  var dev=document.getElementById('device');
+  document.querySelectorAll('[data-state]').forEach(function(b){
+    b.addEventListener('click',function(){
+      var s=b.dataset.state, on=dev.classList.contains('st-'+s);
+      dev.classList.remove('st-missing','st-undefined');
+      if(!on) dev.classList.add('st-'+s);
+      document.getElementById('health').textContent = on ? '7 of 7 computed'
+        : (s==='missing' ? '5 of 7 computed' : '1 undefined');
+      document.querySelectorAll('[data-state]').forEach(function(x){
+        x.setAttribute('aria-pressed', (!on && x.dataset.state===s) ? 'true':'false');
+      });
+    });
+  });
+})();
+
+</script>
+</body>
+</html>
