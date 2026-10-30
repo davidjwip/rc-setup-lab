@@ -56,6 +56,31 @@ a phone, a setup station and one caliper session models their car in under
 thirty minutes, and correctly predicts the direction of a camber-link or
 roll-centre change before making it.
 
+### 1.4 Vocabulary, and how it maps to the screen inventory
+
+The design agent works from `docs/design/screens.md` in parallel with this
+document. Where the two use different words for the same thing, this table is the
+bridge: **the term in the left column is normative in this spec and in tests; the
+term on the right is normative in UI copy.**
+
+| This spec | Screen inventory |
+|---|---|
+| car model, model | Car, Edit car |
+| model library | Garage, Settings › Library |
+| measurement worksheet | Measure group, Measure field |
+| setup | Setup values |
+| analysis screen | Analysis |
+| output, computed property | Property, Property detail |
+| explanation | Concept (Learn) |
+| comparison | Compare |
+| assumption / limitation | "Why is this approximate", analysis-health line |
+
+The one substantive difference is provenance vocabulary: the screen inventory's
+`answered · unknown · estimated · library · unanswered` maps onto the source
+types in §4.1 as `measured`, `unknown`, `estimated`, `manufacturer`/
+`third_party`, and field-absent respectively. `estimated` exists in both, and
+E2.11 is the requirement that keeps it honest.
+
 ---
 
 ## 2. Scope of v1, and the slice that proves it
@@ -241,6 +266,12 @@ paper sheet lists them, so the transfer is one pass rather than a hunt. **SHOULD
 **E2.10** — *Given* a photograph of a filled paper setup sheet, *when* the user
 imports it, *then* values are extracted for confirmation field by field. **LATER**
 
+**E2.11** — *Given* a value entered as an estimate with a stated basis, *when* any
+output consumes it, *then* that output is marked as approximate, the number of
+estimated inputs behind it is reachable from the output, and the basis of each is
+one tap away; *given* the value is later measured, *then* the mark disappears from
+every output that consumed it. **MUST**
+
 ---
 
 ### Epic E3 — Computation and analysis
@@ -368,8 +399,9 @@ side-by-side table is produced as a single page, and where a chart is used, each
 setup is distinguishable by line style and direct label as well as colour.
 **SHOULD**
 
-**E4.8** — *Given* three or four setups, *when* the user compares them together
-in one view with per-output ranking. **LATER**
+**E4.8** — *Given* three or four setups on the same car, *when* the user compares
+them together, *then* one view ranks them per output and shows each difference
+against a chosen reference. **LATER**
 
 ---
 
@@ -401,10 +433,11 @@ a run of more than 8 consecutive words with any corpus document, and the check
 fails the build if one does. **MUST**
 
 **E5.5** — *Given* any analysis screen, *when* it is displayed, *then* an
-"assumptions and limits" entry is present in one tap, naming what the model does
-not include for this build (at minimum: no tyre model, no aero, no chassis
-flex, no diff-height effect, no droop-limit interaction in the static analysis),
-and the same text is carried in every export. **MUST**
+"assumptions and limits" entry is present in one tap, naming what the model leaves
+out for this build (at minimum: tyre behaviour, aerodynamic load, chassis
+torsional flex, the diff-height torque term, and any interaction between droop
+limits and the static analysis), and the same text is carried in every export.
+**MUST**
 
 **E5.6** — *Given* any output, *when* it is displayed, *then* the app never
 presents a composite "grip" or "handling" score, and every directional claim
@@ -471,8 +504,9 @@ checklist requires either two independent measurement records or photographic
 evidence for every hardpoint before a model is accepted into the shipped
 library. **SHOULD**
 
-**E6.8** — *Given* an internet connection, *when* the user browses models inside
-the app and installs one without leaving it. **LATER**
+**E6.8** — *Given* an internet connection, *when* the user browses a model library
+inside the app, *then* a model can be installed without leaving the app.
+**LATER**
 
 ---
 
@@ -640,4 +674,800 @@ have been reviewed against the screen inventory. **MUST**
 
 ---
 
-<!--APPEND-->
+## 4. Data model
+
+Two document kinds, both plain JSON, both carrying `schema_version`. They are
+the app's public interface: a setup or a model that leaves the device must be
+readable, validatable and re-importable by a future version of the app and by a
+person with a text editor.
+
+### 4.1 Rules that apply to both documents
+
+1. **Units are declared in the file, not implied.** A `units` object states the
+   unit used for each dimension. This build writes lengths in **mm**, angles in
+   **degrees**, masses in **g**, spring rates in **N/mm**, damper forces in
+   **N at a shaft speed in m/s**. The physics package converts to SI once, at
+   its own boundary; storage units never reach a calculation. (mm is chosen
+   because a caliper reads mm and the community measures in mm — see §7 D6 for
+   the risk this carries.)
+2. **Every numeric value is an object, not a bare number:**
+   `{"v": <number>, "s": "<source id>"}`, where `s` resolves into the document's
+   top-level `sources` map. One source id can be shared by many values (a whole
+   caliper session is one source), which keeps files readable and provenance
+   honest at the same time.
+3. **Absence means "not measured".** A field that is not measured is omitted.
+   It is never written as `0`, `null` or a sentinel number, and a loader never
+   fills it with a default. Downstream outputs either declare the assumption
+   they made (with the value shown) or report the output as not computable.
+4. **A source entry must resolve, and must say what kind of evidence it is:**
+
+   | `type` | Meaning | Required extra fields |
+   |---|---|---|
+   | `measured` | The owner measured this car with a named tool | `method`, `datum`, `by`, `date` |
+   | `estimated` | The owner could not measure it and supplied a considered figure | `basis`, `by`, and optionally `tolerance_pct` |
+   | `manufacturer` | From a manual, CAD, or published drawing | `ref` |
+   | `third_party` | Another person's measurement or a contributed model | `by`, `ref` (may be a handle) |
+   | `derived` | Computed from other values in the file | `from` (list of field paths) |
+   | `unknown` | Present in a file but with no recorded origin | *(none — and the completeness count treats it as unmeasured)* |
+
+   An `estimated` value is written and used, never silently promoted to
+   `measured`; every output that consumes one is marked as estimated (E2.11).
+
+5. **Content hash.** `content_hash` is the SHA-256 of the canonical form of the
+   document body: UTF-8, keys sorted, no insignificant whitespace, `meta`
+   excluded. The hash is what setups reference, so a model can be edited without
+   silently changing the meaning of a saved setup.
+6. **Revisioning.** A saved model is immutable. Editing produces a new revision
+   with a new `content_hash`; the library holds a pointer to the current one, and
+   every earlier revision stays on disk. Setups reference `(model_id,
+   content_hash)`. This is how E2.7 is satisfied without embedding model copies
+   inside setups.
+7. **Forward compatibility.** A reader preserves `x_`-prefixed keys it does not
+   understand and writes them back on export. A reader refuses a document whose
+   `schema_version` major is greater than it supports (E6.6).
+
+### 4.2 Car model
+
+Frame: right-handed, **X forward, Y to the right, Z up**; origin on the
+flat-plate surface at the midpoint of the two axle centrelines, on the vehicle
+centreline. Every hardpoint is `[x, y, z]` in mm from that origin.
+
+```json
+{
+  "schema_version": "1.0.0",
+  "kind": "car_model",
+  "id": "mdl_8f2c41",
+  "name": "Example 1/10 TC — measured 2026-10-12",
+  "class": "touring_car_1_10",
+  "units": {
+    "length": "mm", "angle": "deg", "mass": "g",
+    "spring_rate": "N/mm", "damper_force": "N", "damper_speed": "m/s"
+  },
+  "frame": { "axes": "X fwd, Y right, Z up", "origin": "flat plate, mid-wheelbase, centreline" },
+  "symmetry": true,
+  "meta": { "created": "2026-10-12", "app_version": "0.1.0", "revises": null },
+
+  "sources": {
+    "s1": { "type": "measured", "method": "digital caliper 150 mm", "datum": "flat plate, hinge-pin centre",
+            "by": "DW", "date": "2026-10-12", "note": "car on setup stands, wheels off" },
+    "s2": { "type": "manufacturer", "ref": "kit manual p.14, exploded view" },
+    "s3": { "type": "measured", "method": "corner scales", "datum": "four pads, ride height 5.0 mm",
+            "by": "DW", "date": "2026-10-12" },
+    "s4": { "type": "derived", "from": ["body.mass.total"], "note": "corner weights minus unsprung" }
+  },
+
+  "body": {
+    "reference_ride_height": { "v": 5.0, "s": "s1" },
+    "wheelbase":            { "v": 257.0, "s": "s1" },
+    "cg": {
+      "height":            { "v": 38.0, "s": "s3" },
+      "longitudinal_front_pct": { "v": 50.5, "s": "s4" }
+    },
+    "mass": {
+      "total":            { "v": 1352.0, "s": "s3" },
+      "sprung_front":     { "v": 486.0,  "s": "s4" },
+      "sprung_rear":      { "v": 552.0,  "s": "s4" },
+      "unsprung_front":   { "v": 157.0,  "s": "s4" },
+      "unsprung_rear":    { "v": 157.0,  "s": "s4" }
+    },
+    "axles": {
+      "front": {
+        "track":            { "v": 163.0, "s": "s1" },
+        "tyre_radius":      { "v": 31.0,  "s": "s1" },
+        "roll_centre_validity": { "v": 40.0, "s": "s2" },
+        "droop_limit_wheel":{ "v": 6.0,   "s": "s1" },
+        "bump_limit_wheel": { "v": 6.0,   "s": "s1" },
+        "arb": { "type": "blade", "rate_at_full_stiff": { "v": 0.42, "s": "s2" } },
+        "corners": {
+          "left": {
+            "lower_arm": {
+              "inboard_front": { "v": [-110.0, -78.0, 12.0], "s": "s1" },
+              "inboard_rear":  { "v": [-62.0,  -78.0, 12.0], "s": "s1" },
+              "outboard":      { "v": [0.0,    -80.0, 10.5], "s": "s1" }
+            },
+            "upper_link": {
+              "inboard_front": { "v": [-96.0, -60.0, 38.0], "s": "s1" },
+              "inboard_rear":  { "v": [-80.0, -60.0, 38.0], "s": "s1" },
+              "outboard":      { "v": [-2.0,  -76.0, 34.0], "s": "s1" }
+            },
+            "upright": {
+              "lower_ball":    { "v": [0.0,  -80.0, 10.5], "s": "s1" },
+              "upper_ball":    { "v": [-2.0, -76.0, 34.0], "s": "s1" },
+              "wheel_centre":  { "v": [0.0,  -81.5, 31.0], "s": "s1" }
+            },
+            "damper": {
+              "lower_mount":   { "v": [-52.0, -72.0, 15.0], "s": "s1" },
+              "upper_mount":   { "v": [-56.0, -66.0, 62.0], "s": "s1" }
+            },
+            "spring": { "location": "coilover_at_damper",
+                        "rate": { "v": 3.10, "s": "s2" },
+                        "free_length": { "v": 20.0, "s": "s2" } },
+            "steering": {
+              "tie_rod_inboard":  { "v": [-40.0, -46.0, 14.0], "s": "s1" },
+              "tie_rod_outboard": { "v": [-8.0,  -74.0, 16.0], "s": "s1" }
+            },
+            "arb_pickup": { "v": [-44.0, -70.0, 13.0], "s": "s1" }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+This example is deliberately incomplete: `corners.right` and the whole
+`axles.rear` block are omitted. Rule 3 above permits that, and E1.2 is the
+requirement that the app reports what is missing rather than filling it in.
+
+#### 4.2.1 Field table — car model
+
+`Req` = required for the model to be considered complete. Optional fields may be
+absent; a downstream output then either declares an assumption or refuses.
+
+| Field | Type | Unit | Req | Notes |
+|---|---|---|---|---|
+| `schema_version` | string | — | yes | `MAJOR.MINOR.PATCH`; reader refuses a greater major |
+| `kind` | string | — | yes | `car_model` |
+| `id` | string | — | yes | Stable, unique, opaque; never reused |
+| `name` | string | — | yes | Free text, shown in the library |
+| `class` | enum | — | yes | `touring_car_1_10`, `buggy_1_10_2wd`, `buggy_1_10_4wd`, `truck_1_10`, `other` |
+| `units` | object | — | yes | Every dimension declared; loader rejects unknown/missing dimensions |
+| `frame` | object | — | yes | Documents axes and origin; must match §4.2 |
+| `symmetry` | bool | — | yes | When true, right-hand points must equal the mirror of the left within 0.01 mm |
+| `sources` | object | — | yes | Map of source id → source record; every `s` must resolve |
+| `reference_ride_height` | value | mm | yes | Datum for all vertical geometry (E1.9) |
+| `wheelbase` | value | mm | yes | Also validated against the hardpoints (±3 mm) |
+| `cg.height` | value | mm | yes | Above the flat plate |
+| `cg.longitudinal_front_pct` | value | % | yes | Front axle share of total mass |
+| `mass.total` | value | g | yes | |
+| `mass.sprung_front`, `.sprung_rear` | value | g | no | Absent → outputs declare "sprung mass not measured" |
+| `mass.unsprung_front`, `.unsprung_rear` | value | g | no | Absent → treated as 0 **with a visible flag** (E1.8) |
+| `axles.<axle>.track` | value | mm | yes | Hub-face to hub-face at static ride height |
+| `axles.<axle>.tyre_radius` | value | mm | yes | Used for contact-patch geometry and travel conversion |
+| `axles.<axle>.roll_centre_validity` | value | mm | no | Domain bound for E3.9; absent → default stated in the UI |
+| `axles.<axle>.droop_limit_wheel` / `bump_limit_wheel` | value | mm | no | Wheel travel, not shaft travel |
+| `axles.<axle>.arb` | object | — | no | `type` in `blade`/`fixed`/`none`, plus `rate_at_full_stiff` (N/mm at the link) |
+| `axles.<axle>.corners.<side>.lower_arm.inboard_front` / `inboard_rear` / `outboard` | point | mm | yes | Defines the lower hinge-pin axis and the outer ball joint |
+| `…upper_link.inboard_front` / `inboard_rear` / `outboard` | point | yes (front), yes (rear) | | Camber link / upper wishbone |
+| `…upright.lower_ball` / `upper_ball` / `wheel_centre` | point | mm | yes | `wheel_centre` fixes track and scrub radius |
+| `…damper.lower_mount` / `upper_mount` | point | mm | yes | Eye-to-eye at static ride height defines motion ratio |
+| `…spring.location` | enum | — | yes | `coilover_at_damper`, `separate_seat`, `inboard_rocker` |
+| `…spring.rate` | value | N/mm | yes | |
+| `…spring.free_length` | value | mm | no | Needed for preload and for coil-bind checks |
+| `…steering.tie_rod_inboard` / `tie_rod_outboard` | point | mm | front only | Drives bump steer; rear uses `toe_link_*` of the same shape |
+| `…arb_pickup` | point | mm | no | Required if `arb.rate_at_full_stiff` is present |
+| `x_*` | any | — | no | Preserved verbatim on export |
+
+### 4.3 Setup
+
+A setup is a set of values for one car, plus the conditions it was run in. It
+references a model revision by hash; it never contains geometry.
+
+```json
+{
+  "schema_version": "1.0.0",
+  "kind": "setup",
+  "id": "set_2b91c0",
+  "label": "Carpet baseline A",
+  "model_ref": {
+    "id": "mdl_8f2c41",
+    "content_hash": "sha256:9f1c…",
+    "name": "Example 1/10 TC — measured 2026-10-12"
+  },
+  "parent_id": null,
+  "created": "2026-10-12",
+  "meta": { "app_version": "0.1.0" },
+  "sources": {
+    "m1": { "type": "measured", "method": "camber gauge + toe plates", "datum": "flat plate",
+            "by": "DW", "date": "2026-10-12" },
+    "m2": { "type": "measured", "method": "ride-height gauge", "datum": "flat plate",
+            "by": "DW", "date": "2026-10-12" },
+    "m3": { "type": "third_party", "by": "setup sheet, P. Smith", "ref": "printed sheet, 2026-09" }
+  },
+
+  "conditions": {
+    "surface": "carpet", "air_temp_c": { "v": 22.0, "s": "m1" },
+    "tyre": { "compound": "handout", "diameter": { "v": 62.0, "s": "m1" } },
+    "notes": "club night, fresh surface"
+  },
+
+  "corners": {
+    "fl": {
+      "camber":          { "v": -1.5,  "s": "m1" },
+      "toe":             { "v": 0.5,   "s": "m1" },
+      "caster":          { "v": 4.0,   "s": "m3" },
+      "ride_height":     { "v": 5.0,   "s": "m2" },
+      "droop":           { "v": 2.0,   "s": "m2" },
+      "spring_rate":     { "v": 3.10,  "s": "m3" },
+      "spring_preload":  { "v": 0.5,   "s": "m2" },
+      "damper_oil_cst":  { "v": 300.0, "s": "m3" },
+      "damper_piston_holes": { "v": 3, "s": "m3" },
+      "upper_link_inner_shims": { "v": 1.0, "s": "m1" },
+      "upper_link_outer_shims": { "v": 0.0, "s": "m1" },
+      "tyre_pressure_kpa": { "v": 240.0, "s": "m2" },
+      "wheel_offset":    { "v": 0.0,   "s": "m3" }
+    }
+  },
+
+  "axles": {
+    "front": { "arb_setting": { "v": 0.6, "s": "m3" } },
+    "rear":  { "arb_setting": { "v": 0.4, "s": "m3" } }
+  },
+
+  "transmission": {
+    "diff_front_oil_cst": { "v": 3000.0, "s": "m3" },
+    "diff_rear_oil_cst":  { "v": 1000.0, "s": "m3" },
+    "diff_height":        { "v": 0.0,    "s": "m3" }
+  },
+
+  "analysis_inputs": {
+    "lateral_g": { "v": 1.2, "s": "m1" },
+    "roll_sweep_deg": { "v": 3.0, "s": "m1" },
+    "damping_low_speed_m_s": { "v": 0.05, "s": "m1" },
+    "damping_high_speed_m_s": { "v": 0.30, "s": "m1" }
+  },
+
+  "notes": {
+    "track": "club layout, clockwise",
+    "setup": "droop 2 mm front, 3 mm rear",
+    "tyres": "handout, 2 runs old"
+  },
+
+  "assumptions": ["unsprung mass not measured — treated as 0"]
+}
+```
+
+Only the front-left corner is shown; `corners.fr`, `.rl`, `.rr` use the same
+shape and are omitted for brevity, as is the abbreviated hash.
+
+#### 4.3.1 Field table — setup
+
+| Field | Type | Unit | Req | Consumed by an output? |
+|---|---|---|---|---|
+| `schema_version` | string | — | yes | — |
+| `kind` | string | — | yes | `setup` |
+| `id` | string | — | yes | — |
+| `label` | string | — | yes | — |
+| `model_ref.id` / `.content_hash` / `.name` | string | — | yes | Selects the geometry every output uses (E2.1, E2.7) |
+| `parent_id` | string \| null | — | yes | The revision this was copied from; makes history a chain |
+| `created`, `meta.app_version` | string | — | yes | Carried in exports (E7.3) |
+| `sources` | object | — | yes | As §4.1 |
+| `conditions.surface` | enum | — | no | Reference only |
+| `conditions.air_temp_c` | value | °C | no | Reference only |
+| `conditions.tyre.compound` / `.diameter` | value | mm | no | Diameter feeds contact-patch height; compound is reference only |
+| `corners.<c>.camber` | value | deg (negative = top in) | no | yes — contact patch, camber at roll |
+| `corners.<c>.toe` | value | deg (positive = toe in) | no | yes — bump steer, ackermann readout |
+| `corners.<c>.caster` | value | deg | no | Reference only in v1 (flagged as such, E2.5) |
+| `corners.<c>.ride_height` | value | mm | no | yes — static geometry, roll-centre datum |
+| `corners.<c>.droop` | value | mm | no | yes — informs the static limits check, not the roll simulation (E3.15) |
+| `corners.<c>.spring_rate` | value | N/mm | no | yes — wheel rate, ride frequency, roll stiffness |
+| `corners.<c>.spring_preload` | value | mm | no | yes — static ride height / load |
+| `corners.<c>.damper_oil_cst` / `.damper_piston_holes` | value | cSt / count | no | yes — with the damper curve, damping ratio |
+| `corners.<c>.upper_link_inner_shims` / `_outer_shims` | value | mm | no | yes — changes hardpoint positions, therefore geometry |
+| `corners.<c>.tyre_pressure_kpa` | value | kPa | no | Reference only |
+| `corners.<c>.wheel_offset` | value | mm | no | yes — track change, scrub radius |
+| `axles.<a>.arb_setting` | value | 0–1 fraction of full stiff | no | yes — roll stiffness |
+| `transmission.diff_front_oil_cst` / `rear` | value | cSt | no | Reference only in v1 |
+| `transmission.diff_height` | value | mm | no | Reference only in v1; listed in the assumptions as not modelled |
+| `analysis_inputs.*` | value | g / deg / m/s | yes (defaults offered) | yes — the lateral g, roll sweep and damper speeds actually used |
+| `notes.track` / `.setup` / `.tyres` | string | — | no | Exported, searchable |
+| `assumptions` | string[] | — | yes | Written by the app; shown on screen and in every export |
+
+### 4.4 Computed outputs — names, units, inputs
+
+Outputs are never stored in a setup file. They are functions of (model revision,
+setup, analysis inputs) and are recorded only in exports, where they are labelled
+as derived.
+
+| Output | Unit | Depends on |
+|---|---|---|
+| Motion ratio | – | damper mounts, lower arm, wheel centre, spring location |
+| Wheel rate ("ride stiffness") | N/mm | motion ratio, spring rate, spring preload, arb contribution |
+| Ride frequency | Hz | wheel rate, sprung mass at that axle |
+| Roll stiffness | N·m/deg | wheel rates, track, ARB rate and setting |
+| Lateral load-transfer split | % front | roll stiffness front/rear, cg height, roll-centre heights, total mass |
+| Roll-centre height (static) | mm | both arms' inboard axes and outboard points, wheel centre, ride height |
+| Roll-centre migration | mm per 0.5° roll | as above, swept |
+| Camber gain | deg/deg | upper and lower link geometry, upright |
+| Camber at roll | deg | camber gain, static camber |
+| Bump steer | deg/mm | tie-rod inner and outer positions, lower arm, rack height |
+| Damping ratio (low/high speed) | – | damper curve, sprung mass at corner, wheel rate, motion ratio |
+| Ackermann / dynamic toe | deg | tie-rod geometry, steering input (readout, not modelled as handling) |
+
+---
+
+## 5. Functional and non-functional requirements
+
+### 5.1 Functional requirements
+
+The capability set, numbered for the plan. Each is proven by the acceptance
+criteria named beside it; the ACs are the contract, this list is the map.
+
+| # | Capability | Proven by |
+|---|---|---|
+| FR-01 | Create, measure, edit and revision a car model, with per-value provenance | E1.1–E1.7, E2.7 |
+| FR-02 | Guide the measurement, in physical order, with datums and diagrams | E1.5, E1.10, E5.2 |
+| FR-03 | Record mass properties, including a sprung/unsprung split derived from raw readings | E1.8, E1.10 |
+| FR-04 | Create, edit and revision setups against a specific model revision | E2.1, E2.2, E2.7 |
+| FR-05 | Compute the twelve outputs in §4.4 from a complete model and setup | E3.1–E3.6, E3.9 |
+| FR-06 | Show the equation, substituted inputs and units behind every output | E3.7 |
+| FR-07 | Handle degenerate and out-of-domain geometry without producing a fake number | E3.8, E3.9 |
+| FR-08 | Recomputed continuously while an input is being dragged | E3.12 |
+| FR-09 | Validate the model against a measured wheel rate and flag disagreement | E3.13 |
+| FR-10 | Compare two setups: input deltas, output deltas, causal inputs, baseline | E4.1–E4.6 |
+| FR-11 | Explain any output and any input in place, with definitions that close | E5.1–E5.3, E5.8 |
+| FR-12 | State the model's limits on the analysis screen and in every export | E5.5, E7.3 |
+| FR-13 | Maintain a local model library with completeness and provenance visible | E6.1–E6.3 |
+| FR-14 | Install and share models and setups as files through the OS | E6.2, E6.4, E7.5 |
+| FR-15 | Export any model, setup, comparison and sheet; back up and restore the library | E7.1–E7.8 |
+| FR-16 | Offer a guided first run from empty install to first delta | E5.7 |
+| FR-17 | Work completely with no network, no account and no personal data | E8.1–E8.4, E8.13 |
+| FR-18 | Be usable one-handed, in sunlight, with gloves, at 200% text | E8.6–E8.10 |
+
+### 5.2 Performance
+
+**Reference device (the budget's denominator).** A mid-range phone of the class
+in a racer's pocket in 2026: 8 cores (2 performance + 6 efficiency, roughly
+Snapdragon 695 / Dimensity 700 class), 4 GB RAM, 1080×2400 at 60 Hz, Android 12,
+**release build, profile mode, no debugger attached, battery not in saver mode,
+device at 25 °C**. Every number below is measured on that device; a faster phone
+proves nothing and a slower one is not a release blocker until it is the
+reference.
+
+| # | Measurement | Target | Test |
+|---|---|---|---|
+| P-01 | Full analysis recompute for a complete model (all outputs, both axles, 13-row roll-centre sweep) | **≤16 ms** typical, ≤25 ms at p99 | Timing harness over 1,000 iterations, release build |
+| P-02 | Recomputation during a continuous slider drag of 10 s | **≥95% of frames presented within 16.7 ms**; no frame >32 ms | Automated frame-timing capture |
+| P-03 | Single-output recompute (one output, one input change) | ≤2 ms | Timing harness |
+| P-04 | Cold start to interactive analysis screen | ≤2.0 s | Automated launch test on release build |
+| P-05 | Open a stored model | ≤300 ms | Timing harness |
+| P-06 | Library list, 200 models, scroll | Sustained 60 fps | Frame-timing capture |
+| P-07 | Validate + import a 1 MB model file | ≤150 ms | Timing harness |
+| P-08 | Generate a one-page setup sheet PDF | ≤2.0 s | Timing harness |
+| P-09 | Peak resident memory during analysis | ≤150 MB | Platform profiler |
+| P-10 | Continuous use, 30 minutes | No frame-rate drop attributable to thermal throttling; ≤5% battery on the reference device | Manual, recorded in the release checklist |
+
+**Design consequence:** P-01 and P-02 together mean the analysis must be a
+single pure function over a pre-parsed model — allocating a new results object
+per frame is acceptable, re-parsing JSON per frame is not. This is a constraint
+on the physics package's API (it takes a typed model, not a file) and it is
+already implied by the pure-Dart rule.
+
+### 5.3 Reliability and data safety
+
+- The app must never present a number it cannot justify: no `NaN`, no
+  `Infinity`, no silent default (E1.2, E1.8, E2.4, E3.8).
+- Saves are atomic; a killed process never leaves a corrupt current revision
+  (E8.12).
+- Every model revision and setup revision is retained until the user deletes it;
+  deletion is confirmed and, for models, reported when setups still reference the
+  revision being deleted.
+- No operation requires a network acknowledgement to complete (E8.1, E8.2).
+
+### 5.4 Accessibility
+
+Target: **WCAG 2.2 AA** for the app's own screens, with the following specifics
+treated as the testable subset (E8.7, E8.8, E8.10):
+
+| # | Requirement |
+|---|---|
+| A-01 | Minimum interactive target 44×44 dp with ≥8 dp separation |
+| A-02 | Text scales to 200% (system setting) with no clipping, overlap or loss of a value |
+| A-03 | Contrast: 4.5:1 body text, 3:1 large text and non-text UI, both themes |
+| A-04 | Never colour alone: every delta carries a sign and a direction word; every chart series carries a line style and a direct label |
+| A-05 | Every chart has an equivalent table view reachable in one tap |
+| A-06 | Every computed value announces name, value, unit and change state to a screen reader |
+| A-07 | Focus order follows reading order; the analysis screen is fully operable by switch access |
+| A-08 | No content requires precise dragging: every slider has an alternative stepped input |
+| A-09 | No flashing content; no motion that cannot be reduced by the system setting |
+
+### 5.5 Localisation readiness
+
+- All user-facing text lives in externalised resources from the first commit;
+  no string is assembled by concatenation (E8.9).
+- Plurals and numbers use the platform's locale-aware formatting; units are
+  formatted per locale (decimal separator) and converted from storage units once.
+- The layout survives a pseudo-locale of +40% string length and an RTL locale
+  without clipping or reflow breakage (E8.9).
+- v1 ships English only. Whether any translation ships is decision **D10**.
+
+### 5.6 App size and distribution
+
+| Artifact | Target |
+|---|---|
+| Android App Bundle, phone download | ≤25 MB |
+| iOS thinned download | ≤40 MB |
+| Installed footprint | ≤60 MB |
+
+No bundled model library beyond the example models (E6.1); no bundled video, no
+bundled fonts beyond one variable family; explanations are text, not images.
+
+### 5.7 Maintainability and IP
+
+- The physics package has no Flutter dependency, and a test asserts it
+  (review rule 3).
+- Every physics function states its units in its doc comment (review rule 6).
+- Every constant in the physics carries a citation (review rule 1).
+- No forbidden material in the repository or the artifacts, enforced by build
+  checks (E5.4, E7.9, E9.4).
+
+---
+
+## 6. Non-goals and out of scope for v1
+
+These are stated so that a reviewer can reject work that drifts into them, and so
+that a user is never promised them by accident.
+
+### 6.1 Non-goals (not this product, at any version)
+
+| # | Non-goal | Why |
+|---|---|---|
+| N-01 | A lap-time simulator | The intent forbids it. Nothing in this app predicts a lap time, and no output is labelled as performance. |
+| N-02 | A tyre model of record | A tyre model whose coefficients we cannot measure would launder guesses into "grip" numbers. Absent at v1; if ever added, quarantined and labelled. |
+| N-03 | A driving game or a physics sandbox | Different product. |
+| N-04 | A telemetry platform | Requires hardware partnerships, real-time ingest and a backend — all excluded by the offline constraint. |
+| N-05 | An account system, a cloud service, a subscription | Excluded by the intent and by the funding model. |
+| N-06 | Any dependence on a proprietary database engine or an installer | This is the failure that killed the predecessor. |
+| N-07 | Reproducing the predecessor's user interface | Its workflows are kept because they work; its screens, icons, wording and name are not. |
+
+### 6.2 Out of scope for v1 (candidates for later)
+
+| # | Deferred | Trigger to revisit |
+|---|---|---|
+| L-01 | Motor, battery and ESC modelling; dyno analysis | After v1 ships and the geometry core is validated in use |
+| L-02 | Acceleration simulation and time-domain chassis roll (E3.15) | After v1; needs a validated damper model and a lateral-g input |
+| L-03 | Chassis torsional stiffness, diff-height effect, aero | Each needs measured inputs the app cannot currently obtain |
+| L-04 | Droop-limited roll behaviour in the static analysis | Needs a load-path model; v1 states the limit instead of guessing |
+| L-05 | Desktop and web builds | Same source, later rendering; v1 is Android/iOS |
+| L-06 | Any sync, sharing service or model store (E6.8) | Files work offline; a store adds cost and a trust boundary |
+| L-07 | OCR of paper sheets (E2.10), photo/CAD capture (E1.12), sheet-format adapters (E7.10) | Each is a separate feature with its own accuracy problem |
+| L-08 | Multi-setup comparison beyond two (E4.8) | Two is the question users actually ask |
+| L-09 | In-app teaching videos | Link out (E5.9); never embed or re-host |
+
+---
+
+## 7. Open decisions for the owner
+
+Each entry: the question, the recommendation, and what it costs to get wrong.
+These are the decisions the spec deliberately does not make for you.
+
+**D1 — The product name.**
+*Question:* ship as "Setup Lab", or name it before the first store submission?
+*Recommendation:* treat "Setup Lab" as an internal codename and decide the store
+name at least four weeks before first submission, after a store and trademark
+search in the app stores and in the RC trade. The name is the one thing that
+cannot be changed after reviews, backlinks and community references exist.
+*Cost of getting it wrong:* a rename after launch breaks every shared link, every
+setup file's `meta`, and the community's memory of the app; a name that collides
+with an existing product invites a takedown at the worst moment. The rename
+itself is one line of code and a month of everything else.
+
+**D2 — Depth of v1.**
+*Question:* geometry + balance only, or wait for damper and motor-dyno parity
+with the predecessor?
+*Recommendation:* **geometry, balance and static damping ratio — no motor dyno,
+no acceleration simulation** (as written in §2). The success test in the intent
+is satisfiable entirely by the geometry core; every week spent on the dyno is a
+week not spent on the measurement experience that decides whether anyone can use
+the app at all.
+*Cost of getting it wrong:* aiming for parity delays the first usable artifact by
+months and puts the hardest, least-verified part (motor and battery modelling)
+in front of the part that makes the app worth installing. Shipping too thin —
+geometry without explanations or comparison — produces a calculator nobody
+returns to.
+
+**D3 — Tyre model.**
+*Question:* ship a crude grip-versus-load model with a warning, or none?
+*Recommendation:* **none in v1**, and no composite "grip" or "balance verdict"
+score (E5.6). Ship the quantities that do not depend on a tyre model — load
+transfer share, camber at roll, wheel rate — and let the user draw the handling
+conclusion, which is the skill the app is trying to teach.
+*Cost of getting it wrong:* a crude tyre model makes the app *confidently wrong*
+in exactly the situation it is consulted for, and the correction — deleting a
+number users have built decisions on — costs more trust than never shipping it.
+Shipping nothing costs some users the "so which way does it push?" shortcut, and
+that is the cheaper loss.
+
+**D4 — Model data from the predecessor, and importing it.**
+*Question:* can the chassis/damper/motor model data be obtained from the family,
+and may it be imported?
+*Recommendation:* **do not import it and do not build an importer** (E7.9). Ask
+the family in writing for the *data* under a licence compatible with CC BY 4.0
+attribution; until a written answer exists, the library is built from our own
+measurements and community re-measurements. A file-format importer is a
+reverse-engineering exercise regardless of intent, and it would consume the
+goodwill the project depends on.
+*Cost of getting it wrong:* building the importer before permission converts a
+polite request into a fait accompli, and no licence answer survives that. Waiting
+costs library breadth for one release — recoverable. This is the only decision
+here that cannot be walked back.
+
+**D5 — How community models are reviewed.**
+*Question:* what does a contributed model have to pass before it ships?
+*Recommendation:* a **published checklist plus two independent measurement
+records, or photographic evidence for every hardpoint, plus a reproducibility
+run**: a second person re-enters three random hardpoints from the contributed
+worksheet and must land within 0.5 mm. Review happens as a repository pull
+request against the model library, with the reviewer named in the file's
+provenance. No in-app submission, no voting.
+*Cost of getting it wrong:* an unreviewed model is worse than a missing one — it
+produces plausible numbers from someone else's measuring error, and the user has
+no way to tell. Too strict a bar and the library never grows, which returns the
+project to the state it was founded to fix.
+
+**D6 — Storage units in the JSON.**
+*Question:* write lengths in mm, or in SI metres to match the physics package?
+*Recommendation:* **mm in the file, SI at the physics boundary** (§4.1). Calipers
+read mm, every setup sheet in the sport is in mm, and a human-readable file in
+metres reads as `0.105` — which is where transcription errors come from. The
+units are declared in the file, so a future inches-native file is unambiguous.
+*Cost of getting it wrong:* one missed conversion is a silent 1000× error that
+looks like a number (review rule 6 exists for this reason). The mitigation is
+structural: exactly one conversion site, with its own round-trip tests, and no
+arithmetic anywhere on storage-unit values.
+
+**D7 — Where the first shipped models come from.**
+*Question:* if the family says no (D4), what ships in the box?
+*Recommendation:* **ship exactly one complete example model that we measured
+ourselves**, fully sourced, plus a worked measurement session recorded as a
+document, and let the community library grow from contributions (D5). Do not
+ship ten half-measured models to look substantial.
+*Cost of getting it wrong:* a library of unsourced models teaches the user to
+trust unsourced numbers, which is the failure mode the whole project exists to
+avoid. One honest model plus a guided measurement is a slower start and a much
+better second impression.
+
+**D8 — Minimum OS versions and the performance denominator.**
+*Question:* Android 8.0 / iOS 15, and the reference device in §5.2?
+*Recommendation:* **yes to both**, and buy one cheap reference device, keep it,
+and run every performance test on it rather than on a flagship. If the app cannot
+hit P-01 on that phone, the budget is wrong, not the phone.
+*Cost of getting it wrong:* a budget validated on a flagship ships an app that
+stutters on the phones racers actually bring to a track, and the discovery
+happens in reviews. Raising the minimum OS later excludes users; lowering it
+later is free.
+
+**D9 — Store accounts against "free forever, zero running cost".**
+*Question:* who holds the Apple and Google developer accounts, and does the
+"zero running cost" claim survive the annual fees?
+*Recommendation:* one Google Play account and one Apple Developer account held
+personally by the owner, budgeted as a fixed annual cost, and the public claim
+phrased as "free to use, no account, no server, no ads" rather than "no cost to
+run". Keep the app free with no paid tier.
+*Cost of getting it wrong:* an unqualified "zero cost" claim that the owner's own
+bank statement contradicts is a small credibility problem now and a large one if
+it is ever used to solicit donations. Letting an account lapse unpublishes the
+app and orphans every installed copy's updates.
+
+**D10 — Localisation timing.**
+*Question:* translate in v1, or ship English and stay ready?
+*Recommendation:* **English in v1, fully externalised and pseudo-locale tested**
+(E8.9); translate after the explanation text stops changing, because translating
+text that is still being rewritten is work done twice. Revisit when the
+explanation corpus is stable for two releases.
+*Cost of getting it wrong:* retrofitting localisation into concatenated strings
+is a rewrite of every screen; translating too early means paying for the same
+work repeatedly and shipping explanations that do not match the physics they
+describe.
+
+---
+
+## 8. Traceability
+
+### 8.1 Intent statements referenced
+
+| ID | Statement (from `docs/intent.md`, abbreviated) |
+|---|---|
+| I1 | Model the chassis once and keep the model forever, in a plain-text format the community can version and share |
+| I2 | Calculate the properties that matter — camber/toe gain, roll centre and migration, bump steer, wheel rates, motion ratios, load-transfer split, damping ratios |
+| I3 | Show the equation behind every number |
+| I4 | Compare two setups side by side and say what changed and why it matters |
+| I5 | Teach the same concepts at the point where they are used |
+| I6 | Run on a phone at the track, offline, no account, no server, no subscription |
+| I7 | One codebase, cross-platform, store-shippable, no installer, no proprietary database |
+| I8 | Zero running cost |
+| I9 | No predecessor code, binaries, help text, iconography or name |
+| I10 | Physics as a pure Dart package, unit-testable and reusable headless |
+| S | Success test: model in under 30 minutes, predict the direction of a camber-link or roll-centre change correctly |
+| N2 | Non-goal: a tyre model of record (ties to §6.1) |
+
+### 8.2 Coverage
+
+94 acceptance criteria across 9 epics: **74 MUST, 13 SHOULD, 7 LATER**.
+Verification column: `U` unit, `G` golden value from an external source, `P`
+randomised property test, `W` widget/integration, `B` build or CI check, `M`
+scripted manual check, `E` usability evaluation on real users.
+
+| AC | Tag | Intent | Verification |
+|---|---|---|---|
+| E1.1 | MUST | I1, I2 | W |
+| E1.2 | MUST | I1, I2 | W, U |
+| E1.3 | MUST | I1 | U |
+| E1.4 | MUST | I1 | W, U |
+| E1.5 | MUST | I1, I5, S | M |
+| E1.6 | MUST | I1 | W |
+| E1.7 | MUST | I1 | U |
+| E1.8 | MUST | I2 | W |
+| E1.9 | MUST | I1, I2 | W |
+| E1.10 | SHOULD | I1, I5 | M, U |
+| E1.11 | SHOULD | I1 | W |
+| E1.12 | LATER | I1 | — |
+| E2.1 | MUST | I1, I4 | U |
+| E2.2 | MUST | I4 | U, W |
+| E2.3 | MUST | I1 | U, W |
+| E2.4 | MUST | I2, I3 | U |
+| E2.5 | MUST | I3, I5 | W |
+| E2.6 | MUST | I6 | W, M |
+| E2.7 | MUST | I1, I4 | W |
+| E2.8 | SHOULD | I1 | U |
+| E2.9 | SHOULD | I6 | M |
+| E2.10 | LATER | I6 | — |
+| E2.11 | MUST | I2, I3 | W, U |
+| E3.1 | MUST | I2 | G |
+| E3.2 | MUST | I2 | G |
+| E3.3 | MUST | I2 | G |
+| E3.4 | MUST | I2 | G |
+| E3.5 | MUST | I2 | G |
+| E3.6 | MUST | I2 | G |
+| E3.7 | MUST | I3 | W |
+| E3.8 | MUST | I2, I10 | P |
+| E3.9 | MUST | I2 | G, W |
+| E3.10 | MUST | I10 | U |
+| E3.11 | MUST | I10 | G, B |
+| E3.12 | MUST | I6 | U (perf) |
+| E3.13 | MUST | I2, I5 | W, U |
+| E3.14 | SHOULD | I4 | U |
+| E3.15 | LATER | I2 | — |
+| E4.1 | MUST | I4 | W |
+| E4.2 | MUST | I4 | W |
+| E4.3 | MUST | I4 | W |
+| E4.4 | MUST | I4, I3 | W |
+| E4.5 | MUST | I4 | W, U |
+| E4.6 | SHOULD | I4, I3 | U |
+| E4.7 | SHOULD | I4 | W, M |
+| E4.8 | LATER | I4 | — |
+| E5.1 | MUST | I5, I3 | W |
+| E5.2 | MUST | I5 | W, M |
+| E5.3 | MUST | I5 | B |
+| E5.4 | MUST | I9 | B |
+| E5.5 | MUST | I3, I2 | W, B |
+| E5.6 | MUST | N2 | W |
+| E5.7 | SHOULD | I5 | W |
+| E5.8 | SHOULD | I5 | W |
+| E5.9 | LATER | I5 | — |
+| E6.1 | MUST | I1 | U |
+| E6.2 | MUST | I1 | W |
+| E6.3 | MUST | I1 | W |
+| E6.4 | MUST | I1, I6 | W |
+| E6.5 | MUST | I1 | U |
+| E6.6 | MUST | I1 | U |
+| E6.7 | SHOULD | I1 | M |
+| E6.8 | LATER | I1 | — |
+| E7.1 | MUST | I1 | U |
+| E7.2 | MUST | I1 | U |
+| E7.3 | MUST | I1, I3 | U |
+| E7.4 | MUST | I1, I4 | W, M |
+| E7.5 | MUST | I1 | U |
+| E7.6 | MUST | I1 | U |
+| E7.7 | SHOULD | I4 | U |
+| E7.8 | SHOULD | I1 | U |
+| E7.9 | MUST | I9 | W |
+| E7.10 | LATER | I1 | — |
+| E8.1 | MUST | I6 | B |
+| E8.2 | MUST | I6 | M |
+| E8.3 | MUST | I6 | W, M |
+| E8.4 | MUST | I6 | B, M |
+| E8.5 | MUST | I6 | U (perf) |
+| E8.6 | MUST | I6, I7 | W |
+| E8.7 | MUST | I6 | M, W |
+| E8.8 | MUST | I6 | M |
+| E8.9 | MUST | I7 | W, B |
+| E8.10 | MUST | I6 | M |
+| E8.11 | MUST | I7 | B |
+| E8.12 | MUST | I1 | U |
+| E8.13 | MUST | I6, I8 | B |
+| E9.1 | MUST | I1 | W |
+| E9.2 | MUST | I1 | B |
+| E9.3 | MUST | I9 | M |
+| E9.4 | MUST | I9 | B |
+| E9.5 | MUST | S | E |
+| E9.6 | MUST | I9 | W |
+| E9.7 | SHOULD | I6 | W |
+| E9.8 | MUST | I10 | B |
+
+Every AC maps to at least one intent statement; every intent statement apart
+from I8 (running cost, served by E8.13 and D9) is served by at least two ACs.
+No AC exists that serves no intent — that check belongs in `spec:audit`.
+
+---
+
+## 9. Evidence base, and what it changed
+
+The corpus was read as evidence of what users ask for and what vocabulary they
+use, never as a source of sentences. Files read for this version:
+
+- `docs/intent.md` — complete.
+- `AGENTS.md`, `docs/review-rules.md`, `docs/LICENSING.md`, `DEDICATION.md`,
+  `docs/research/README.md` — complete.
+- `docs/research/handbook/science-of-setup-index.md` — complete; supplied the
+  chapter vocabulary (weight transfer, overall suspension stiffness, camber and
+  camber gain, roll centre and camber gain, ackermann, shocks) that §4.4 follows.
+- `docs/research/forum/rctech-thread.md` — searched across 494 posts for
+  *measure, arm movement, unsprung, roll center/centre, print, import, export,
+  model, setup sheet, camber link, droop, shim, screenshot, database, mac,
+  tablet, compare, slider, graph, tyre, diff height*; excerpts read in full.
+- Transcripts read in whole or in substantial part (7 of the 56 available):
+  `RC3 V4.3.2 Intro`, `MTC2 Setup Features`, `SetupCharts`,
+  `Touring Car Steering Setup`, `Laser Setup System Demo`,
+  `MTC2 Roll Center Testing Part 1`,
+  `Episode 8 - RC3 Acceleration Simulation Validation`.
+
+What the evidence changed in this spec:
+
+1. **Mobile-first is not a nice-to-have.** Phone and tablet access was the most
+   requested capability in the whole thread, and the author's own answer was
+   remote-desktopping into a Windows machine left running at home. That is the
+   user need behind E8.1–E8.6.
+2. **Measurement guidance is a first-class feature, not help text.** The same
+   measurement questions recur for a decade ("how do I measure the arm movement
+   value?", "how do I figure sprung/unsprung?"), including a detailed worked
+   method for weighing unsprung mass. Hence E1.5, E1.10 and the requirement that
+   every input has a "how do I measure this" entry (E5.2).
+3. **Live, quantified deltas are the feature that made the tool teach.** The
+   later versions added charts that update as a value is changed, compare against
+   a selected baseline, and quantify *how much* of a change was made, with the
+   ability to isolate one effect. That is E3.12, E4.1–E4.6, and it is why the
+   performance budget exists at all.
+4. **Overwriting a known-good setup is a documented failure.** The author warns
+   users, in his own words, that saving after experimenting overwrites the setup
+   the graphs were comparing against. Hence E2.2, E2.7 and the baseline concept
+   in E4.5.
+5. **Printing and notes are how the track session actually works.** Requests for
+   a one-page summary and for separate track/setup/tyre notes recur. Hence E7.4
+   and E2.8.
+6. **Export anxiety is real.** Users were told to back up the database and export
+   models as text because a glitch would lose their work; schema changes were
+   resisted for fear of data loss. Hence E7.1–E7.6 and the migration fixtures in
+   E9.2.
+7. **The gaps are documented, so v1 names them.** Tyre behaviour is absent by
+   design, the diff-height torque effect was explicitly declined, ackermann was
+   never modelled as a handling influence, and droop limits sat outside the
+   charts because they depend on the handling condition. §6 and E5.5 carry each
+   of those forward explicitly rather than letting users discover them.
+8. **Library growth was the author's own biggest problem** — he could not get his
+   hands on every chassis. That is why the contribution path (E6.7) and the
+   review bar (D5) are specified rather than assumed.
+
+---
+
+## 10. What changes at v0.2
+
+- Decisions D1–D10 resolved and folded into the ACs, with the ACs they unblock
+  marked.
+- A per-epic effort estimate and build order in `plan.md`, starting from Slice 0
+  (§2.3).
+- Golden test cases named per output in `docs/specs/physics/`, each with its
+  citation.
+- A screen inventory from the design agent, cross-checked against E2.6, E8.6 and
+  E8.7.
+
