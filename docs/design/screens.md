@@ -82,7 +82,7 @@ where the vocabulary differs, resolved once so an implementer does not have to c
 | Topic | Spec | On screen |
 |---|---|---|
 | Provenance | Eight source `type`s (`measured`, `estimated`, `manufacturer`, `third_party`, `library`, `derived`, `inferred`, `unattributed`) plus `unknown` | **Five badges.** The mapping below is the contract; the badge is a rendering of the source type, and the detail line always names the source. |
-| Camber gain units | deg/deg | Headline reads **deg per 10 mm bump** (what a racer measures with a setup station); the detail shows deg/deg, and the two are the same curve. |
+| Camber gain units | °/mm (κ = dγ/dz_wheel) | Headline reads **deg per 10 mm bump** (what a racer measures with a setup station); the detail shows °/mm. The °/° number is a **different quantity** — camber change per degree of roll (`camber_per_roll`) — and it sits beside the camber-at-roll row, never in place of camber gain. |
 | Bump steer units | deg/mm | Headline reads **mm of toe per 10 mm bump**; the detail shows deg/mm. |
 | Outputs without a card | motion ratio, ride frequency, roll-centre migration, camber-at-roll, toe-at-roll, Ackermann | All exist as drill-downs inside cards 3–6. None becomes an eighth card. |
 
@@ -491,7 +491,9 @@ The **damping-ratio card is an estimate, and the trend is the product** (D-13, E
 the signed direction *and* magnitude of the change (`▲ Rear oil 350 → 400 cSt: more damping at the
 wheel, ζ +0.04`), then `~0.42 ±0.06` with the `estimated` badge and the `not_validatable` ring (ζ is
 never `validated`, E3.6c), then a *What changes this* panel (oil viscosity, piston holes, spring
-rate, shock angle). Values are **per corner at two shaft speeds** (5 and 300 mm/s); the card's
+rate, shock angle). Values are **per corner at two shaft speeds** (50 and 200 mm/s — the two
+defaults in `fields.yaml`; below 20 mm/s the model does not apply and the card says so rather than
+printing a band); the card's
 front/rear columns show low speed and a segmented control switches both. The band is re-derived by
 re-running ζ with each estimated input at its tolerance ends, is never constant, and is printed
 wherever ζ is — card, compare, detail and export. With any of the six damper inputs absent, ζ is
@@ -505,8 +507,8 @@ h = 24–32 mm); the front/rear **share** is robust (±0.13).
 | Card | Headline numbers | Inside the detail |
 |---|---|---|
 | Load transfer | total g at the chosen lateral g; front share % | front/rear split in grams, per-axle values |
-| Roll stiffness | N·m/deg front and rear; °/g roll | % front, contributions from springs vs bars |
-| Roll centre | height front/rear, mm | migration over ±10 mm bump, instant-centre positions |
+| Roll stiffness | N·m/deg front and rear; °/g roll | % front, contributions from springs vs bars. The solver returns N·m/rad and the formatter divides by 57.29578 **once** |
+| Roll centre | height front/rear, mm | migration at ±1° of chassis roll (mm, a displacement — not a rate per degree), instant-centre positions |
 | Camber gain | °/10 mm bump front/rear | camber at 1 g roll, camber curve |
 | Bump steer | mm toe per 10 mm bump front/rear | toe curve, toe at 1 g roll |
 | Wheel rate | N/mm front/rear | motion ratio, spring rate, wheel-rate curve over bump |

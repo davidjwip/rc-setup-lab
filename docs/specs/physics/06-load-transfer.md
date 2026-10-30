@@ -29,6 +29,18 @@ visible, because load transfer only becomes *handling* through the tyre, and v1 
 its own default rule (M3), and the consistency identity in `99-validation.md` was unsatisfiable (M4).
 CG height is now **inferred, never measured** (01 §4.5), and §6.7 states which outputs that affects.
 
+**What changed in round 3 — `x_cg` was the 55 %-front value (D-1).** Round 2 printed
+`x_cg = 257 × (1 − 0.45) = 141.35 mm`, which is the **55 %**-front CG, 25.7 mm forward of where a
+45 %-front car's CG can be. Every number from `h_ra` onward inherited it, including the −1.223 %
+residual that §3.7 then explained at length. The branch taken here is **`x_cg = 115.65 mm`** — the
+45 % front split that the same section's corner weights (`m_s,f = 0.48749 kg`, front axle lighter)
+already assert — because the alternative (keeping 141.35 and adopting `w_f = 0.55`) moves the corner
+weights to 0.31125 kg front / 0.24375 kg rear, the ride frequencies to 9.541 / 11.623 Hz, the rigid
+balance to 58.90 % and every ζ in module 7, i.e. it rewrites modules 1, 5 and 7 to preserve one
+mistyped line. The trade-off is stated in full in 01 §8.1. `h_ra`, `M_el`, φ, both elastic terms, the
+balance, the residual, the flexible-chassis split, the `h` table in §6.7 and G06.3–G06.10 are
+re-derived below from the corrected value.
+
 ---
 
 ## 2. Inputs
@@ -58,7 +70,7 @@ h_s = (m·h − m_u·h_u)/m_s          sprung CG height                         
 the consistency check in §3.7.
 
 **`h_u`'s default rule, corrected.** Round 1 said "the wheel-centre height (= tyre radius)" and then
-used 20.0 mm against a stated tyre radius of 32.0 mm, which breaks 00 §10's "no number that appears
+used 20.0 mm against a stated tyre radius of 32.0 mm, which breaks 00 §12's "no number that appears
 nowhere else". The physically defensible answer is that the unsprung mass is concentrated at the hub
 and upright, *below* the wheel centre: the rule is now **0.625 × tyre radius** (20.0 mm on this car),
 range 0.55–0.75, labelled `estimated`. 20.0 mm is therefore an input consistent with its own rule
@@ -176,12 +188,18 @@ the percentage is identical.
 residual = (ΔW_sum − ΔW_ref)/ΔW_ref
 ```
 
-The residual is **−1.223 % on the reference car**. It is not zero, and the dominant reason is that the
-geometric term is distributed by *sprung force fraction* while the reference is a whole-car `m·a·h/t̄`
-with `h` the whole-car CG; the two different tracks and the separated unsprung height are secondary.
-Round 1 listed the three causes in the wrong order and said "a few percent" without a number, which is
-why `99-validation.md`'s I10 asserted an identity the model does not satisfy.
+The residual is **−0.055 % on the reference car** (round 2 printed −1.223 %, which was the 55 %-front
+`x_cg` of D-1 and nothing else). It is not exactly zero: the geometric term is distributed by
+*sprung force fraction* while the reference is a whole-car `m·a·h/t̄` with `h` the whole-car CG, and
+the two different tracks and the separated unsprung height are second-order. On a self-consistent
+`x_cg` those three effects together are worth five hundredths of a percent, i.e. the identity nearly
+holds and the closure is a real test rather than a tolerance. Round 1 listed the three causes in the
+wrong order and said "a few percent" without a number; round 2 then justified a loosened 5 % pass mark
+with a residual that was an artefact of the arithmetic slip.
 
+- The residual still moves with `h` (it is −0.12 % at `h = 18.693 mm`, G06.9), so a 5 % warning
+  threshold remains a defect detector rather than a calibration: a wrong `x_cg`, a roll centre above
+  the CG or a mistyped track pushes it to percent level immediately.
 - A residual above 5 % means an input is inconsistent: show it as a warning, do not silently display
   the number.
 - A user who changes the front weight split will see this move, and should be told why.
@@ -273,13 +291,20 @@ Roll-centre heights: `z_rc,f = 9.9749 mm` (module 2 §6.2); `z_rc,r = 6.000 mm` 
 for this example, range 0–20 mm, because the reference car has no rear hardpoints (01 §8.4).
 
 ```
-x_cg = 257 × (1 − 0.45) = 141.35 mm
-h_ra = 6.000 + (9.9749 − 6.000) × 141.35/257 = 6.000 + 2.186 = 8.186 mm
-M_el = 1.110 × 9.81 × (29.7297 − 8.186)/1000 = 10.889 × 0.021544 = 0.23459 N·m
-φ    = 0.23459/65.642 = 0.0035737 rad = 0.20476°
+x_cg = 257 × 0.45 = 115.65 mm
+h_ra = 6.000 + (9.9749 − 6.000) × 115.65/257 = 6.000 + 1.7887 = 7.789 mm
+M_el = 1.110 × 9.81 × (29.7297 − 7.7887)/1000 = 10.889 × 0.021941 = 0.23892 N·m
+φ    = 0.23892/65.642 = 0.0036397 rad = 0.20854°
 ```
 
-**0.20° of roll at 1 g** — the "chassis roll sensitivity" number, and the sense of it is worth stating:
+`x_cg` is `w_f · l`, not `(1 − w_f) · l`: with a 45 % front split the CG sits 45 % of the wheelbase
+ahead of the rear axle, i.e. 115.65 mm, and `141.35 mm` (round 2's figure) is the 55 %-front position.
+The front axle carries 5.96 N against the rear's 7.28 N in §6.1, so the CG must be *behind* mid-
+wheelbase; 141.35 mm puts it 12.9 mm ahead of mid-wheelbase (and 25.7 mm ahead of the 45 %-front
+value), which contradicts the rest of the module. Only one of the two can be kept, and the masses that
+modules 5 and 7 consume come from the same 45/55 split, so the split stays and the distance moves.
+
+**0.21° of roll at 1 g** — the "chassis roll sensitivity" number, and the sense of it is worth stating:
 a *lower* roll centre gives a *larger* `h_s − h_ra` and therefore *more* roll at the same lateral g.
 (The arithmetic prints φ in both rad and degrees because round 1's (6.6) result was quoted in degrees
 while the substituted constants were SI, which is how a factor-of-57 error survives review.)
@@ -287,8 +312,8 @@ while the substituted constants were SI, which is how a factor-of-57 error survi
 ### 6.4 The split
 
 ```
-ΔW_el,f = 37.274 × 0.0035737/0.172 = 0.77445 N
-ΔW_el,r = 28.368 × 0.0035737/0.174 = 0.58265 N
+ΔW_el,f = 37.274 × 0.0036397/0.172 = 0.78876 N
+ΔW_el,r = 28.368 × 0.0036397/0.174 = 0.59340 N
 
 F_y,sprung,f = 1.110 × 9.81 × 0.43919 = 4.7823 N
 ΔW_geo,f = 4.7823 × 0.0099749/0.172   = 0.27735 N
@@ -298,26 +323,26 @@ F_y,sprung,r = 1.110 × 9.81 × 0.56081 = 6.1068 N
 ΔW_u,f = 0.120 × 9.81 × 0.020/0.172 = 0.13688 N
 ΔW_u,r = 0.120 × 9.81 × 0.020/0.174 = 0.13531 N
 
-ΔW_f = 0.77445 + 0.27735 + 0.13688 = 1.18868 N
-ΔW_r = 0.58265 + 0.21058 + 0.13531 = 0.92854 N
-sum  = 2.11722 N
+ΔW_f = 0.78876 + 0.27735 + 0.13688 = 1.20299 N
+ΔW_r = 0.59340 + 0.21058 + 0.13531 = 0.93929 N
+sum  = 2.14228 N
 ```
 
 ### 6.5 Balance, consistency and per-wheel loads
 
 ```
-balance = 100 × 1.18868/2.11722 = 56.14 % front
-residual vs (6.3): (2.11722 − 2.1435)/2.1435 = −1.223 %
+balance = 100 × 1.20299/2.14228 = 56.15 % front
+residual vs (6.3): (2.14228 − 2.14346)/2.14346 = −0.055 %
 ```
 
 So at 1 g, **56.1 % of the load transfer is on the front axle, whose static share of the weight is
 45 %.** Per wheel (left-hand corner, right wheels loaded):
 
 ```
-front outer = 2.9798 + 1.18868/2 = 3.5741 N (120.0 % of static)
-front inner = 2.9798 − 1.18868/2 = 2.3854 N ( 80.1 % of static)
-rear outer  = 3.6420 + 0.92854/2 = 4.1063 N (112.7 %)
-rear inner  = 3.6420 − 0.92854/2 = 3.1777 N ( 87.3 %)
+front outer = 2.9798 + 1.20299/2 = 3.5813 N (120.2 % of static)
+front inner = 2.9798 − 1.20299/2 = 2.3783 N ( 79.8 % of static)
+rear outer  = 3.6420 + 0.93929/2 = 4.1116 N (112.9 %)
+rear inner  = 3.6420 − 0.93929/2 = 3.1723 N ( 87.1 %)
 ```
 
 The front axle's inner wheel drops to **80 %** of its static load while the outer rises to **120 %**.
@@ -339,17 +364,21 @@ held fixed):
 
 | h (mm) | h_s (mm) | M_el (N·m) | φ (°) | TLLT (N) | balance (%) |
 |---|---|---|---|---|---|
-| 24.0 | 24.865 | 0.18162 | 0.1585 | 1.8372 | 55.99 |
-| 26.0 | 27.297 | 0.20810 | 0.1816 | 1.9904 | 56.07 |
-| 28.0 | 29.730 | 0.23459 | 0.2048 | 2.1435 | 56.14 |
-| 30.0 | 32.162 | 0.26108 | 0.2279 | 2.2966 | 56.21 |
-| 32.0 | 34.595 | 0.28756 | 0.2510 | 2.4497 | 56.26 |
+| 24.0 | 24.865 | 0.18594 | 0.1623 | 1.8372 | 56.00 |
+| 26.0 | 27.297 | 0.21243 | 0.1854 | 1.9904 | 56.08 |
+| 28.0 | 29.730 | 0.23892 | 0.2085 | 2.1435 | 56.15 |
+| 30.0 | 32.162 | 0.26541 | 0.2317 | 2.2966 | 56.22 |
+| 32.0 | 34.595 | 0.29189 | 0.2548 | 2.4497 | 56.27 |
 
-- **Balance is robust**: ±0.14 percentage points across the whole 24–32 mm range, because both axles
-  scale with the same `h`. A 3 mm CG error moves the balance by **0.12 pp** — smaller than the 0.5 % display
-  step, and far smaller than the ±1.5 pp that a bar measurement alone puts under the number.
-- **Absolute transfer and roll angle are not**: TLLT ±14.4 % and φ ±23 % over the same range, i.e.
-  roughly ±1.6 % of load per mm of `h`.
+- **Balance is robust**: ±0.13 percentage points across the whole 24–32 mm range, because both axles
+  scale with the same `h`. A 3 mm CG error moves the balance by **0.09 pp** (56.155 → 56.243 % at
+  28 → 31 mm) — smaller than the 0.5 % display step, and far smaller than the ±1.5 pp that a bar
+  measurement alone puts under the number.
+- **Absolute transfer and roll angle are not**: TLLT ±14.3 % and φ ±22.2 % over the same range, i.e.
+  **3.57 % of the transfer per mm** of `h` (13.24 N × 0.001/0.173 = 0.0766 N per mm on a 2.1435 N
+  total). Round 2 printed "±1.6 % of load per mm", which was 2.2× low; its ±14.4 % and ±23 % were
+  within rounding of the re-derived ±14.3 % and ±22.2 % (`h_s − h_ra` runs 17.08 → 26.81 mm across the
+  range, and both quantities scale with it).
 
 So the badge and the band go on the **magnitude**, not on the balance. Round 1 had this exactly
 backwards in two places: `99-validation.md` §7 justified 0.1 % balance precision with "CG height
@@ -360,18 +389,18 @@ swamp a 0.2 % balance difference are the bar diameter (±1.2 pp for ±0.05 mm) a
 
 ### 6.8 With a flexible chassis (module 10)
 
-`k_ch = 21.60 N·m/rad` (2.0 mm CFRP, module 10 §4), `M_f = 0.10303 N·m`, `M_r = 0.13156 N·m`:
+`k_ch = 21.60 N·m/rad` (2.0 mm CFRP, module 10 §4), `M_f = 0.10493 N·m`, `M_r = 0.13399 N·m`:
 
 ```
-φ_f = 0.18494°,  φ_r = 0.23080°      (twist 2.75 arcmin, front lower)
-ΔW_el,f = 0.69949 N   ΔW_el,r = 0.65674 N     (rigid: 0.77445 / 0.58265)
-ΔW_f = 1.11381 N      ΔW_r = 1.00270 N
-balance = 52.63 %     (rigid: 56.14 %)
+φ_f = 0.18836°,  φ_r = 0.23506°      (twist 2.80 arcmin, front lower)
+ΔW_el,f = 0.71242 N   ΔW_el,r = 0.66886 N     (rigid: 0.78876 / 0.59340)
+ΔW_f = 1.12665 N      ΔW_r = 1.01475 N
+balance = 52.61 %     (rigid: 56.15 %)
 ```
 
-**Three and a half percentage points of balance from the plate alone**, which is larger than any bar
-change a racer is likely to make in a session. That is issue #11's point and the reason module 10 is
-worth having even though it does not move the roll centre.
+**Three and a half percentage points of balance from the plate alone** (56.15 → 52.61 = 3.54 pp),
+which is larger than any bar change a racer is likely to make in a session. That is issue #11's point
+and the reason module 10 is worth having even though it does not move the roll centre.
 
 ---
 
@@ -381,15 +410,16 @@ worth having even though it does not move the roll centre.
 |---|---|---|---|
 | G06.1 | reference car, a_y = 1 g | corner weights 2.9798 N / 3.6420 N | hand calc §6.1 |
 | G06.2 | reference car, a_y = 1 g, t̄ = 173 mm | TLLT = 2.1435 N | hand calc §6.2 |
-| G06.3 | reference car, a_y = 1 g | h_s = 29.7297 mm; h_ra = 8.186 mm; M_el = 0.23459 N·m; φ = 0.20476° | hand calc §6.3 |
-| G06.4 | reference car, a_y = 1 g | ΔW_f = 1.18868 N, ΔW_r = 0.92854 N, balance = 56.14 % | hand calc §6.4–6.5 |
-| **G06.5** | reference car, a_y = 1 g | front outer 3.5741 N (**120.0 %**), front inner 2.3854 N (**80.1 %**); and `inner + outer = 2 × static` to 1e-9; rear 87.3 % / 112.7 % | hand calc §6.5 |
+| G06.3 | reference car, a_y = 1 g | h_s = 29.7297 mm; h_ra = 7.789 mm; M_el = 0.23892 N·m; φ = 0.20854° | hand calc §6.3 |
+| G06.4 | reference car, a_y = 1 g | ΔW_f = 1.20299 N, ΔW_r = 0.93929 N, balance = 56.15 % | hand calc §6.4–6.5 |
+| **G06.5** | reference car, a_y = 1 g | front outer 3.5813 N (**120.2 %**), front inner 2.3783 N (**79.8 %**); and `inner + outer = 2 × static` to 1e-9; rear 87.1 % / 112.9 % | hand calc §6.5 |
 | G06.6 | k_φ,total forced to 0 | `Undefined(noRollStiffness)` | §5 |
 | G06.7 | a_y = 0 | all transfers 0; balance `Undefined(zeroLateral)`; the other fields defined | §5 |
-| G06.8 | consistency residual for §6 | −1.223 % ± 0.002 | hand calc §6.5 |
-| **G06.9** | reference car with `h = 18.693 mm` (the component-mass estimate, 01 §4.5) | TLLT = 1.4310 N, φ = 0.09718°, balance = 55.68 % — magnitude moves −33 %, balance moves −0.46 pp | hand calc §6.7, 01 §4.5 |
-| **G06.10** | reference car with `k_ch = 21.60 N·m/rad` (2.0 mm CFRP) | φ_f = 0.18494°, φ_r = 0.23080°, balance = 52.63 % | hand calc §6.8 |
+| G06.8 | consistency residual for §6 | −0.055 % ± 0.002 | hand calc §6.5 |
+| **G06.9** | reference car with `h = 18.693 mm` (the component-mass estimate, 01 §4.5) | TLLT = 1.4310 N, φ = 0.10095°, balance = 55.70 % — magnitude moves −33 %, balance moves −0.46 pp | hand calc §6.7, 01 §4.5 |
+| **G06.10** | reference car with `k_ch = 21.60 N·m/rad` (2.0 mm CFRP) | φ_f = 0.18836°, φ_r = 0.23506°, balance = 52.61 % | hand calc §6.8 |
 | **G06.11** | **balance invariant to `a_y`**: 0.1 g and 2.5 g | balance identical to 1e-9; loads scale | identity — round 1 verified this numerically but never asserted it |
+| **G06.12** | **`x_cg` must equal `w_f · l`**: reference car, 45 % front | `x_cg` = 115.65 mm, and `x_cg = (1 − w_f) · l` fails the case (141.35 mm → h_ra 8.186, balance 56.14, residual −1.223 %) | D-1; catches the round-2 slip in one assertion |
 
 Tolerances: 1e-4 N, 1e-3 %, 1e-5 ° on the roll angle.
 
@@ -404,7 +434,7 @@ Tolerances: 1e-4 N, 1e-3 %, 1e-5 ° on the roll angle.
 - The balance number is a % of a force, not a % of grip. Without a tyre model we can tell you the
   direction it moves, not how far the car's behaviour moves with it.
 - **The lateral-g input changes the loads, not the balance.** The balance percentage is exactly
-  invariant to `a_y` (G06.11: 56.14 % at 0.1 g and at 2.5 g). Say that in the picker, and the "fake
+  invariant to `a_y` (G06.11: 56.15 % at 0.1 g and at 2.5 g). Say that in the picker, and the "fake
   input" stops being a fake input.
 - A 1 % change in balance is small. A 5 % change is worth a setup change. But the honest floor is
   **±1.5 pp** for a bar measurement (±1.2 pp of it from the diameter alone) and **±3.5 pp** if the

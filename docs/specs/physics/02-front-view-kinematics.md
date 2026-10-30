@@ -126,9 +126,9 @@ mirror path produces.
 
 Two precedence rules matter and round 1 had neither: `noIntersection` is a **load-time** condition
 only, and any failure during bump inversion is `outOfTravel`. Beyond ±1 rad on the reference car
-`W.z` peaks at 73.9 mm and comes back down, so an expanding bracket can contain a second root and
-converge to a flipped branch — which is exactly the bug §3.2.1 warns about, reintroduced by the
-expansion rule. A fixed scan cannot do that.
+`W.z` peaks at **73.77 mm** (at θ = 0.896 rad) and comes back down, so an expanding bracket can
+contain a second root and converge to a flipped branch — which is exactly the bug §3.2.1 warns about,
+reintroduced by the expansion rule. A fixed scan cannot do that.
 
 The result of step 4–6 is also reported as `reachableTravel` so the UI can say what the range is
 instead of only refusing.
@@ -483,9 +483,11 @@ Two results worth showing:
 - **A single-wheel bump moves it 22 mm sideways** and drops it 2.5 mm. On a kerb the car does not
   have one roll centre.
 
-Small heaves, for the module-10 cross-reference: +0.5 mm of heave gives z_rc = 9.2617 mm and −0.5 mm
-(droop) gives 10.7049 mm, a local slope of about −1.43 mm/mm — which is why a 0.5 mm thicker chassis
-plate, if it raises the car, moves the roll centre 0.73 mm without changing a single hardpoint.
+Small heaves, for the module-10 cross-reference: **+0.5 mm of wheel bump** gives z_rc = 9.2617 mm and
+**−0.5 mm (droop) gives 10.7049 mm**, a local slope of −1.44 mm/mm — which is why a 0.5 mm thicker
+chassis plate, if it raises the car (i.e. droops the wheel, 01 §6.2), moves the roll centre +0.73 mm
+without changing a single hardpoint. Read the sign off `bump`, not off the chassis: raising the
+chassis relative to the wheels is droop, and getting that label backwards swaps 9.2617 for 10.7049.
 
 At φ > 0 (left up, a left-hand corner) the roll centre migrates toward **+y, the inside of the
 corner**. Whether that helps or hurts is not something this model can say; it is reported, not
@@ -530,7 +532,7 @@ At bump +2 mm the carrier's axis has rotated by `Δ = +0.252°` (from `atan2(ê�
 where θ(2 mm) = −3.605500°), so
 
 ```
-tie_out(θ) = Lₒ(θ) + u·ê₁(θ) + v·ê₂(θ) = (74.0543, 33.948)
+tie_out(θ) = Lₒ(θ) + u·ê₁(θ) + v·ê₂(θ) = (74.0945, 33.948)
 ```
 
 The number that matters for module 4 is the height:

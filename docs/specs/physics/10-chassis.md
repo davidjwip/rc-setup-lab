@@ -35,8 +35,8 @@ changes:
    suspension, and on a 1/10 touring car it can be the softest element in that chain. The front/rear
    split of roll stiffness — the quantity that decides balance — is therefore partly a property of the
    plate rather than of the springs. On the reference car the difference between a rigid chassis and a
-   2.0 mm CFRP plate is **3.5 percentage points of balance**, larger than most bar changes a racer
-   makes in a session.
+   2.0 mm CFRP plate is **3.54 percentage points of balance** (56.15 % → 52.61 %), larger than most bar
+   changes a racer makes in a session.
 
 ---
 
@@ -191,32 +191,33 @@ geometry. Thickness is the stronger lever: 2.0 → 2.5 mm is ×1.95, because `J 
 
 ### 4.2 What it does to the balance
 
-Module 6's rigid answers: `k_φ,f = 37.274`, `k_φ,r = 28.368 N·m/rad`, `M_f = 0.10303`, `M_r = 0.13156
-N·m`, `φ = 0.20476°`, balance 56.14 %.
+Module 6's rigid answers: `k_φ,f = 37.274`, `k_φ,r = 28.368 N·m/rad`, `M_f = 0.10493`, `M_r = 0.13399
+N·m`, `φ = 0.20854°`, balance 56.15 %. (`M_f`/`M_r` are module 6's roll moment allocated by sprung
+force fraction 0.43919/0.56081, on the corrected `x_cg = 115.65 mm` of 01 §8.1.)
 
 With `k_ch = 21.60` (CFRP 2.0 mm), (10.7):
 
 ```
-Det = (58.874)(49.968) − 466.56 = 2941.9 − 466.56 = 2475.3
-φ_f = (49.968 × 0.10303 + 21.60 × 0.13156)/2475.3 = 7.9905/2475.3 = 0.0032279 rad = 0.18494°
-φ_r = (21.60 × 0.10303 + 58.874 × 0.13156)/2475.3 = 9.9719/2475.3 = 0.0040282 rad = 0.23080°
-ΔW_el,f = 37.274 × 0.0032279/0.172 = 0.69949 N     (rigid 0.77445)
-ΔW_el,r = 28.368 × 0.0040282/0.174 = 0.65674 N     (rigid 0.58265)
-balance = 100 × (0.69949+0.27735+0.13688)/((0.69949+0.27735+0.13688)+(0.65674+0.21058+0.13531))
-        = 52.63 %                                  (rigid 56.14 %)
+Det = (58.874)(49.968) − 466.56 = 2941.8 − 466.56 = 2475.3
+φ_f = (49.968 × 0.10493 + 21.60 × 0.13399)/2475.3 = 8.1373/2475.3 = 0.00328745 rad = 0.18836°
+φ_r = (21.60 × 0.10493 + 58.874 × 0.13399)/2475.3 = 10.1549/2475.3 = 0.00410256 rad = 0.23506°
+ΔW_el,f = 37.274 × 0.0032875/0.172 = 0.71242 N     (rigid 0.78876)
+ΔW_el,r = 28.368 × 0.0041026/0.174 = 0.66886 N     (rigid 0.59340)
+balance = 100 × (0.71242+0.27735+0.13688)/((0.71242+0.27735+0.13688)+(0.66886+0.21058+0.13531))
+        = 52.61 %                                  (rigid 56.15 %)
 ```
 
-Twist `φ_r − φ_f = 0.0459° = 2.75 arcmin`. The front of the car rolls *less* than the rear because the
-front is stiffer in roll, so the plate twiddles load transfer rearward: **3.5 percentage points of
+Twist `φ_r − φ_f = 0.0467° = 2.80 arcmin`. The front of the car rolls *less* than the rear because the
+front is stiffer in roll, so the plate twiddles load transfer rearward: **3.54 percentage points of
 balance**, in the understeer-reducing direction.
 
 | k_ch (N·m/rad) | what | φ_f (°) | φ_r (°) | balance (%) |
 |---|---|---|---|---|
-| ∞ | rigid (module 6) | 0.20476 | 0.20476 | 56.14 |
-| 123.44 | steel 2.5 | 0.19940 | 0.21180 | 55.19 |
-| 63.20 | steel 2.0 | 0.19534 | 0.21714 | 54.47 |
-| 42.19 | CFRP 2.5 | 0.19194 | 0.22160 | 53.87 |
-| 21.60 | CFRP 2.0 | 0.18494 | 0.23080 | 52.63 |
+| ∞ | rigid (module 6) | 0.20854 | 0.20854 | 56.15 |
+| 123.44 | steel 2.5 | 0.20309 | 0.21571 | 55.20 |
+| 63.20 | steel 2.0 | 0.19894 | 0.22115 | 54.47 |
+| 42.19 | CFRP 2.5 | 0.19549 | 0.22569 | 53.86 |
+| 21.60 | CFRP 2.0 | 0.18836 | 0.23506 | 52.61 |
 
 ### 4.3 Mass and ride height, which the balance table hides
 
@@ -289,12 +290,12 @@ torsion (±3.5 pp balance for the whole carbon-to-rigid range), and ride height 
 | G10.1 | CFRP, `w = 90`, `t = 2.0`, `L_ch = 300`, `G = 27 GPa` | J = 2.400e-10 m⁴; k_ch = 21.60 N·m/rad = 0.3770 N·m/deg | hand calc §4.1 |
 | G10.2 | steel, same geometry | k_ch = 63.20 N·m/rad = 1.103 N·m/deg | hand calc §4.1 |
 | G10.3 | CFRP, t 2.0 → 2.5 mm | k_ch × 1.953 (t³ law), mass × 1.25 | hand calc §4.1 |
-| **G10.4** | `k_ch → ∞` | φ_f = φ_r = 0.20476°; balance = 56.14 % — reproduces module 6's (6.6) exactly | limit of (10.7) |
-| **G10.5** | `k_ch = 21.60 N·m/rad` | φ_f = 0.18494°, φ_r = 0.23080°, twist 2.75 arcmin, balance = 52.63 % | hand calc §4.2 |
+| **G10.4** | `k_ch → ∞` | φ_f = φ_r = 0.20854°; balance = 56.15 % — reproduces module 6's (6.6) exactly | limit of (10.7) |
+| **G10.5** | `k_ch = 21.60 N·m/rad` | φ_f = 0.18836°, φ_r = 0.23506°, twist 2.80 arcmin, balance = 52.61 % | hand calc §4.2 |
 | **G10.6** | change material CFRP → steel at constant thickness, `ride_height_basis = axle_height` | **z_rc, y_rc and every module-2 output unchanged to 1e-12**; Δ(m·h) = +2720 g·mm (+7.2 %) | the correction in §1.1 — material does not move the roll centre |
 | **G10.7** | same change with `ride_height_basis = underside_clearance` and Δt = 0.5 mm | z_rc 9.9749 → 10.705 mm (+0.73); every chassis-side hardpoint z +0.5 | module 2 §6.6, §3.4 |
 | G10.8 | `t = 0` | rigid chassis, `chassisRigidAssumed`, no torsion number | §6 |
-| G10.9 | measured `k_ch = 0.80 N·m/deg` supplied | used instead of the estimate (equivalent 45.84 N·m/rad → balance ≈ 54.0 %); badge is not `estimated` | §3.2 |
+| G10.9 | measured `k_ch = 0.80 N·m/deg` supplied | used instead of the estimate (equivalent 45.84 N·m/rad → balance 54.00 %); badge is not `estimated` | §3.2 |
 
 Tolerances: 1e-6 relative on stiffness, 1e-5 ° on angles, 0.01 pp on balance.
 

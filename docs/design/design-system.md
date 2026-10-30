@@ -298,10 +298,11 @@ This is where a port of a physics app usually goes wrong, so it is specified rat
 | Property | Unit (display) | Decimals | Sign shown | Uncomputable when |
 |---|---|---|---|---|
 | Roll centre height | mm | 0 | no | a hardpoint for that corner is missing |
-| Roll centre migration | mm per 10 mm travel | 1 | yes | same as above |
-| Camber gain | ° per 10 mm bump (headline) · °/° in the detail | 2 | yes | missing hardpoint |
+| Roll centre migration | mm at ±1° of roll (a displacement, not a rate) | 1 | yes | same as above |
+| Camber gain | ° per 10 mm bump (headline) · °/mm in the detail | 2 | yes | missing hardpoint |
+| Camber per degree of roll | °/° | 2 | yes | missing hardpoint |
 | Bump steer | mm toe per 10 mm bump (headline) · °/10 mm in the detail | 2 | yes | steering link endpoint missing |
-| Roll stiffness | N·m/deg (rad in the maths) | 3 | no | spring or bar data missing |
+| Roll stiffness | N·m/deg (the solver returns N·m/rad; ÷ 57.29578 once, in the formatter) | 3 | no | spring or bar data missing |
 | Wheel rate | lb/in, or N/mm per the car's unit preference | 2 | no | spring rate or motion ratio missing |
 | Motion ratio | — | 2 | no | damper mount or arm length missing |
 | Damping ratio | — | 2 | no | damper data missing |
@@ -526,7 +527,8 @@ The "what this did" panel on the sheet diff (GitHub #10). **Three tiers, and the
 
 - **Leading line is the direction of change, with its magnitude**: `▲ Rear oil 350 → 400 cSt: more damping at the wheel, ζ +0.04 (estimate)`, `▼ Shock laid down: less wheel damping`. A sentence with an arrow, in `onSurface`, above the absolute values — the trustworthy part first (E3.6e).
 - **The value is secondary and hedged**: `~0.42 ±0.06` with the `estimated` badge, a dotted underline and the `not_validatable` ring. The band comes from the damper model's own range, computed by re-running ζ with each estimated input at the ends of its own tolerance — never a blanket percentage (§9). The band is displayed **wherever ζ is** (E3.6b): the card, the compare view, the property detail and every export.
-- **Two shaft speeds, per corner (E3.6a).** The card front/rear columns show the *low-speed* value; a `5 / 300 mm/s` segmented control inside the card switches both columns, and the detail lists all four corners at both speeds so a mirrored car reads as four equal values rather than an assumption. Both speeds' numbers are always reachable in one tap; a single averaged ζ is never shown.
+- **Two shaft speeds, per corner (E3.6a).** The card front/rear columns show the *low-speed* value; a `50 / 200 mm/s` segmented control inside the card switches both columns (the two defaults in
+`fields.yaml`; 5 mm/s sits below the model's friction floor and is not offered), and the detail lists all four corners at both speeds so a mirrored car reads as four equal values rather than an assumption. Both speeds' numbers are always reachable in one tap; a single averaged ζ is never shown.
 - **What changes this panel**, inside the card, collapsed by default: four levers with the direction and the relative size of their effect — oil viscosity (heavier → more), piston holes (more → less low-speed), spring rate (stiffer → lower ζ at the same damper), motion ratio / shock angle (laying the shock down → less wheel damping). Each row is a sentence, not a slider.
 - **Absent gracefully.** No damper data → the card is `missing` (no numeral), the direction line is replaced by *Not computable yet*, and the "what changes this" panel still opens — teaching without pretending. No estimate is manufactured from a spring rate alone.
 - **Validation ring is always present**; in v1 the card is unvalidated like every other.

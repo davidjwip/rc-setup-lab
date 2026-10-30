@@ -324,13 +324,13 @@ reaches the rotated arm, and at α = −5° the left wheel reports +2.4°.
 
 | bump (mm) | z_Tₒ (mm) | r_p (mm) | ψ (°) | τ per wheel (°) | axle total (°) |
 |---|---|---|---|---|---|
-| −4 | 28.064 | 51.5480 | −163.109 | **+0.010** | +0.020 |
-| −2 | 30.039 | 51.5843 | −163.265 | **+0.166** | +0.332 |
-| −1 | 31.021 | 51.5742 | −163.222 | **+0.123** | +0.246 |
+| −4 | 28.064 | 51.5479 | −163.109 | **+0.010** | +0.020 |
+| −2 | 30.039 | 51.5842 | −163.265 | **+0.166** | +0.332 |
+| −1 | 31.021 | 51.5741 | −163.222 | **+0.123** | +0.246 |
 | 0 | 32.000 | 51.5455 | −163.099 | 0.000 | 0.000 |
 | +1 | 32.975 | 51.4984 | −162.897 | **−0.202** | −0.404 |
 | +2 | 33.948 | 51.4330 | −162.615 | **−0.484** | −0.968 |
-| +4 | 35.882 | 51.2479 | −161.809 | **−1.289** | −2.578 |
+| +4 | 35.882 | 51.2478 | −161.809 | **−1.290** | −2.580 |
 
 Note the sign of the whole table against round 1's: the magnitudes are identical, the convention is
 now module 1's. **In bump the wheels toe out**; in droop they toe in.
@@ -352,13 +352,18 @@ the one a racer experiences:
 
 | z_Tᵢ (mm) | τ(0) before re-zeroing (°) | τ(+2) − τ(0) (°) | coefficient (°/mm) |
 |---|---|---|---|
-| 26.00 | −1.349 | −1.178 | −0.503 |
-| 28.00 | −0.501 | −0.822 | −0.329 |
-| 30.00 | +0.0002 | −0.484 | −0.1625 |
+| 26.00 | −1.349 | −1.178 | −0.502 |
+| 28.00 | −0.501 | −0.822 | −0.328 |
+| 30.00 | +0.000 | −0.484 | −0.1625 |
 | 31.00 | +0.125 | −0.320 | −0.081 |
-| 32.00 | +0.166 | −0.158 | +0.0005 |
-| 33.00 | +0.125 | +0.004 | +0.082 |
-| 34.00 | +0.0002 | +0.166 | +0.164 |
+| 32.00 | +0.166 | −0.157 | +0.000 |
+| 33.00 | +0.125 | +0.004 | +0.081 |
+| 34.00 | +0.000 | +0.166 | +0.163 |
+
+The coefficient column is the ±0.2 mm central difference (4.13) at **every** row, not `τ(+2)/2`:
+at the ends of the table the two differ by up to 17 % (z_Tᵢ = 26.00: −0.502 against a chord of
+−0.589), because τ is strongly curved there. Round 2's last two rows read −0.503 / +0.164, which were
+last-digit slips in a column whose whole point is that it is reproducible.
 
 The coefficient crosses zero at `z_Tᵢ = 32.00 mm` — exactly where the tie rod is horizontal in front
 view. That is the model behaving as its equations say it must (§5.2), and it is *not* the published
@@ -369,9 +374,9 @@ criterion; the discrepancy is the module's main open question (`99-validation.md
 The tie-rod outer ball's front-view velocity at static (from the carrier transform at ±0.5 mm):
 
 ```
-dTₒ/dbump = (0.053, 0.977) mm per mm
+dTₒ/dbump = (0.0547, 0.9771) mm per mm
 û_yz = (−48.0415, −2.00)/48.0831 = (−0.99914, −0.04160)
-û_yz · dTₒ/dbump = −0.05295 − 0.04064 = −0.09359
+û_yz · dTₒ/dbump = −0.05461 − 0.04065 = −0.09526
 ```
 
 The two terms are 57 % and 43 % of the total. The model reproduces only the second (the vertical term,
@@ -389,11 +394,11 @@ coefficient.**
 | G04.1 | reference car, rack **+2.000 mm** (both ends) | δ_left = −7.603°, δ_right = −8.563° (car turns right) | hand calc §6.2 |
 | G04.2 | reference car, rack +2.000 mm, `t = 172.0` contact-patch track | Ackermann = 127.06 % ± 0.2 | hand calc §6.3 |
 | **G04.3** | steering arm α = −5° about A, r_p re-derived, rack +2 | δ = (−7.202, −7.852)°, Ackermann = 99.0 % ± 0.2 | hand calc §6.3 table |
-| **G04.4** | reference car, z_Tᵢ = 30.00 mm | τ(−2) = **+0.166°**, τ(+2) = **−0.484°**, τ(+4) = **−1.289°** per wheel; axle total at +2 = −0.968° | hand calc §6.4 |
+| **G04.4** | reference car, z_Tᵢ = 30.00 mm | τ(−2) = **+0.166°**, τ(+2) = **−0.484°**, τ(+4) = **−1.290°** per wheel; axle total at +2 = −0.968° | hand calc §6.4 |
 | **G04.5** | reference car, z_Tᵢ = 30.00 mm | bump-steer coefficient = **−0.1625 °/mm** ± 0.002 | hand calc §6.4 |
-| G04.6 | z_Tᵢ moved to 32.00 mm | coefficient = +0.0005 °/mm ± 0.001 (zero crossing) | hand calc §6.4 |
+| G04.6 | z_Tᵢ moved to 32.00 mm | coefficient = +0.0000 °/mm ± 0.001 (zero crossing) | hand calc §6.4 |
 | **G04.7** | rack +40 mm with `s_max = 8 mm` | `Undefined(outOfRackTravel)` — a **mechanical** limit, not `noIntersection` (which is unreachable on this car: the circles intersect at every rack position) | §3.6 |
-| G04.8 | rack **+0.10 mm** | `|δ_inner| = 0.400° < 0.5°` → Ackermann not reported, `flags: [lowAngle]`; at +0.30 mm it is reported (|δ_inner| = 1.209°) | hand calc §3.3 |
+| G04.8 | rack **+0.10 mm** | `\|δ_inner\| = 0.400° < 0.5°` → Ackermann not reported, `flags: [lowAngle]`; at +0.30 mm it is reported (`\|δ_inner\| = 1.209°`) | hand calc §3.3 |
 | **G04.9** | `r_p(0)` inconsistent with the measured Tₒ by 0.1 mm | `Undefined(incompleteModel)` naming `tie_in`/`tie_out` | §4 |
 | **G04.10** | reference car, bump +2 mm, tie-rod outer ball height taken from the **crank-angle** rule | τ(+2) = −0.430° instead of −0.484° — the case that pins the carrier transform | 02 §6.9, §6.4 |
 

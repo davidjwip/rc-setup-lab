@@ -49,14 +49,17 @@ found the requirements document using y-right with a mid-wheelbase origin, which
 128 mm and 257 mm away from a developer following this file, silently and plausibly. The ruling:
 
 > **R-1.** ISO 8855 — x forward, y left, z up, origin on the ground plane at the rear axle centre.
-> Per-wheel quantities (camber, toe) are per-wheel signed: positive camber = top outboard, positive
-> toe = toe-in, negated where mirroring requires it. Car-level quantities (roll-centre height, load
-> transfer) are frame-free and are never signed per side.
+> Per-wheel quantities (camber, toe) are **per-wheel signed and are not negated by mirroring**:
+> positive camber = top outboard, positive toe = toe-in, and a symmetric car stores the same camber
+> and the same toe on both sides. The conversion to a global-frame angle is done once, inside the
+> solver, by the side factor `s = ±1` (§3.1). Car-level quantities (roll-centre height, load transfer)
+> are frame-free and are never signed per side.
 
-`docs/specs/spec.md` §4.2 is being brought into line by the requirements revision (R2-B). Until that
-lands, **this section wins** for anything the physics package computes, and a model file written by
-the app must satisfy it. If a future reader finds the two documents disagreeing again, the bug is in
-`spec.md`, and the fix is one edit there, not a sign table here.
+`docs/specs/spec.md` §4.2, §2.4 and §7.1 say per-wheel quantities "are negated on mirroring". That
+sentence is superseded by ruling **D-17** (2026-10-31) and the correction is one sentence in `spec.md`,
+not a sign table here: negating a stored toe on the mirrored corner puts 1.0° of total toe on a
+straight car, which is the same class of silent sign error round 1 was convened to find. A model file
+written by the app must satisfy this section.
 
 Because z is measured from the road, **ride-height changes move every hardpoint in z**. The model
 stores hardpoints at the ride height they were measured at (`measured_at_ride_height`), and a ride
@@ -101,10 +104,12 @@ signs on the two sides and KPI and scrub radius flipped. Every formula in module
 carries `s`. The golden case that would have caught it is G01.9.
 
 **Toe is symmetric, not antisymmetric.** 0.5° of toe-in on the left mirrors to 0.5° of toe-in on the
-right, because "toward the centreline" is itself mirrored. Round 1's mirror rule negated toe as well
-as camber, which turned a symmetric car into one with 1.0° of total toe error in the one code path
-every right-hand corner takes. Camber is genuinely antisymmetric (outboard flips sides); toe is not;
-KPI and scrub radius are per-wheel quantities and are unchanged in value under mirroring.
+right, because "toward the centreline" is itself mirrored — and because the stored number is a
+property of the wheel, not of the car's axes (D-17). Round 1's mirror rule negated toe as well as
+camber, which turned a symmetric car into one with 1.0° of total toe error in the one code path every
+right-hand corner takes. Camber is genuinely antisymmetric *in the global frame* (outboard flips
+sides), but the **stored** camber is the per-wheel signed value and is copied unchanged by
+`mirror_of`; KPI and scrub radius likewise keep their per-wheel value and their sign.
 
 Two notes reviewers will query:
 
@@ -186,7 +191,7 @@ Axle level (`axles.<axle>.*`), required by module 5 for roll stiffness and by mo
 
 | Field | Unit | Range (1/10 TC) | on_absence | Consumed by |
 |---|---|---|---|---|
-| `arb.bar_diameter` d | mm | 0 – 2.5 (0 = no bar) | `ASSUME(0, flag noBar)` | k_bar → k_φ → balance |
+| `arb.bar_diameter` d | mm | 0 – 2.5 | `REFUSE` where `arb.type` is `torsion_bar`; a car with no bar says `arb.type: none` (the retired `bar_diameter: 0` case) | k_bar → k_φ → balance |
 | `arb.span` L_bar | mm | 50 – 120 | `REFUSE` roll stiffness | k_bar |
 | `arb.arm_length` a_arm | mm | 12 – 30 | `REFUSE` roll stiffness | k_bar |
 | `arb.drop_radius` r_d | mm | derived from `arb_drop` | derived | IR_arm |
@@ -196,36 +201,54 @@ Axle level (`axles.<axle>.*`), required by module 5 for roll stiffness and by mo
 
 Corner level (`corners.<c>.damper.*`), required by module 7 — **v1**, as an **estimate** (owner
 decision 2026-10-30: damping ratio ships, with a band and an `estimated` badge; the direction of
-change must be trustworthy even where the magnitude is ±30 %):
+change must be trustworthy even where the magnitude is banded):
 
-| Field | Unit | Range | on_absence | Consumed by |
-|---|---|---|---|---|
-| `damper.piston_bore` | mm | 8 – 12 | `REFUSE` ζ — measurable with a caliper | A_p |
-| `damper.shaft_dia` | mm | 2 – 4 | `REFUSE` ζ — measurable | A_p |
-| `damper.piston_holes` n | count | 2 – 8 | `REFUSE` ζ — countable | A_h |
-| `damper.piston_hole_dia` d_h | mm | 0.4 – 1.2 | `REFUSE` ζ — pin gauge, or the maker's drawing | A_h |
-| `damper.oil_cst` | cSt | 200 – 900 | `ASSUME(500, flag assumedOil)` — printed on the bottle | ν, and the label only |
-| `damper.oil_temp` | °C | 5 – 60 | `ASSUME(20, flag assumedTemp)` | ν(T) |
-| `damper.f_blowoff` F_bo | N | 2 – 10 | **`ASSUME(4.0, flag estimatedDamper)`** — dyno-only (07 §2.3); bias is low by the stiction term | force cap |
-| `damper.c_post` | N·s/m | 5 – 40 | **`ASSUME(12, flag estimatedDamper)`** — dyno-only | force cap |
+| Field | Unit | Range | tolerance | on_absence | Consumed by |
+|---|---|---|---|---|---|
+| `damper.piston_bore` | mm | 8 – 12 | ±0.05 mm (±0.5 %) | `REFUSE` ζ | A_p |
+| `damper.shaft_dia` | mm | 2 – 4 | ±0.05 mm (±2 %) | `REFUSE` ζ | A_p |
+| `damper.piston_holes` n | count | 2 – 8 | 0 (countable) | `REFUSE` ζ | A_h |
+| `damper.piston_hole_dia` d_h | mm | 0.4 – 1.2 | **±0.02 mm (±3.3 % on 0.60)** | `REFUSE` ζ | A_h |
+| `damper.oil_cst` | cSt | 200 – 900 | ±60 %, or ±5 % from the bottle label | `ASSUME(500, flag assumedOil)` | ν, and the label only |
+| `damper.oil_temp` | °C | 5 – 60 | ±2 °C | `ASSUME(20, flag assumedTemp)` | ν(T) |
+| `damper.f_blowoff` F_bo | N | 2 – 10 | **±50 %** (dyno-only) | **`ASSUME(4.0, flag estimatedDamper)`** | force cap |
+| `damper.c_post` | N·s/m | 5 – 40 | **±50 %** (dyno-only) | **`ASSUME(12, flag estimatedDamper)`** | force cap |
+
+**The tolerance column is part of the contract, not a display nicety.** Every one of these fields
+feeds the computed ζ band (07 §6.6): the band is ζ re-run with each value moved to the ends of its own
+tolerance, so a field without one contributes no uncertainty and the band silently understates. An
+estimated field stores it as `tolerance_pct` (00 §5); a measured field stores the gauge tolerance in
+its own unit. **No field in `fields.yaml` can carry either yet** — the value object is
+`{value, source}` — which is item 1 of the contract-deltas table in `00` §11. The field *names* here
+map to disk paths in §5.1; where the two disagree, §5.1 and `fields.yaml` win.
 
 The split matters: the four geometry fields are things a racer can measure or read off a drawing, so
-their absence is a refusal; the two dyno-only fields are assumed with a flag, and the output that
-consumes them carries the `estimated` badge and 07 §9's band. Round 1 refused all six, which made ζ
-uncomputable from every file that existed, and separately advertised ζ as a v1 output.
+their absence is a refusal; the two dyno-only fields are assumed with a flag *and a tolerance*, and
+the output that consumes them carries the `estimated` badge and 07 §6.6's computed band. Round 1
+refused all six, which made ζ uncomputable from every file that existed, and separately advertised ζ
+as a v1 output.
+
+> **Policy delta against `spec.md` §4.3.1.** The requirements make `damper_blowoff_force`
+> `on_absence: REFUSE`; this table makes it `ASSUME(4.0)` with a ±50 % tolerance. Both cannot be
+> normative, and the reason the physics side assumes is C1: a REFUSE means ζ is refused for every
+> file a racer can actually produce from a caliper and a bottle label, which deletes the one output
+> D-13 says ships. `spec.md` §4.8 already describes the blow-off force as "an `estimated` value with a
+> `basis` and a `tolerance_pct`", so the §4.3.1 row is the sentence to change. Recorded as a policy
+> delta, not silently reconciled (00 §11).
 
 Vehicle level, required by modules 6 and 10:
 
 | Field | Unit | Range | on_absence | Consumed by |
 |---|---|---|---|---|
 | `mass.total` m | g | 1000 – 1600 | `REFUSE` | everything in 6 |
-| `mass.unsprung` m_u | g | 160 – 320 | `ASSUME(0, flag)` — round 1's E1.8 | ΔW_u |
-| `cg.height` h | mm | 15 – 45 | **never `measured`** — see below; `ASSUME(component estimate, flag cgInferred)` | ΔW, φ |
-| `cg.provenance` | enum | `component_estimate` \| `hang_test` \| `assumed` | `ASSUME(assumed)` | the badge on every load number |
-| `cg.components[]` | `{mass, x, y, z}` | g, mm | omit → `assumed` | the component route (§4.5) |
+| `mass.unsprung` m_u | g **per axle** | 80 – 160 per axle (160 – 320 per car) | `ESTIMATE(unsprung_corner_weighing)`, default 120 g/axle — rows `unsprung_front` / `unsprung_rear` on disk (§5.1); the retired `ASSUME(0)` was outside the range and cost the front ride frequency 15 % | ΔW_u |
+| `cg.height` h | mm | 15 – 45 | **never `measured`** — see below; `ESTIMATE(two_hang_plumb_line)`, default 28.0. `ASSUME` on this field is a schema error | ΔW, φ |
+| `cg.provenance` | enum | `two_hang_plumb_line` \| `component_mass_moment` | **derived, not stored** — the `method` of the source on `cg.height` | the badge on every load number |
+| `cg.components[]` | `{mass, x, y, z}` | g, mm | `OMIT` → the component route is unavailable | the component route (§4.5) |
 | `cg.unsprung_height` h_u | mm | 0.55 – 0.75 × tyre radius | `ASSUME(0.625 R, flag)` | ΔW_u |
-| `chassis.material`, `chassis.thickness` | —, mm | see module 10 | omit → rigid chassis | k_ch |
-| `chassis.torsion_measured` | N·m/deg | 0.05 – 5 | omit → estimator | balance split |
+| `chassis.material`, `chassis.thickness` | —, mm | see module 10 | `OMIT` → rigid chassis | k_ch |
+| `chassis.span` w / `chassis.rail_factor` κ_rail | mm / — | 70 – 110 / 1.0 – 3.0 | `OMIT` / `ASSUME(1.0)` | J, k_ch |
+| `chassis.torsion_measured` | N·m/deg | 0.05 – 5 | `OMIT` → estimator | balance split |
 | `chassis.ride_height_basis` | enum | `underside_clearance` \| `axle_height` | `ASSUME(underside_clearance)` | whether a thickness change moves the car (10 §3.4) |
 
 **Corner weights.** A model that has four measured corner weights uses them; a model that has only
@@ -296,78 +319,235 @@ UI must therefore badge the load magnitude `cgInferred` and **not** the balance 
 
 ---
 
-## 5. Schema on disk (ruling R-2 — mm, g, deg)
+## 5. The model file — the same file as `spec.md` §4.2
+
+**This section used to print a different document.** It declared `schema_version` `1.1.0`,
+stored bare numbers, nested points under `vehicle`/`corners.LF.points`, and carried a
+`mirror_of` key — while `spec.md` §4.2 printed `1.0.0`, `{v, s}` objects and
+`body.axles.front.corners.left.lower_arm.inboard_front`. Two files, both labelled
+normative, neither able to load the other. The ruling (`docs/decisions.md` D-16): one
+schema, defined in `docs/specs/fields.yaml`, and every document that prints a model
+prints **that** file.
+
+So the block below is the reference car of §8 as it exists on disk. It is the same file —
+value for value — as the example in `spec.md` §4.2, and if the two ever disagree the
+`fields.yaml` definition and the spec's table win and this block is the bug. Every key
+below appears in `fields.yaml`; the mapping from the input names this module's §4.4 uses
+to the paths below is at the end of this section.
 
 ```json
 {
-  "schema_version": "1.1.0",
-  "units": {"length": "mm", "mass": "g", "angle": "deg", "spring_rate": "N/mm"},
-  "name": "Reference 1/10 TC",
-  "source": "docs/specs/physics/01-coordinates-and-hardpoints.md §8",
-  "measured_at_ride_height": 5.0,
-  "vehicle": {
-    "mass_total": 1350.0,
-    "mass_unsprung": 240.0,
-    "cg": {"x": 141.35, "y": 0.0, "z": 28.0},
-    "cg_unsprung_height": 20.0,
-    "tyre_radius_front": 32.0,
-    "tyre_radius_rear": 32.0,
-    "chassis": {"material": "cfrp", "thickness": 2.0, "torsion_measured": null}
+  "schema_version": "1.0.0",
+  "kind": "car_model",
+  "id": "mdl_ref_1tc",
+  "name": "Reference 1/10 TC — measured 2026-10-30",
+  "class": "touring_car_1_10",
+  "units": {
+    "length": "mm", "mass": "g", "angle": "deg", "spring_rate": "N/mm",
+    "viscosity": "cSt", "temperature": "°C", "percentage": "%",
+    "count": "1", "shear_modulus": "GPa"
   },
+  "frame": { "standard": "ISO 8855", "axes": "x forward, y left, z up",
+             "origin": "ground plane, rear axle centre, vehicle centreline" },
+  "symmetry": true,
+  "license": { "id": "CC-BY-4.0", "url": "https://creativecommons.org/licenses/by/4.0/" },
+  "contributors": [ { "name": "D. W.", "role": "measured" } ],
+  "attribution_text": "Reference 1/10 TC — measured by D. W., 2026-10-30. CC BY 4.0.",
+  "meta": { "created": "2026-10-30", "app_version": "0.1.0", "revises": null },
+
+  "sources": {
+    "s1": { "type": "measured", "method": "digital caliper 150 mm",
+            "datum": "flat plate, hinge-pin centre", "by": "D. W.", "date": "2026-10-30",
+            "note": "car on setup stands, wheels off" },
+    "s2": { "type": "inferred", "method": "two_hang_plumb_line",
+            "basis": "chassis hung from one point at each end, plumb line photographed square-on",
+            "tolerance_pct": 15.0, "by": "D. W.", "date": "2026-10-30" },
+    "s3": { "type": "estimated", "method": "unsprung_corner_weighing",
+            "basis": "wheel, tyre, hub, carrier and outboard link ends on a kitchen scale",
+            "tolerance_pct": 20.0, "by": "D. W.", "date": "2026-10-30" },
+    "s4": { "type": "derived",
+            "from": ["body.mass.total", "body.mass.sprung_front", "body.mass.sprung_rear"],
+            "note": "corner weights minus unsprung" },
+    "s5": { "type": "measured", "method": "corner scales", "datum": "four pads, ride height 5.0 mm",
+            "by": "D. W.", "date": "2026-10-30" },
+    "s6": { "type": "manufacturer", "ref": "kit manual p.14, exploded view and spring table" }
+  },
+
+  "body": {
+    "reference_ride_height": { "value": 5.0,   "source": "s1" },
+    "wheelbase":             { "value": 257.0, "source": "s1" },
+    "cg": {
+      "height":           { "value": 28.0, "source": "s2" },
+      "front_mass_share": { "value": 45.0, "source": "s4" },
+      "unsprung_height":  { "value": 20.0, "source": "s3" }
+    },
+    "mass": {
+      "total":          { "value": 1350.00, "source": "s5" },
+      "sprung_front":   { "value": 487.49,  "source": "s4" },
+      "sprung_rear":    { "value": 622.49,  "source": "s4" },
+      "unsprung_front": { "value": 120.00,  "source": "s3" },
+      "unsprung_rear":  { "value": 120.00,  "source": "s3" }
+    },
+    "chassis": { "material": "cfrp", "thickness": { "value": 2.0, "source": "s6" } }
+  },
+
   "axles": {
-    "front": {"track": 172.0, "spring": {"rate": 3.50},
-              "arb": {"bar_diameter": 1.50, "span": 90.0, "arm_length": 20.0,
-                      "shear_modulus": 79.3, "rate_at_link": null}},
-    "rear":  {"track": 174.0, "spring": {"rate": 2.60},
-              "arb": {"bar_diameter": 1.20, "span": 90.0, "arm_length": 20.0,
-                      "shear_modulus": 79.3, "rate_at_link": null}}
+    "front": {
+      "track":                { "value": 172.0, "source": "s1" },
+      "tyre_radius":          { "value": 32.0,  "source": "s1" },
+      "roll_centre_validity": { "value": 40.0,  "source": "s6" },
+      "droop_limit_wheel":    { "value": 5.0,   "source": "s6" },
+      "bump_limit_wheel":     { "value": 5.0,   "source": "s6" },
+      "spring": { "location": "coilover_at_damper", "rate": { "value": 3.50, "source": "s6" } },
+      "arb": { "type": "torsion_bar",
+               "bar_diameter":  { "value": 1.50, "source": "s6" },
+               "span":          { "value": 90.0, "source": "s6" },
+               "arm_length":    { "value": 20.0, "source": "s6" },
+               "shear_modulus": { "value": 79.3, "source": "s6" } },
+      "steering": { "rack": {
+        "x":               { "value": 225.0, "source": "s1" },
+        "z":               { "value": 30.0,  "source": "s1" },
+        "y_left":          { "value": 26.0,  "source": "s1" },
+        "y_right":         { "value": -26.0, "source": "s1" },
+        "travel_per_turn": { "value": 12.0,  "source": "s6" } } }
+    },
+    "rear": {
+      "track":       { "value": 174.0, "source": "s5" },
+      "tyre_radius": { "value": 32.0,  "source": "s1" },
+      "spring": { "location": "coilover_at_damper", "rate": { "value": 2.60, "source": "s6" } },
+      "arb": { "type": "torsion_bar",
+               "bar_diameter":  { "value": 1.20, "source": "s6" },
+               "span":          { "value": 90.0, "source": "s6" },
+               "arm_length":    { "value": 20.0, "source": "s6" },
+               "shear_modulus": { "value": 79.3, "source": "s6" } }
+    }
   },
+
   "corners": {
     "LF": {
-      "arm_type": {"lower": "hinge", "upper": "single_link"},
+      "arm_type": { "lower": "hinge", "upper": "single_link" },
       "points": {
-        "lca_in_a":  [238.0, 30.0, 12.0],
-        "lca_in_b":  [272.0, 30.0, 12.0],
-        "lca_out":   [259.0, 78.0, 7.0],
-        "uca_in":    [250.0, 42.0, 45.0],
-        "uca_out":   [254.0, 72.8, 44.0],
-        "tie_in":    [225.0, 26.0, 30.0],
-        "tie_out":   [243.68, 74.04, 32.0],
-        "wc":        [257.0, 86.0, 32.0],
-        "damper_lo": [257.0, 60.0, 8.875],
-        "damper_up": [257.0, 44.0, 58.0],
-        "arb_drop":  [250.0, 55.0, 9.40]
+        "lca_in_a":  { "value": [238.00, 30.00, 12.00],  "source": "s1" },
+        "lca_in_b":  { "value": [272.00, 30.00, 12.00],  "source": "s1" },
+        "lca_out":   { "value": [259.00, 78.00,  7.00],  "source": "s1" },
+        "uca_in":    { "value": [250.00, 42.00, 45.00],  "source": "s1" },
+        "uca_out":   { "value": [254.00, 72.80, 44.00],  "source": "s1" },
+        "tie_in":    { "value": [225.00, 26.00, 30.00],  "source": "s1" },
+        "tie_out":   { "value": [243.68, 74.04, 32.00],  "source": "s1" },
+        "wc":        { "value": [257.00, 86.00, 32.00],  "source": "s1" },
+        "damper_lo": { "value": [257.00, 60.00,  8.875], "source": "s1" },
+        "damper_up": { "value": [257.00, 44.00, 58.00],  "source": "s1" },
+        "arb_drop":  { "value": [250.00, 55.00,  9.40],  "source": "s1" }
       },
-      "damper": {"piston_bore": 9.6, "shaft_dia": 2.5, "piston_holes": 3,
-                 "piston_hole_dia": 0.60, "oil_cst": 500, "oil_temp": 20.0,
-                 "f_blowoff": 4.0, "c_post": 12.0},
-      "setup": {"camber": -2.0, "toe": 0.5},
-      "sources": {"lca_out": "caliper, 2026-10-30", "uca_out": "caliper, 2026-10-30"}
-    },
-    "RF": {"mirror_of": "LF"}
+      "damper": {
+        "piston_bore":     { "value": 9.6,   "source": "s6" },
+        "shaft_dia":       { "value": 2.5,   "source": "s6" },
+        "piston_holes":    { "value": 3,     "source": "s6" },
+        "piston_hole_dia": { "value": 0.60,  "source": "s6" },
+        "oil_cst":         { "value": 500.0, "source": "s6" }
+      }
+    }
   }
 }
 ```
 
 Notes that matter to the implementer:
 
-- Arrays are `[x, y, z]` in **millimetres**. The one 1000× error that used to be possible here was a
-  metre-valued coordinate; the parser now rejects any coordinate with `|c| > 3000 mm` (a 3 m
-  hardpoint does not exist on a 1/10 car) and the error message says "coordinates are millimetres".
-  Round 1's guard was `|c| > 3` on a metre-valued field; the ruling re-expresses it, it does not
-  weaken it.
-- **Angles are degrees on disk** — including `camber`, `toe` and `oil_temp`, which round 1's file
-  labelled `"units": "SI"` while storing degrees. SI inside the package is radians, and the adapter
-  is the only place that conversion happens.
-- `"mirror_of": "LF"` generates the right-hand corner by **negating y only**. Camber becomes −γ (it
-  is antisymmetric); **toe is unchanged** (it is symmetric); KPI, scrub radius, caster and trail are
-  unchanged in value because they are per-wheel quantities (§6.1). The mirrored corner's
-  provenance is `derived_by_mirror`, not `measured`, and it is *not* re-solved as if it were the
-  left corner: its crank angle, branch sign and monotonicity direction are all different (§6.5).
-- A corner may carry explicit points instead. Then the model is flagged `asymmetric` and every
-  per-side result is computed per side; nothing is assumed symmetric.
-- `sources` is a free-form map from key to prose. Review rule 1 requires it; the app warns when a
-  key that feeds a displayed number has no source.
+- **Values are `{ "value": …, "source": … }` objects, never bare numbers** (D-16). The
+  `source` is an id into the document's top-level `sources` map and must resolve; a value
+  without a source is a schema error, not a review note. The per-point prose map this
+  section used to carry (`"sources": {"lca_out": "caliper, 2026-10-30"}`) is retired —
+  provenance that lives in two places is provenance that disagrees with itself.
+- **Arrays are `[x, y, z]` in millimetres.** The one 1000× error that used to be possible
+  here was a metre-valued coordinate; the parser rejects any coordinate with
+  `|c| > 3000 mm` (a 3 m hardpoint does not exist on a 1/10 car) and the error message
+  says "coordinates are millimetres". Round 1's guard was `|c| > 3` on a metre-valued
+  field; the ruling re-expresses it, it does not weaken it.
+- **Angles are degrees on disk** — including `camber`, `toe` and `oil_temp`, which round 1's
+  file labelled `"units": "SI"` while storing degrees. SI inside the package is radians,
+  and the adapter is the only place that conversion happens.
+- **`units` declares every dimension the file uses and nothing else.** This file uses nine;
+  its `units` block declares nine. The former §5 declared four (`length, mass, angle,
+  spring_rate`) while the body also carried newtons, N·s/m and cSt — a document that
+  refused itself under `spec.md` §4.1 rule 1.
+- **`schema_version` is `1.0.0`**, the only version the app writes (`spec.md` §4.7), so one
+  fixture covers it. `1.1.0` is withdrawn; nothing has shipped, so there is nothing to
+  migrate.
+- **`symmetry: true` and no `RF` corner.** The right-hand corner is generated at load by
+  **negating y only** — with `derived_by_mirror` provenance, not `measured`, and not
+  re-solved as if it were the left corner (its crank angle, branch sign and monotonicity
+  direction all differ, §6.5). Camber is antisymmetric and toe is symmetric, but both are
+  stored per-wheel and both are **copied unchanged** through the mirror; the side factor
+  `s = ±1` (§3.1) is what carries the sign into the car frame, applied once inside the
+  solver. This is D-17, and §6.1 plus G01.1, G01.8, G01.9 and G01.12 are what prove it. The
+  per-corner `"mirror_of": "LF"` key this section used to carry is retired as a *schema*
+  key: the document says `symmetry: true`, one mechanism is enough, and where §6 says
+  `mirror_of` it means this derivation — whose source record is `derived_by_mirror`, with
+  `from` naming the left corner's field path.
+- **What is derived is not stored.** Contact patches (`(0, ±track/2, 0)` and
+  `(wheelbase, ±track/2, 0)`), `x_cg` (`wheelbase · (1 − front_mass_share)`, = 141.35 mm
+  here), per-corner unsprung mass (half the axle value), the bar's `drop_radius` and every
+  link length. §6 derives them once and later modules never recompute them differently.
+- **Absence is a missing key**, never `0`, `null` or a sentinel (`spec.md` §4.1 rule 3).
+  The rear corners are absent here for the honest reason in §8.4 — they have never been
+  measured — and every rear-corner output is `REFUSED` naming `corners.LR.points.*`
+  rather than computed from a guess.
+- **Three `ESTIMATE` policies carry this file's least certain numbers**, and all three
+  produce a band rather than a point: `body.cg.height` (28.0 mm, procedure
+  `two_hang_plumb_line`, alt `component_mass_moment`), `body.mass.unsprung_front` and
+  `body.mass.unsprung_rear` (120 g per axle, procedure `unsprung_corner_weighing`, ±20 %).
+  None of them is `ASSUME`: `ASSUME` on a quantity the bench cannot measure is a schema
+  error, and `ASSUME(0)` for unsprung mass — this section's former value — put the car
+  outside its own plausible range and cost the front ride frequency 15 %.
+
+### 5.1 The §4.4 contract, mapped to paths
+
+§4.4 names the inputs modules 5–10 consume by their short names. This is where each one
+lives in the file above. A field that is in §4.4 and not here is a defect; a field here and
+not in `fields.yaml` is a worse one.
+
+| §4.4 name | Path in the file | Unit | `on_absence` |
+|---|---|---|---|
+| `arb.bar_diameter` | `axles.<axle>.arb.bar_diameter` | mm | `REFUSE` (only where `arb.type` is `torsion_bar`) |
+| `arb.span` | `axles.<axle>.arb.span` | mm | `REFUSE` (same condition) |
+| `arb.arm_length` | `axles.<axle>.arb.arm_length` | mm | `REFUSE` (same condition) |
+| `arb.shear_modulus` | `axles.<axle>.arb.shear_modulus` | GPa | `ASSUME(79.3)` |
+| `arb.rate_at_link` | `axles.<axle>.arb.rate_at_link` | N/mm | `REFUSE` (only where `arb.type` is `blade` or `fixed`) |
+| `arb.drop_radius` | derived from `corners.<corner>.points.arb_drop` | mm | derived, never stored |
+| `spring.rate` | `axles.<axle>.spring.rate` (model) / `corners.<corner>.spring_rate` (setup) | N/mm | `REFUSE` / `OMIT` |
+| `damper.piston_bore` | `corners.<corner>.damper.piston_bore` | mm | `REFUSE` |
+| `damper.shaft_dia` | `corners.<corner>.damper.shaft_dia` | mm | `REFUSE` |
+| `damper.piston_holes` | `corners.<corner>.damper.piston_holes` | count | `REFUSE` |
+| `damper.piston_hole_dia` | `corners.<corner>.damper.piston_hole_dia` | mm | `REFUSE` |
+| `damper.oil_cst` | `corners.<corner>.damper.oil_cst` | cSt | `ASSUME(500)` in the model, `REFUSE` in a setup |
+| `damper.oil_temp` | `corners.<corner>.damper.oil_temp` | °C | `ASSUME(20)` |
+| `damper.f_blowoff` | `corners.<corner>.damper.f_blowoff` | N | `ASSUME(4.0)` with flag `estimatedDamper` |
+| `damper.c_post` | `corners.<corner>.damper.c_post` | N·s/m | `ASSUME(12.0)` with flag `estimatedDamper` |
+| `mass.total` | `body.mass.total` | g | `REFUSE` |
+| `mass.unsprung` (**per axle**) | `body.mass.unsprung_front`, `body.mass.unsprung_rear` | g per axle | `ESTIMATE(unsprung_corner_weighing)`, default 120 |
+| `cg.height` | `body.cg.height` | mm | `ESTIMATE(two_hang_plumb_line)`, default 28.0 |
+| `cg.provenance` | derived from the `method` of the source on `body.cg.height` | enum | not stored |
+| `cg.components[]` | `body.cg.components[]` | g, mm | `OMIT` |
+| `cg.unsprung_height` | `body.cg.unsprung_height` | mm | `ASSUME(0.625 × tyre_radius)` |
+| `chassis.material` | `body.chassis.material` | enum | `OMIT` |
+| `chassis.thickness` | `body.chassis.thickness` | mm | `OMIT` |
+| `chassis.span` | `body.chassis.span` | mm | `OMIT` |
+| `chassis.rail_factor` | `body.chassis.rail_factor` | – | `ASSUME(1.0)` |
+| `chassis.torsion_measured` | `body.chassis.torsion_measured` | N·m/deg | `OMIT` |
+| `chassis.ride_height_basis` | `body.chassis.ride_height_basis` | enum | `ASSUME(underside_clearance)` |
+
+Two of these changed meaning, not just name. `mass.unsprung` was **per car** (240 g) in
+this module's §4.4 and is **per axle** (120 g) in the file, because the sprung mass a
+corner carries is `corner weight − unsprung at that corner` and the front and rear
+unsprung masses are not the same number on any car that has been weighed. `cg.height` was
+`ASSUME(component estimate, flag cgInferred)` here and is `ESTIMATE(two_hang_plumb_line)`
+in the file: the number carries a band, and `ASSUME` on it is a schema error.
+
+**Where this table and §4.4 disagree, this table and `fields.yaml` are right** — §4.4 is the
+module's shopping list and was written before the schema existed; the two rows above are the
+places it differs, and `arb.bar_diameter: 0` ("no bar") is a third, since `arb.type: none`
+is now the only way to say it. Anything else in §4.4 that contradicts a path here is a
+defect to be fixed in §4.4, not a second convention.
 
 ---
 
@@ -403,18 +583,26 @@ On load, in this order. The first failure stops the load and returns `incomplete
 
 ### 6.1 Mirroring rules
 
-Mirroring negates **y** and nothing else. The consequences are not uniform, because the quantities
-have different symmetry, and round 1 got two rows of this table wrong:
+Mirroring negates **y** and nothing else. Two different quantities are easy to conflate here, so the
+table separates them: the **stored** value of a per-wheel quantity (what `mirror_of` copies) and the
+**global-frame** angle the solver derives from it (what the display may show in a car-level frame).
 
-| Quantity | Under mirroring (y → −y) | Why |
-|---|---|---|
-| point (x, y, z) | (x, −y, z) | definition |
-| camber γ | **−γ** | antisymmetric: outboard flips sides |
-| toe τ | **unchanged** | symmetric: "toward the centreline" is mirrored too |
-| KPI, scrub radius, trail, caster | **unchanged in value** | per-wheel quantities, evaluated with `s` |
-| crank angle θ₀ | different branch, different sign | the mirrored corner has θ₀ = −174.05° against the left's −5.95° |
-| dW.z/dθ | **opposite sign** | the mirrored four-bar's wheel rises for decreasing θ |
-| `sources` | unchanged (the mirror inherits the left's sources) | the same measurement, both sides |
+| Quantity | Stored value on the mirrored corner | Global-frame angle | Why |
+|---|---|---|---|
+| point (x, y, z) | (x, −y, z) | — | definition |
+| camber γ | **unchanged** (−2.0° stays −2.0°) | **−γ** (+2.0°) | stored: per-wheel signed (D-17). Global: outboard flips sides, so the *frame* angle negates |
+| toe τ | **unchanged** (0.5° stays 0.5°) | **unchanged** (+0.5°) | "toward the centreline" is mirrored too, so neither the stored value nor the frame angle changes |
+| KPI, scrub radius, trail, caster | **unchanged in value and sign** | unchanged | per-wheel quantities, evaluated with `s` |
+| crank angle θ₀ | different branch, different sign | — | the mirrored corner has θ₀ = −174.05° against the left's −5.95° |
+| dW.z/dθ | **opposite sign** | — | the mirrored four-bar's wheel rises for decreasing θ |
+| `sources` | unchanged (the mirror inherits the left's sources) | — | the same measurement, both sides |
+
+**The rule in one sentence (D-17).** A stored camber or toe is a statement about *the wheel*, not about
+the car's axes, so the mirror path (`symmetry: true` in the file; `mirror_of` in this section's prose,
+§5) copies it unchanged and the side factor `s = ±1` does the global-frame conversion inside the
+solver — once, and never in the document. Consequences: a symmetric car has identical stored camber
+and toe left and right, its axle total toe is `2τ` (zero on a straight car), and no code path negates a
+stored setup value on the mirror. G01.8, G01.12 and I13 pin it.
 
 ### 6.2 Ride height — the algorithm round 1 did not specify
 
@@ -424,11 +612,19 @@ constraint is that **the wheel is still on the road**:
 
 ```
 1. translate chassis-side points (lca_in_*, uca_in*, tie_in, damper_up) by +dz
-   — dz > 0 raises the chassis relative to the wheels, i.e. bump
+   — dz > 0 raises the chassis relative to the wheels, i.e. DROOP of the wheel
 2. solve θ such that W(θ).z = tyre_radius  (the wheel stays at ride height on the road)
 3. re-derive θ₀, (u,v), branch sign and the static Uₒ from that state
 4. re-derive everything in §6.6
 ```
+
+**Why the label matters, and what it costs to get wrong.** Module 2's convention (02 §2, §3.5) is
+`bump = wheel moves up relative to the chassis`. Holding the wheel on the road and raising the chassis
+therefore *droops* the wheel; `dz > 0` is droop, not bump. Round 2's step 1 said "i.e. bump", and an
+implementer reading it literally inverts every ride-height number: on the reference car +0.5 mm of
+chassis translation gives **z_rc = 10.7049 mm** (droop) under this reading and **9.2617 mm** (bump)
+under the label's — a 1.44 mm difference against a ±1 mm band. `10` §3.4/§4.3 and G10.7 use 10.7049
+and call it droop; this file's label was the only thing wrong.
 
 Round 1 said only step 1 plus "re-run the module-2 solve from the new static state", which is
 circular: the new static state is what step 2 defines, and a 50/50 guess on the sign of dz inverts
@@ -493,7 +689,7 @@ All of modules 2–7 use this car. Every number in those modules traces back to 
 | Mass unsprung | 240 | g | estimated (60 g/corner), range 160–320 |
 | CG height | 28.0 | mm | assumed, range 15–45 (no measurement procedure exists) |
 | Unsprung CG height | 20.0 | mm | estimated, basis 0.625 × tyre radius |
-| CG x (from rear axle) | 141.35 | mm | derived from the 45/55 front/rear split |
+| CG x (from rear axle) | 115.65 | mm | derived: `x_cg = w_f·l = 0.45 × 257.0` |
 | Ride height (chassis underside) | 5.0 | mm | measured |
 
 **Sprung mass, which round 1 got wrong in two of three modules.** From the corner weights in module
@@ -502,6 +698,27 @@ All of modules 2–7 use this car. Every number in those modules traces back to 
 0.400 rear) summed to 1.42 kg against a car that has 1.110 kg — and 0.310 is numerically the *rear*
 corner's correct value, which is how the slip survived. The identity that catches it is in module 5
 §7 (G05.9): `Σ m_s,corner + m_u = m_total` to 1e-9.
+
+**`x_cg` and the weight split, which round 2 got wrong (D-1).** `x_cg` is `w_f · l`: with 45 % of the
+weight on the front axle the CG sits 0.45 × 257.0 = **115.65 mm** ahead of the rear axle. Round 2
+printed `x_cg = 257 × (1 − 0.45) = 141.35 mm` — the 55 %-front position, 25.7 mm ahead of the 45 %-front
+value and 12.9 mm ahead of mid-wheelbase — and inconsistent with the front axle being the lighter one
+in module 6 §6.1. The two branches, both computed:
+
+| | `w_f = 0.45`, `x_cg = 115.65` (**taken**) | `w_f = 0.55`, `x_cg = 141.35` (rejected) |
+|---|---|---|
+| sprung mass per corner F/R | 0.24375 / 0.31125 kg | 0.31125 / 0.24375 kg |
+| ride frequency F/R | 10.781 / 10.286 Hz | 9.541 / 11.623 Hz |
+| `h_ra` | 7.789 mm | 8.186 mm |
+| rigid balance | 56.15 % | 58.90 % |
+| consistency residual | −0.055 % | +0.229 % |
+| what moves | module 6 §6.3–6.8, module 10 §4.2, G06.3–G06.12 | module 5 §6, all of module 7's ζ and its whole direction table, `00` §5, G05.3, G05.6 |
+
+The second column is the expensive fix: it rewrites the masses that modules 5 and 7 consume, every
+frequency, every ζ and the entire damping direction table, to preserve one line of arithmetic. The
+45 % front split is also the value the corner weights, the sprung masses, the ride frequencies and the
+56 % balance were all built on, so it is the column that keeps the document coherent. `06` §1 records
+the choice; G06.12 asserts it.
 
 ### 8.2 Left front corner (x, y, z in mm)
 
@@ -545,8 +762,8 @@ Wheelbase from the model: 257.00 − 0.00 = 257.00 mm ✓. Front track: 2 × 86.
 Carrier frame at static (for §6.3):
 
 ```
-ê₁ = (Uₒ − Lₒ)/d = (−5.20, 37.00)/37.3636 = (−0.139170, 0.990268)
-ê₂ = (−ê₁_z, ê₁_y) = (−0.990268, −0.139170)
+ê₁ = (Uₒ − Lₒ)/d = (−5.20, 37.00)/37.3636 = (−0.139173, 0.990268)
+ê₂ = (−ê₁_z, ê₁_y) = (−0.990268, −0.139173)
 (wc):      (u, v) = (23.6433, −11.4015)
 (tie_out): (u, v) = (25.3078,  0.4421)
 ```
@@ -615,17 +832,19 @@ gain matters and the touring car's barely does.
 
 | ID | Input | Expected | Origin |
 |---|---|---|---|
-| G01.1 | mirror the LF corner, camber −2.0°, toe +0.5° | RF `lca_out` = (259.0, −78.0, 7.0); camber +2.0°; **toe +0.5°** (unchanged) | hand calc §6.1 |
+| G01.1 | mirror the LF corner, stored camber −2.0°, stored toe +0.5° | RF `lca_out` = (259.0, −78.0, 7.0); **stored** camber −2.0° and toe +0.5° (both unchanged, D-17); global-frame camber +2.0° | hand calc §6.1 |
 | G01.2 | parse a coordinate given as `78.0` mm | 78.000 mm, round-trip to 0.078 m at the adapter and back exactly | hand calc (mm ↔ m is ÷1000) |
 | G01.3 | reference car `wc` points | wheelbase 257.000 mm, front track 172.000 mm, rear track 174.000 mm | hand calc §8.3 |
 | G01.4 | reference car LF | a = 48.2597 mm, b = 30.8162 mm, d = 37.3636 mm | hand calc §8.3 |
 | G01.5 | model missing `uca_out` | `incompleteModel`, reason lists `LF.uca_out` | §7 |
 | G01.6 | `lca_in_a` = `lca_in_b` = (238.0, 30.0, 12.0) | `coincidentPoints`, names both keys | §7 |
 | G01.7 | coordinate `78000` (µm typed where mm expected) | parse error naming the field (`\|c\| > 3000`); no model produced | §5 |
-| G01.8 | mirror a corner with toe +0.5° | RF toe = +0.5°, axle total toe = +1.0° | hand calc §6.1 |
+| G01.8 | mirror a corner whose stored toe is +0.5° | RF stored toe = **+0.5°**, axle total toe = **+1.000°** (not 0 — a negation-on-mirror implementation reports 0 here and fails) | hand calc §6.1, D-17 |
 | G01.9 | mirror the LF corner, evaluate camber, KPI, scrub with `s` | γ_kp = −8.0000° on **both** corners; KPI = +8.0000° on both; scrub = +7.0162 mm on both; the same quantities evaluated **without** `s` on the RF give +8.0000°, −8.0000°, −7.0162 mm | hand calc §3.1, 02 §6.7 |
 | G01.10 | reference LF carrier frame | `(u,v)` for wc = (23.6433, −11.4015); for tie_out = (25.3078, 0.4421) | hand calc §8.3 |
 | G01.11 | component-mass CG route, §4.5 table | h_est = 18.69 mm from the listed components; `provenance = component_estimate`; every load output carries `flag cgInferred` | hand calc §4.5 |
+| **G01.12** | **symmetric car, D-17**: LF stored camber −2.0°, stored toe 0.0°; `mirror_of: LF` for RF | stored camber **−2.0° on both**, stored toe **0.0° on both**, axle total toe **0.000°**; global-frame camber −2.0° (LF) / +2.0° (RF). A symmetric car is therefore *not* changed by the mirror path, and the negation-on-mirror implementation is caught by G01.8 rather than here | §6.1, D-17 |
+| **G01.13** | **ride-height sign, D-2**: `setRideHeight(+0.5)` on the reference car (chassis-side points +0.5 mm, wheel held on the road) | **droop**: z_rc = **10.7049 mm** (9.9749 + 0.730), κ and the arm-attached transforms re-derived from that state. A `bump` reading returns 9.2617 mm and fails | hand calc 02 §6.6, 10 §4.3 |
 
 Tolerances: 1e-6 mm for distances (exact arithmetic on the stored decimals), 1e-6 ° for angles.
 

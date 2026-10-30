@@ -441,7 +441,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
   <div class="hp" data-hp="a">
     <button class="hrow" aria-expanded="false">
       <span class="dot">A</span>
-      <span class="nm"><b>Lower arm · inner</b><span>12.5 · 44.0 · 22.5</span></span>
+      <span class="nm"><b>Lower arm · inner</b><span>269.5 · 44.0 · 22.5</span></span>
       <svg class="chev"><use href="#i-chev"/></svg>
     </button>
   </div>
@@ -449,16 +449,16 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
   <div class="hp sel" data-hp="b">
     <button class="hrow" aria-expanded="true">
       <span class="dot">B</span>
-      <span class="nm"><b>Lower arm · outer</b><span>12.5 · 78.0 · 20.0</span></span>
+      <span class="nm"><b>Lower arm · outer</b><span>269.5 · 78.0 · 20.0</span></span>
       <svg class="chev"><use href="#i-chev"/></svg>
     </button>
     <div class="body">
       <div class="fields">
-        <label class="field"><span class="fx">X · fwd</span><input value="12.5" inputmode="decimal" aria-label="X, forward from front axle, millimetres"><span class="fu">mm</span></label>
+        <label class="field"><span class="fx">X · fwd</span><input value="269.5" inputmode="decimal" aria-label="X, forward from the rear-axle centre, millimetres"><span class="fu">mm</span></label>
         <label class="field"><span class="fx">Y · out</span><input value="78.0" inputmode="decimal" aria-label="Y, outboard from centreline, millimetres"><span class="fu">mm</span></label>
         <label class="field"><span class="fx">Z · up</span><input value="20.0" inputmode="decimal" aria-label="Z, up from ground, millimetres"><span class="fu">mm</span></label>
       </div>
-      <p class="hint">Measure to <b>pin centre</b>. X runs forward from the front axle, Y out from the centreline, Z up from the floor.</p>
+      <p class="hint">Measure to <b>pin centre</b>. X runs forward from the <b>rear-axle centre</b> (ISO 8855), Y out from the centreline — positive to the left — Z up from the floor.</p>
       <div class="act"><button class="mini"><svg><use href="#i-ruler"/></svg> Show me where</button></div>
     </div>
   </div>
@@ -466,7 +466,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
   <div class="hp" data-hp="c">
     <button class="hrow" aria-expanded="false">
       <span class="dot">C</span>
-      <span class="nm"><b>Upper arm · inner <span class="pbadge inh">inherited</span></b><span>↳12.5 · 40.0 · 56.0</span>
+      <span class="nm"><b>Upper arm · inner <span class="pbadge inh">inherited</span></b><span>↳269.5 · 40.0 · 56.0</span>
         <span class="prov">From <i>Mugen MTC2 template, v2</i> — another car's measurement. <a href="#">Measure mine</a></span></span>
       <svg class="chev"><use href="#i-chev"/></svg>
     </button>
@@ -475,7 +475,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
   <div class="hp" data-hp="d">
     <button class="hrow" aria-expanded="false">
       <span class="dot">D</span>
-      <span class="nm"><b>Upper arm · outer</b><span>12.5 · 74.0 · 52.5</span></span>
+      <span class="nm"><b>Upper arm · outer</b><span>269.5 · 74.0 · 52.5</span></span>
       <svg class="chev"><use href="#i-chev"/></svg>
     </button>
   </div>
@@ -483,7 +483,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
   <div class="hp" data-hp="e">
     <button class="hrow" aria-expanded="false">
       <span class="dot">E</span>
-      <span class="nm"><b>Damper · lower eye</b><span>18.0 · 62.0 · 21.5</span></span>
+      <span class="nm"><b>Damper · lower eye</b><span>275.0 · 62.0 · 21.5</span></span>
       <svg class="chev"><use href="#i-chev"/></svg>
     </button>
   </div>
@@ -491,13 +491,13 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
   <div class="hp" data-hp="f">
     <button class="hrow" aria-expanded="false">
       <span class="dot">F</span>
-      <span class="nm"><b>Damper · top eye</b><span>18.0 · 40.0 · 58.0</span></span>
+      <span class="nm"><b>Damper · top eye</b><span>275.0 · 40.0 · 58.0</span></span>
       <svg class="chev"><use href="#i-chev"/></svg>
     </button>
   </div>
 
   
-<p class="footnote"><b>X</b> forward from the front axle, <b>Y</b> outboard from the centreline, <b>Z</b> up from the ground. Values are stored in millimetres and converted to SI inside the physics engine.</p>
+<p class="footnote"><b>X</b> forward from the rear-axle centre on the ground plane, <b>Y</b> left-positive from the centreline, <b>Z</b> up from the ground. Values are stored in millimetres; the adapter converts to SI once, on the way into the physics engine. A front lower-arm pivot therefore sits near x = 270 on a 257 mm car, not near zero.</p>
 </div>
 
 <div class="grp" id="grp-chassis" hidden>
@@ -588,7 +588,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
     <button class="tg" id="chassisBtn" aria-pressed="false">Chassis card</button>
     
   </div>
-  <div class="meta">Datum rule: X is measured from the front axle centreline of that end. If a car is measured from a different datum, every downstream number is wrong — so the datum is always named on screen.<br><a class="link" href="index.html">All screens →</a> &nbsp; <a class="link" href="design-notes.html">Token check →</a></div>
+  <div class="meta">Datum rule: the origin is the <b>rear</b>-axle centreline on the ground plane, and it is the same datum for both ends — x grows toward the front of the car. If a car is measured from a different datum, every downstream number is wrong — so the datum is always named on screen.<br><a class="link" href="index.html">All screens →</a> &nbsp; <a class="link" href="design-notes.html">Token check →</a></div>
 </aside>
 <script>
 (function(){

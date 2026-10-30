@@ -23,7 +23,7 @@ The distinction is the whole design:
 | "If I go up 50 cSt of oil, does damping go up or down?" | **yes, and monotonically** | the direction table (§9), no number needed |
 | "If I lay the shock down, what happens to ζ?" | **yes** — ζ ∝ IR exactly | §9, with the coefficient |
 | "If I fit a 4-hole piston, how much less damping at 50 mm/s?" | **yes**, geometry-dominated | §9, about −44 % |
-| "Is my car at ζ = 0.25 or 0.35?" | only to ±30 % | the number with its band and `estimated` badge |
+| "Is my car at ζ = 0.25 or 0.35?" | only to the band computed in §6.6 (−40/+15 % at 50 mm/s, ±50 % at 200) | the number with its band and `estimated` badge |
 | "What is my damping *below 20 mm/s*?" | **no** — stiction dominates (0.5–2 N against 0.21 N modelled) | number shown, flagged `belowFrictionFloor`, direction only |
 | "Will it land off this jump?" | no | out of scope |
 
@@ -32,9 +32,10 @@ said the same, while the requirements made ζ a v1 output — three documents, t
 has resolved it: ζ is shown, as an estimate, with its band. §8 is rewritten to say how, not whether.
 
 **The two parameters that set the absolute level, `F_bo` and `c_post`, are dyno-only.** They are
-`ASSUME(4.0 N / 12 N·s/m, flag estimatedDamper)` in the input contract (01 §4.4), which is why the
-band exists. Everything the model says about *direction* survives that assumption; almost nothing it
-says about *level* does.
+`ASSUME(4.0 N / 12 N·s/m, flag estimatedDamper)` in the input contract (01 §4.4), each with a stored
+tolerance, which is why the band exists and why the band is **computed** from those tolerances (§6.6)
+rather than quoted as a fixed percentage. Everything the model says about *direction* survives that
+assumption; almost nothing it says about *level* does.
 
 ---
 
@@ -67,15 +68,19 @@ says about *level* does.
 
 ### 2.2 Fluid and constants
 
-| Input | Symbol | Unit | Default | Range | Label |
-|---|---|---|---|---|---|
-| oil density | ρ | kg/m³ | 950 | 900 – 1000 | `assumed` (silicone 300–600 cSt) |
-| orifice discharge coefficient | C_d | — | 0.62 | 0.60 – 0.80 | `assumed` (sharp-edged orifice) |
-| oil reference viscosity | ν_ref | cSt | 500 | 200 – 900 | setup (printed on the bottle) |
-| viscosity-temperature coefficient | B | K | 1200 | 800 – 2000 | `assumed` — calibrate if possible |
-| reference temperature | T_ref | °C | 20 | — | setup |
-| blow-off force | F_bo | N | 4.0 | 2 – 10 | `assumed` unless dyno-measured |
-| post-blow-off rate | c_post | N·s/m | 12 | 5 – 40 | `assumed` unless dyno-measured |
+| Input | Symbol | Unit | Default | Range | Tolerance | Label |
+|---|---|---|---|---|---|---|
+| oil density | ρ | kg/m³ | 950 | 900 – 1000 | ±50 kg/m³ | `assumed` (silicone 300–600 cSt) |
+| orifice discharge coefficient | C_d | — | 0.62 | 0.60 – 0.80 | −0.02 / +0.18 | `assumed` (sharp-edged orifice) |
+| oil reference viscosity | ν_ref | cSt | 500 | 200 – 900 | ±5 % if the bottle is read | setup (printed on the bottle) |
+| viscosity-temperature coefficient | B | K | 1200 | 800 – 2000 | −400 / +800 | `assumed` — calibrate if possible |
+| reference temperature | T_ref | °C | 20 | — | — | setup |
+| blow-off force | F_bo | N | 4.0 | 2 – 10 | **±50 %** (`tolerance_pct`) | `assumed` unless dyno-measured |
+| post-blow-off rate | c_post | N·s/m | 12 | 5 – 40 | **±50 %** (`tolerance_pct`) | `assumed` unless dyno-measured |
+
+The two density/coefficient rows carry the **model's** uncertainty, not the user's: they are physics
+constants with a published spread, and no amount of measurement on the car narrows them. That
+distinction matters for §6.6 — at 50 mm/s they dominate the band, at 200 mm/s the dyno parameters do.
 
 `A_p` is the **displaced** area: piston area minus shaft area on the rod side. For a 9.6 mm bore and a
 2.5 mm shaft, `A_p = π/4·(9.6² − 2.5²) = 67.5 mm²`. Using the bore area alone overstates force by ~7 %.
@@ -86,9 +91,12 @@ tune it to match a dyno; tune `A_p` or the hole diameters, which are things a us
 ### 2.3 The two dyno-only inputs, stated plainly
 
 `F_bo` and `c_post` cannot be obtained without a shock dyno: they are a property of the shim stack, not
-of any dimension a caliper can reach. v1 assumes them (4.0 N, 12 N·s/m) and flags the output. That
-assumption is the ±30 % band. A user with a dyno pull enters the two values and the badge changes from
-`estimated` to `measured`.
+of any dimension a caliper can reach. v1 assumes them (4.0 N, 12 N·s/m), flags the output
+`estimatedDamper`, and stores a ±50 % tolerance on each. Those two tolerances are the largest single
+term in the ζ band above blow-off, and §6.6 propagates them; there is no fixed percentage anywhere in
+this module. A user with a dyno pull enters the two values, sets their tolerance to the dyno's own
+repeatability, and the badge changes from `estimated` to `measured` — but ζ itself still carries the
+band from the inputs that remain estimated, because `C_d` and ρ never stop being assumptions.
 
 Unmodelled stiction (0.5–2 N on a 1/10 car, §4.2) is **larger than the modelled force below 20 mm/s**,
 so below that speed the model's level is not merely uncertain, it is irrelevant. That is a floor, not
@@ -201,7 +209,7 @@ item on the v1.1 list and a prerequisite for claiming anything about temperature
 
 | Question | Answer | Basis |
 |---|---|---|
-| "Is my car over- or under-damped at handling speeds?" | yes, to ±30 % | §6 table, with the band |
+| "Is my car over- or under-damped at handling speeds?" | yes, to the band in §6.6 | §6.3 table, with the band |
 | "Does a 4-hole piston need more or less oil than a 6-hole?" | yes; the ratio is good | geometry-dominated (A_h²) |
 | "How much stiffer is this piston at 20 mm/s?" | partly — level not trustworthy there | stiction is 2.4–9.5× the modelled force |
 | "How stiff is this piston overall?" | order of magnitude only | `F_bo`, `c_post` assumed |
@@ -240,7 +248,7 @@ item on the v1.1 list and a prerequisite for claiming anything about temperature
 | `T ≤ 0 K` | validation error |
 | `B = 0` | no temperature sensitivity; valid, `temperatureInsensitive` |
 | `F_bo` or `c_post` assumed | ζ carries `estimatedDamper` and §6's band |
-| `v_s < 20 mm/s` | ζ carries `belowFrictionFloor`; the band widens (§6.4), the number is still shown |
+| `v_s < 20 mm/s` | ζ carries `belowFrictionFloor`; **no band is shown** (§6.6) and the friction term dominates, but the number is still displayed |
 
 ---
 
@@ -275,14 +283,19 @@ product is 8595.2 — it had dropped a factor — but its answer, 0.09913, is wi
 `IR = 0.565308`, `k_w = 1118.51 N/m`, **`m_s = 0.24375 kg`**, `c_crit = 33.023 N·s/m`. Round 1 used
 0.310 kg and `c_crit = 37.242`, which made every ζ in this table **12.8 % too small**.
 
-| v_s (mm/s) | F_orifice (N) | F_linear (N) | F (N) | c_damper (N·s/m) | c_wheel (N·s/m) | ζ | band |
+| v_s (mm/s) | F_orifice (N) | F_linear (N) | F (N) | c_damper (N·s/m) | c_wheel (N·s/m) | ζ | band (§6.6) |
 |---|---|---|---|---|---|---|---|
-| 5 | 0.0132 | 4.060 | 0.0132 | 2.64 | 0.84 | 0.026 | **none stated** — `belowFrictionFloor`, direction only |
-| 20 | 0.2113 | 4.240 | 0.2113 | 10.56 | 3.38 | 0.102 | ±50 % (0.05 – 0.15) |
-| 50 | 1.3205 | 4.600 | 1.3205 | 26.41 | 8.44 | **0.256** | ±30 % (0.18 – 0.33) |
-| 99.1 | 5.1884 | 5.1884 | 5.1884 | 52.35 | 16.73 | **0.507** | ±30 % (0.35 – 0.66) |
-| 200 | 21.13 | 6.400 | 6.400 | 32.00 | 10.23 | 0.310 | ±30 % (0.22 – 0.40) |
-| 500 | 132.05 | 10.000 | 10.000 | 20.00 | 6.39 | 0.194 | ±30 % (0.14 – 0.25) |
+| 5 | 0.0132 | 4.060 | 0.0132 | 2.64 | 0.84 | 0.026 | **none shown** — `belowFrictionFloor`, direction only |
+| 20 | 0.2113 | 4.240 | 0.2113 | 10.56 | 3.38 | 0.102 | −40 / +15 % (0.061 – 0.117) |
+| 50 | 1.3205 | 4.600 | 1.3205 | 26.41 | 8.44 | **0.256** | −40 / +15 % (0.154 – 0.293) |
+| 99.1 | 5.1884 | 5.1884 | 5.1884 | 52.35 | 16.73 | **0.507** | −50 / +4 % (0.253 – 0.528) |
+| 200 | 21.13 | 6.400 | 6.400 | 32.00 | 10.23 | 0.310 | ±50 % (0.155 – 0.465) |
+| 500 | 132.05 | 10.000 | 10.000 | 20.00 | 6.39 | 0.194 | ±50 % (0.097 – 0.290) |
+
+The band column is **computed per §6.6 from the stored tolerances**, not a fixed percentage: it is
+narrow and asymmetric at 50 mm/s (the orifice geometry is well measured) and wide at 200–500 mm/s
+(the shim stack is not), and it collapses on the low side just below blow-off. Read it with §6.6's
+dominant-input column, which is what tells a user what to measure next.
 
 Worked for 50 mm/s:
 
@@ -320,6 +333,78 @@ so `F_bo` and `c_post` drop 12.6 %. At 200 mm/s the model's force is blow-off-li
 ζ **does not move at all**, while a real damper would lose ~12 %. That gap is the honest state of v1
 and it is in the §9 table as a row the model cannot see.
 
+### 6.6 The ζ band, computed from the input tolerances
+
+The band is not a number chosen for looks. It is ζ re-run with each estimated or assumed input moved
+to the ends of its own tolerance, one input at a time — the method `spec.md` §4.8 makes normative —
+and then widened by the joint move of the two shim-stack parameters, which are correlated: `F_bo` and
+`c_post` are two numbers fitted to one stack, so a pessimistic stack moves both.
+
+**Tolerances are stored, not assumed here:** `F_bo` ±50 %, `c_post` ±50 % (01 §4.4), d_h ±0.02 mm,
+bore and shaft ±0.05 mm, `IR` ±1.3 % and `k_w` ±8 % (module 5), ρ ±50 kg/m³ and `C_d` −0.02/+0.18
+(§2.2). Each cell below is one re-run of §6.3's chain at that endpoint.
+
+| Input | Tolerance | ζ at 50 mm/s | ζ at 200 mm/s |
+|---|---|---|---|
+| `F_bo` | ±50 % (2.0 – 6.0 N) | 0.0 % (orifice-limited) | **−31.2 / +31.2 %** |
+| `c_post` | ±50 % (6 – 18 N·s/m) | 0.0 % | **−18.8 / +18.7 %** |
+| d_h | ±0.02 mm (0.58 – 0.62) | **−12.3 / +14.5 %** | 0.0 % |
+| bore | ±0.05 mm (9.55 – 9.65) | −3.4 / +3.3 % | 0.0 % |
+| shaft | ±0.05 mm | −1.0 / +0.7 % | 0.0 % |
+| `IR` | ±1.3 % | −1.3 / +1.3 % | −1.3 / +1.3 % |
+| `k_w` | ±8 % | −3.8 / +4.3 % | −3.8 / +4.3 % |
+| ρ | ±50 kg/m³ | −5.3 / +5.3 % | 0.0 % |
+| `C_d` | 0.60 – 0.80 | **−39.9 / +6.8 %** | 0.0 % |
+
+Each cell is the lower and the upper of the two endpoint runs, in that order — the *low* member always
+first, so `C_d`'s −39.9 % sits on the low side even though it comes from the nominal's high end. That
+ordering is the whole point: `C_d` is not symmetric about 0.62, and a band that puts its −40 % on the
+"plus" side has been computed with the wrong sign somewhere.
+
+`C_d` is asymmetric because the nominal 0.62 sits near the bottom of the published range: a sharp-edged
+hole is 0.60–0.65, a short bore 0.72–0.82. That is worth more than every caliper reading in the list —
+**on a perfectly measured car the 50 mm/s number can still be 40 % low** — and it is the honest reason
+ζ is an estimate at handling speeds rather than a computed result.
+
+**The band that ships** (every endpoint of every input, unioned with the joint dyno pair):
+
+| v_s (mm/s) | ζ | band | ζ range | what dominates |
+|---|---|---|---|---|
+| 20 | 0.102 | −40 / +15 % | 0.061 – 0.117 | `C_d` low side, d_h high side |
+| 50 | 0.256 | −40 / +15 % | 0.154 – 0.293 | `C_d` low side, d_h high side |
+| 99.1 | 0.507 | −50 / +4 % | 0.253 – 0.528 | `F_bo` (joint) low, `k_w` high |
+| 200 | 0.310 | ±50 % | 0.155 – 0.465 | `F_bo`, then `c_post` |
+| 500 | 0.194 | ±50 % | 0.097 – 0.290 | `c_post` |
+
+Four things follow, and they are the reason the band is computed rather than quoted:
+
+1. **A fixed percentage is wrong in both directions, and the sign of the error changes with speed.**
+   A blanket ±30 % overstates the high side at 50 mm/s (the computed answer is +15 %) and understates
+   the low side there (−40 %). D-13's *structure* — a band that widens where the shim stack governs —
+   is right, but the numbers were attached to the wrong speeds: the wide ±50 % belongs **above**
+   blow-off, at 200–500 mm/s, not between 20 and 50.
+2. **The band is asymmetric wherever the nominal sits near an end of a range** (`C_d` below blow-off,
+   the blow-off knee, the `F_bo` sweep at 99 mm/s). The UI shows `[low, high]`, never `value ± x`.
+3. **The band widens when the inputs get worse** — the test `spec.md` §4.8 asks for. Doubling
+   `F_bo.tolerance_pct` doubles the 200 mm/s band and leaves the 50 mm/s band untouched, which is
+   also the check that the propagation is per-input rather than a stored constant.
+4. **Below 20 mm/s no band is shown at all**, and from 20 to ~100 mm/s the band is a *floor*, not the
+   whole uncertainty: the unmodelled friction term is 0.5–2 N against a modelled 1.32 N at 50 mm/s, so
+   the true force is biased high by an amount comparable to the band itself. Friction is not an input
+   tolerance and cannot appear in a propagated band; it is carried as `belowFrictionFloor` and as the
+   one-sided bias stated in §4.2.
+
+**What the user's own measurements are worth.** Drop the two model constants (`C_d`, ρ) and the band at
+20–50 mm/s narrows to **−12 / +15 %** (d_h dominates): that is what a pin gauge and a caliper buy, and
+it is not the whole answer. The remaining −40 % is the orifice coefficient, and no measurement on the
+car can reach it.
+
+**What to measure to narrow it.** At 50 mm/s: a perfect pin gauge takes the high side from +15 % to
++7 %, at which point `C_d` governs both ends of the band and further measurement buys nothing. At
+200–500 mm/s: a dyno pull, which sets `F_bo` and `c_post` directly and collapses the band to the dyno's
+repeatability. That is the correct priority order for a racer deciding between an afternoon on a dyno
+and a pin gauge.
+
 ---
 
 ## 7. Golden test cases
@@ -339,13 +424,15 @@ and it is in the §9 table as a row the model cannot see.
 | **G07.11** | **monotonicity in hole area**: n = 2, 3, 4, 6 holes | ζ strictly decreasing in n; ζ(4)/ζ(3) = (3/4)² = 0.5625 at 50 mm/s | §9 (A_h² law) |
 | **G07.12** | **monotonicity in viscosity**: ×1.5 at 200 mm/s and at 50 mm/s | +50 % at 200 mm/s; **0 % at 50 mm/s** — the model's known blind spot, asserted so it cannot drift silently | §6.5, §9 |
 | **G07.13** | **monotonicity in spring rate**: k_s × 1.2 at 50 mm/s | ζ × 1/√1.2 = 0.9129 (−8.7 %) | §9 |
-| **G07.14** | **below-friction floor**: F(20 mm/s) = 0.2113 N against stiction 0.5–2 N | the output carries `belowFrictionFloor`; the band is ≥ ±50 % | §4.2, §6.4 |
+| **G07.14** | **below-friction floor**: F(20 mm/s) = 0.2113 N against stiction 0.5–2 N | the output carries `belowFrictionFloor` and **no band**; the modelled force is 2.4–9.5× smaller than the friction term, so no percentage band is meaningful there | §4.2, §6.6 |
+| **G07.15** | **the band is computed**: §6.3 chain at 50 and 200 mm/s with the §6.6 tolerances | 50 mm/s: ζ 0.154 – 0.293 (−40/+15 %); 200 mm/s: 0.155 – 0.465 (±50 %); doubling `F_bo.tolerance_pct` widens only the 200 mm/s band | §6.6, `spec.md` §4.8 |
 
 Tolerances as stated; every value is hand arithmetic printed in §6.
 
 The monotonicity cases (G07.10–G07.13) exist because the owner's requirement is that the **direction**
-be trustworthy even where the magnitude is not. A direction test is the only kind of test that can
-pass at ±30 % accuracy, and it is the only kind that fails when a sign goes wrong in a refactor.
+be trustworthy even where the magnitude is not, and G07.15 exists because the band has to be a
+computation rather than a label. A direction test is the only kind of test that can pass at ±50 %
+accuracy, and it is the only kind that fails when a sign goes wrong in a refactor.
 
 ---
 
@@ -355,7 +442,8 @@ pass at ±30 % accuracy, and it is the only kind that fails when a sign goes wro
   badge with the reason ("blow-off force assumed — needs a dyno").
 - **Do** show the curve with the reference speeds marked, and the §9 direction table beside it.
 - **Do not** show a single ζ with no band, and do not show it to three decimals (two is generous; the
-  input uncertainty is ±30 %).
+  band at 200 mm/s is ±50 %). Above 20 mm/s the band is §6.6's computed interval, quoted as
+  `[low, high]`.
 - **Do not** compare a modelled curve with a manufacturer's published dyno plot and call it validation.
   Manufacturers publish at 25 °C nominal with proprietary oil; the comparison needs the same oil,
   temperature and piston.
@@ -382,20 +470,21 @@ makes the direction usable even where the number is not.
 | **Bigger holes** | d_h 0.60 → 0.62 mm | **↓** | 0.2556 → 0.2242 (−12.3 %) | unchanged | K_h ∝ d_h^(−4) | **high**; ±0.02 mm is ±13 %, so a pin gauge matters |
 | **Hotter oil** | 20 → 30 °C | **↓** (never ↑) | 0.2556 → 0.2556 (**0 %**) | 0.3097 → 0.2706 (−12.6 %) | (7.9) again | direction yes; magnitude **only above blow-off** |
 
-> **Note on the spring-rate row, against the decision record.** D-13 lists "a stiffer spring raises ζ
-> for the same damper" among the directions that must be trustworthy. The model says the opposite, and
-> the model is right: `c_crit = 2√(k_w·m_s)` rises as √k_s while the damper's wheel-level coefficient is
-> unchanged at a given shaft speed, so **ζ falls as 1/√k_s** (−8.7 % for +20 % spring). What rises with a
-> stiffer spring is the damping *force* needed to hold a target ζ, not the ζ the same shock delivers. The
-> app therefore shows "stiffer spring → lower damping ratio at the same shaft speed, and you will need
-> more damping to keep the same ζ", and this line is flagged for Dave as an amendment to D-13 rather
-> than quietly implemented the other way.
+> **Note on the spring-rate row, and the decision record.** D-13 originally listed "a stiffer spring
+> raises ζ for the same damper" among the directions that must be trustworthy. The model says the
+> opposite and the model is right: `c_crit = 2√(k_w·m_s)` rises as √k_s while the damper's wheel-level
+> coefficient is unchanged at a given shaft speed, so **ζ falls as 1/√k_s** (−8.7 % for +20 % spring).
+> What rises with a stiffer spring is the damping *force* needed to hold a target ζ, not the ζ the same
+> shock delivers. D-13 was amended in place on 2026-10-30 and now carries this correction, so the table
+> above and the decision agree; the app shows "stiffer spring → lower damping ratio at the same shaft
+> speed, and you will need more damping to keep the same ζ".
 
 ### 9.1 What geometry alone cannot capture — stated plainly
 
 1. **The absolute level.** `F_bo` and `c_post` are shim-stack properties. With the defaults, ζ at
-   50 mm/s is 0.256 ± 30 %; a shock with a 2 N blow-off would sit near 0.13. No amount of bore, shaft
-   or hole measurement fixes this.
+   50 mm/s is 0.256 with a −40/+15 % band and at 200 mm/s 0.310 with a ±50 % band (§6.6); a shock with
+   a 2 N blow-off would sit near 0.13 at 200 mm/s. No amount of bore, shaft or hole measurement fixes
+   that.
 2. **Viscosity below blow-off.** The model's answer is "no change" (row 1 at 50 mm/s), because orifice
    flow in the model is inertial. A real damper loses ~12 % per 10 °C there. **The sign is still safe**
    (the model never says thicker oil damps less) but the magnitude is zero when it should not be, and
@@ -412,4 +501,4 @@ The three levers a club racer actually adjusts — oil weight, shock position, p
 the "trust: high" rows, because they enter through geometry and the `c_crit` that module 5 computes
 exactly. That is the case for shipping ζ as an estimate rather than withholding it: the app can answer
 "which way and roughly how much" for the changes people make, while being explicit that it cannot
-answer "what is my number" to better than ±30 %.
+answer "what is my number" beyond §6.6's computed band — −40/+15 % at 50 mm/s, ±50 % above blow-off.

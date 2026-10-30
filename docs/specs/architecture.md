@@ -236,17 +236,24 @@ search over setup notes.
 { "schema_version": "1.0.0", "kind": "car_model", "id": "mdl_8f2c41",
   "frame": { "standard": "ISO 8855", "axes": "x forward, y left, z up",
              "origin": "ground plane, rear axle centre, vehicle centreline" },
-  "units": { "length": "mm", "angle": "deg", "mass": "g", "spring_rate": "N/mm",
-             "damper_force": "N", "damper_speed": "m/s" },
+  "units": { "length": "mm" },
   "sources": { "s1": { "type": "measured", "method": "digital caliper", "by": "DW" } },
-  "axles": { "front": { "corners": { "left": { "lower_arm":
-      { "outboard": { "v": [0.0, 80.0, 10.5], "s": "s1" } } } } } } }
+  "axles": { "front": { "track": { "value": 172.0, "source": "s1" } } },
+  "corners": { "LF": { "points": {
+      "lca_out": { "value": [259.0, 78.0, 7.0], "source": "s1" } } } } }
 ```
+
+The full shape is `docs/specs/fields.yaml`, and spec §4.2 prints the complete
+reference model; this snippet exists only to show the three things a reader of the
+architecture needs: the value object, the corner key and the frame block.
+`units` declares one entry per dimension **actually used** — the snippet above
+uses one, so it declares one, and a missing dimension refuses the document.
 
 - **`frame` and `units` are declared and checked on load** (§5). A file that declares a different
   frame or unit system is refused with the mismatch named, never rescaled or reinterpreted.
-- **Every value is `{"v": number, "s": sourceId}`**, resolving into the document's `sources` map; a
-  whole caliper session is one source (spec §4.1.2). `x_`-prefixed keys we do not understand are preserved
+- **Every value is `{"value": number, "source": sourceId}`** (D-16), resolving into the document's
+  `sources` map; a whole caliper session is one source (spec §4.1.2), and a value with no resolvable
+  source is a schema error rather than a review note. `x_`-prefixed keys we do not understand are preserved
   and written back. A greater `schema_version` **major** is refused with a plain message, never parsed
   best-effort — silent degradation is how the 0.2 mm bug happened.
 - **Export** via `share_plus` 13.x shares the file itself (email, Drive, Files). **Import** via
@@ -271,10 +278,14 @@ search over setup notes.
 | Bytes on disk | `app/lib/src/io/` | `DocumentStore`; the pure packages take and return `String`/`Map` |
 
 **Schema.** `docs/specs/fields.yaml` is normative and machine-readable (E9.10): each field appears
-once with `type`, `unit`, `req`, `on_absence ∈ {ASSUME, REFUSE, OMIT}`, an `assume` value where the
-policy is `ASSUME`, `plausible` and `consumed_by`. Three views are generated from it and the gate's
-schema stage proves they still agree: the Markdown tables in the requirements, the Dart table the
-validator reads, and the fixture set. This replaces a hand-written manifest, and the reason is B9 —
+once with `path`, `type`, `unit` (a dimension from the file's own `meta.dimensions`), `req`,
+`on_absence ∈ {ASSUME, ESTIMATE, REFUSE, OMIT}`, an `assume` value where the policy is `ASSUME`, an
+`estimate` procedure id and `band: true` where the policy is `ESTIMATE`, `plausible` and
+`consumed_by`. **`ESTIMATE` is a member of that enum, not a subclass of `ASSUME`**: it is the policy
+that carries CG height (D-14) and both unsprung masses, and a validator that accepts three values
+either turns an inferred number into an assumed one or refuses a document the spec requires to load.
+Three views are generated from it and the gate's schema stage proves they still agree: the Markdown
+tables in the requirements, the Dart table the validator reads, and the fixture set. This replaces a hand-written manifest, and the reason is B9 —
 five required inputs existed in prose and in no schema, so modules 5 and 7 could not be called with a
 document that validated. One YAML, one generator, one gate stage. *Cost:* a codegen step
 (`tool/gen_schema.dart`, output checked in, gate fails when stale), and a contributor who edits the
@@ -318,24 +329,33 @@ side up.
 
 Four consequences, each of which the old draft left open:
 
-- **Mirroring negates y and nothing else.** Wheelbase is the front axle's x, because the rear axle
-  sits at x = 0 — which is what modules 3 and 6 assume when they hard-code contact-patch x to `l`
-  and `0` and interpolate the roll axis from the rear axle.
-- **Camber and toe are per-wheel signed**: positive camber = top outboard, positive toe = toe-in.
-  Both are negated when a corner is mirrored; module 2's `γ_kp` must therefore be evaluated per side
-  (`atan2(s·Δy, Δz)` with the side sign `s`) rather than in the global frame. Without this, κ changes
-  sign between the left and right corner and the outer wheel's camber behaviour is reported 40% wrong
-  on the corner that matters (B3).
+- **Mirroring negates y and nothing else** — not z, not x, and not a stored per-wheel angle (next
+  bullet). Wheelbase is the front axle's x, because the rear axle sits at x = 0 — which is what
+  modules 3 and 6 assume when they hard-code contact-patch x to `l` and `0` and interpolate the roll
+  axis from the rear axle.
+- **Camber and toe are per-wheel signed and are NOT negated on mirroring (D-17)**: positive camber =
+  top outboard, positive toe = toe-in, both statements about *the wheel*. A symmetric car stores
+  identical values left and right, and the mirror path copies them **unchanged** — only point `y` is
+  negated. The side factor `s` (`+1` on LF/LR, `−1` on RF/RR) converts a stored per-wheel angle into
+  the car frame, **once, inside the solver** (`γ_global = s·γ`, `τ_global = s·τ`), and never in a
+  document, a setup, an export or a formatter. Negating on mirror instead puts 1.0° of total toe on a
+  straight car — the round-2 A3 defect, one layer out from B3, and silent because the number stays
+  plausible. Without `s` at all, κ changes sign between the left and right corner and the outer
+  wheel's camber behaviour is reported 40 % wrong on the corner that matters (B3).
+  Pinned by `physics/01` §6.1 and golden cases G01.1, G01.8, G01.9 and G01.12, and by `physics/02`
+  G02.11.
 - **Quantities that belong to the car are frame-free and never signed per side**: roll-centre height,
   load transfer, balance, roll stiffness.
 - **Contact patches are derived, never stored** — `(0, ±track/2, 0)` and `(wheelbase, ±track/2, 0)` —
   and the loader asserts the stored `wheelbase` against the front wheel centres to ±3 mm, so the
   origin and the wheelbase cannot drift apart in a hand-edited file (requirements §4.2).
 
-*Why this frame and not the requirements'* (y right, mid-wheelbase origin): eleven equations in
-modules 2, 3, 4 and 6 were derived in it and the published references use it, so adopting the other
-one costs four re-derivations plus a sign table in each — and buys a convention nothing else in the
-project uses. *Cost of being wrong:* every hand-entered hardpoint is one sign away from a mirrored car
+*Why this frame.* ISO 8855 is what the eleven equations in modules 2, 3, 4 and 6 were derived in and
+what the published references use; the requirements have specified the same frame since v0.2
+(spec §4.2), so there is one convention across the project and no sign table in any module. The
+earlier y-right/mid-wheelbase convention is gone from every document and must not be reintroduced
+piecemeal: it differed by half a wheelbase in x and a sign in y, which is enough to make a correct
+hardpoint set compute a plausible wrong car. *Cost of being wrong:* every hand-entered hardpoint is one sign away from a mirrored car
 that still computes plausible numbers. Three mitigations, all cheap: the loader refuses a `frame`
 block that disagrees instead of reinterpreting it; `symmetry: true` already requires the right corner
 to equal the mirror of the left within 0.01 mm; and a golden case asserts κ_R = −κ_L in the global
@@ -701,7 +721,7 @@ fails the gate:
 | `analyse` | `flutter analyze` in `app`, `dart analyze` per package; zero issues | E9.8 |
 | `test` | `flutter test` in `app`, `dart test` per package — including the schema, migration, adapter, tier, presentation and grep tests above | E9.8 |
 | `spec-audit` | every MUST id in the requirements has a `@SpecTest('<id>')`, every annotation names a real id with the same tag and release marker, no LATER id is annotated | E9.9 |
-| `schema` | `fields.yaml` ↔ Markdown tables ↔ generated Dart table ↔ fixtures: every field once with `on_absence ∈ {ASSUME, REFUSE, OMIT}`, every `consumed_by` id exists, one fixture per written `schema_version`, generator output current | E9.10 |
+| `schema` | `fields.yaml` ↔ Markdown tables ↔ generated Dart table ↔ fixtures: every field once per kind with `on_absence ∈ {ASSUME, ESTIMATE, REFUSE, OMIT}` (`ESTIMATE` with a procedure id and `band: true`; `ASSUME` with a value, which must lie inside the field's own `plausible` interval), every `consumed_by` id exists, one fixture per written `schema_version`, generator output current | E9.10 |
 | `ip` | no predecessor names, no `.sdf`/database asset, no 8-word overlap the corpus check rejects | E9.4, E5.4 |
 | `manifest` | the merged Android manifest has no `INTERNET` permission and `minSdkVersion ≥ 26` | E8.1 |
 | `dependencies` | no analytics, advertising or crash-reporting package in the resolved set; Privacy screen text equals `docs/release/privacy.txt` | E8.13 |

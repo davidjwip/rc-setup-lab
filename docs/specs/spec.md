@@ -195,7 +195,7 @@ Recorded here so they are not re-litigated later; each one costs something.
 | Physics in a pure Dart package | The UI cannot compute; it can only present. Anything the user sees must be obtainable from a function a headless test can call (E3.11, E3.16). SI lives inside the package only, at one conversion boundary (§4.1 rule 1). |
 | Free forever | No paid tier, no telemetry-funded tier, no ad SDK — which removes a whole class of "how do we see usage" features and replaces them with the instrumented usability test (E9.5, R2) and the dependency check (E8.13). |
 | Clean-room | Explanation text is written by us and mechanically checked against the research corpus (E5.4, E9.4). This is a build-time gate, not a promise. |
-| ISO 8855 frame (R-1) | x forward, y **left**, z up, origin on the ground plane at the rear axle centre. Per-wheel quantities are per-wheel signed and negated on mirroring; car-level quantities are never signed per side. Every hardpoint in every document is re-derived once. |
+| ISO 8855 frame (R-1) | x forward, y **left**, z up, origin on the ground plane at the rear axle centre. Per-wheel quantities are per-wheel signed (camber + = top outboard, toe + = toe-in) and **mirroring does not negate them** (D-17); only point `y` is negated, and the side factor `s` that converts to the car frame is applied once, inside the solver. Car-level quantities are never signed per side. Every hardpoint in every document is re-derived once. |
 | mm/g/deg on disk (R-2) | The file is what a caliper and a setup sheet produce; the physics adapter converts to SI at exactly one site and a `\|coordinate\| > 3000 mm` guard catches a metre value (E3.8's property test covers the guard). |
 | Validity state on every number (D-11) | A computed value is never shown bare. Every surface, including every export, carries the state from §4.4.1 (E3.16). |
 | Owner decisions, 2026-10-30 | Setups carry **optional** conditions — surface (`carpet`/`asphalt`/`other`), ambient temperature, humidity, free-text tyre and motor — all `on_absence: OMIT` in the maths; a sheet diff warns when they differ (E4.9). Damping ratio ships as an **estimate with a band**, not deferred and not measured (E3.6, §4.8). CG height is **inferred** and never a MUST-measure field (§4.2.1). Grip is inference-only (§4.11, E5.6). The setup-sheet interpreter uses understeer/oversteer at entry/mid/exit with firm/inferred/speculative tiers and "all else equal" on every inferred claim (E2.13). |
@@ -275,9 +275,11 @@ outputs are `REFUSED` naming them. **MUST** · **R2**
 
 **E1.5** — *Given* the field table, *when* the measurement worksheet is opened,
 *then* (a) the set of fields in the generated step list equals the set of fields
-with `req: yes` and `worksheet: yes` in `docs/specs/fields.yaml`, each appearing
-in exactly one step; (b) each step displays the `datum` string recorded for that
-field in the YAML, character for character; (c) each step's illustration asset
+listed in `docs/specs/fields.yaml`'s `worksheet:` block, each appearing in
+exactly one step and every one of them existing in the field list of that file;
+(b) each step displays the `datum` string recorded for that step in the YAML,
+character for character, and a step with no `datum` fails the schema stage
+rather than rendering an empty line; (c) each step's illustration asset
 exists, has intrinsic width ≥ 320 px and non-empty `alt` text; (d) the step order
 equals the order in `docs/specs/worksheet_order.txt`, and editing that file
 changes the order with no code change. **MUST** · **R2**
@@ -300,10 +302,14 @@ ARM64, and in both debug and release builds. A serialiser rewrite is allowed to
 change nothing about this test. **MUST** · **R1**
 
 **E1.8** — *Given* a model with no unsprung mass recorded (the field's
-`on_absence` is `ASSUME(0 g)`), *when* analysis runs, *then* every output that
-consumes it carries `COMPUTED_ASSUMED`, the assumed value `0 g` and the field
-name are visible on screen, both are present in every export, and both disappear
-from every output the moment the field is recorded. **MUST** · **R1**
+`on_absence` is `ESTIMATE(unsprung_corner_weighing)`), *when* analysis runs,
+*then* every output that consumes it carries `INFERRED`, names the procedure,
+shows the computed band and the stated default of 60 g per corner (120 g per
+axle) on screen and in every export, carries tier `inferred`; *and when* the
+user later records a measured value, *then* every one of those marks disappears
+in the same session. The schema stage fails a default that lies outside the
+field's own `plausible` range, so `ASSUME(0 g)` — 0 g against a 160–320 g
+corner — cannot be reintroduced. **MUST** · **R1**
 
 **E1.9** — *Given* a model with no `reference_ride_height` (the field's
 `on_absence` is `REFUSE`), *when* the user opens analysis, *then* every
@@ -454,10 +460,10 @@ how much they have been checked, and arriving fast enough to be dragged.
 **E3.1** — *Given* a model with both corners of an axle measured, *when* analysis
 runs, *then* motion ratio (dimensionless) and wheel rate (N/mm) are reported per
 corner, each separately from the spring rate so a spring change and a geometry
-change can be told apart; *and given* a `upper_link.type: "single_link"` corner
-with one inboard point (the touring-car case), *then* the motion ratio is finite
-and no `UNDEFINED(coincident hardpoints)` is returned, while a
-`type: "wishbone"` corner with two distinct inboard points returns its own finite
+change can be told apart; *and given* a corner with `arm_type.upper:
+"single_link"` and one inboard point (the touring-car case), *then* the motion
+ratio is finite and no `UNDEFINED(coincident hardpoints)` is returned, while an
+`arm_type.upper: "wishbone"` corner with two distinct inboard points returns its own finite
 value. Both cases are golden tests. **MUST** · **R0**
 
 **E3.2** — *Given* a model and setup that are `complete_for` each of ride
@@ -608,7 +614,7 @@ template. The test computes the expected input-diff set from the two fixture
 files and asserts set equality, and asserts that every output row is present in
 the view's widget tree. **MUST** · **R1**
 
-**E4.2** — *Given* two setups that differ only in `corners.fl.spring_rate`
+**E4.2** — *Given* two setups that differ only in `corners.LF.spring_rate`
 (3.10 → 3.40 N/mm), *when* they are compared, *then* the output list has exactly
 the rows of §4.4, exactly the outputs whose value changes by more than the
 displayed precision are marked "changed", the changed set includes wheel rate,
@@ -1120,27 +1126,34 @@ app's public interface: a setup or a model that leaves the device must be
 readable, validatable and re-importable by a future version of the app and by a
 person with a text editor.
 
-**§4.2 is the single normative definition of the on-disk schema.** No other
-document defines field names, units or the frame; `docs/specs/physics/01` §4
-defers to this section and keeps only derived quantities and validation rules.
+**`docs/specs/fields.yaml` is the single normative definition of the on-disk
+schema** — every field of both kinds, once, with its type, unit, requiredness,
+`on_absence`, plausible range and the outputs it feeds. This section and
+`docs/specs/physics/01` §5 are *views* of it: §4.2.1 and §4.3.1 are generated
+from it (E9.10 fails the build if they diverge) and the two worked examples are
+the same car. No other document defines field names, units or the frame.
 
 ### 4.1 Rules that apply to both documents
 
 1. **Units are declared in the file, not implied, and keys never carry a unit
-   suffix.** A `units` object declares one unit per dimension in use:
-   `length, angle, mass, spring_rate, damper_force, damper_speed, viscosity,
-   pressure, temperature, ratio, count, percentage`. This build writes lengths in
-   **mm**, angles in **degrees**, masses in **g**, spring rates in **N/mm**,
-   damper forces in **N at a shaft speed in m/s**, and every field name names the
-   quantity (`air_temp`, not `air_temp_c`). R-2: **SI exists only inside the
+   suffix.** A `units` object declares one unit per dimension in use, from the
+   closed list in `fields.yaml` (`meta.dimensions`): `length` (mm), `mass` (g),
+   `angle` (deg), `spring_rate` (N/mm), `damper_force` (N), `damper_speed`
+   (m/s), `viscosity` (cSt), `temperature` (°C), `pressure` (kPa), `ratio` (–),
+   `count` (–), `percentage` (%), `torsion_stiffness` (N·m/deg),
+   `shear_modulus` (GPa) and `damping_coefficient` (N·s/m). Every field name
+   names the quantity (`air_temp`, not
+   `air_temp_c`), and a file that uses a dimension it does not declare is
+   refused. R-2: **SI exists only inside the
    physics package, at exactly one conversion boundary** — the adapter that turns
    a document into the typed model. No arithmetic is ever performed on a
    storage-unit value, and the adapter rejects any coordinate whose modulus
    exceeds **3000 mm** as a suspected metre value (E3.8's property test covers
    the guard with both units).
 2. **Every numeric value is an object, not a bare number:**
-   `{"v": <number>, "s": "<source id>"}`, where `s` resolves into the document's
-   top-level `sources` map. One source id can be shared by many values (a whole
+   `{"value": <number>, "source": "<source id>"}`, where `source` resolves into
+   the document's top-level `sources` map (D-16: a value without a source is a
+   schema error, not a review note). One source id can be shared by many values (a whole
    caliper session is one source), which keeps files readable and provenance
    honest at the same time. Integers are written without a fractional part only
    where the field's `type` is `count`; every other numeric field is a real
@@ -1214,6 +1227,16 @@ defers to this section and keeps only derived quantities and validation rules.
 
 ### 4.2 Car model
 
+**This section is a view.** `docs/specs/fields.yaml` is the single normative
+definition of every field in a car model or a setup — path, type, unit,
+requiredness, `on_absence`, plausible range and the outputs it feeds. This
+section adds only what YAML cannot carry: the frame, the sign conventions, what
+"the same car" means, and a complete worked example. The table in §4.2.1 is
+generated from the YAML and E9.10 fails the build if the two diverge.
+`docs/specs/physics/01` §5 is an **example of this file** — a second worked model
+with the physics package's own commentary — and not a second definition
+(`decisions.md` D-16).
+
 **Frame — ISO 8855, and nothing else (R-1).** Right-handed, **x forward, y to the
 LEFT, z up**. Origin on the ground plane (the flat plate the wheels stand on) at
 the intersection of the rear axle centreline and the vehicle centreline. So:
@@ -1225,197 +1248,292 @@ the intersection of the rear axle centreline and the vehicle centreline. So:
   `(wheelbase, ±track/2, 0)`, and the loader asserts the stored `wheelbase`
   against the front wheel centres to ±3 mm.
 
-**Per-wheel quantities are per-wheel signed** and are negated on mirroring:
-camber positive = **top outboard**; toe positive = **toe-in**. Quantities that
-are properties of the car — roll-centre height, load-transfer split — are
-frame-free and are **never** signed per side.
+**Per-wheel quantities are per-wheel signed, and mirroring does NOT negate them
+(D-17).** Camber positive = **top outboard**; toe positive = **toe-in**. Those
+are statements about the wheel, not about the car's axes, so a symmetric car
+stores **identical values on the left and the right**, and the mirror path copies
+them unchanged. What mirroring negates is **y on points, and nothing else**.
+
+The conversion to the car frame happens exactly once, **inside the solver**, by
+the side factor `s`:
+
+```text
+s = +1 on LF and LR        s = −1 on RF and RR
+γ_global = s · γ_per_wheel          τ_global = s · τ_per_wheel
+```
+
+It never happens in a document, a setup, an export or an import. Getting this
+backwards is the round-1 A3 bug one layer out: negating toe on the mirrored
+corner gives a straight car 1.0° of total toe, a number small enough to look
+plausible and large enough to change the car. The rule is proved by
+`physics/01` §6.1 and by golden cases **G01.1** (mirror the LF corner: camber
++2.0°, toe **+0.5° unchanged**), **G01.8** (mirror a corner with toe +0.5°: RF
+toe +0.5°, axle total +1.0°) and **G01.9** (camber, KPI and scrub evaluated with
+`s`: identical per-wheel values on both corners, opposite signs in the global
+frame). `physics/02` G02.11 is the same assertion for camber gain.
+
+Quantities that are properties of the car — roll-centre height, load-transfer
+split — are frame-free and are **never** signed per side.
 
 ```json
 {
   "schema_version": "1.0.0",
   "kind": "car_model",
-  "id": "mdl_8f2c41",
-  "name": "Example 1/10 TC — measured 2026-10-12",
+  "id": "mdl_ref_1tc",
+  "name": "Reference 1/10 TC — measured 2026-10-30",
   "class": "touring_car_1_10",
   "units": {
-    "length": "mm", "angle": "deg", "mass": "g", "spring_rate": "N/mm",
-    "damper_force": "N", "damper_speed": "m/s", "ratio": "1", "percentage": "%"
+    "length": "mm", "mass": "g", "angle": "deg", "spring_rate": "N/mm",
+    "viscosity": "cSt", "temperature": "°C", "percentage": "%",
+    "count": "1", "shear_modulus": "GPa"
   },
-  "frame": { "standard": "ISO 8855", "axes": "x fwd, y left, z up",
-             "origin": "ground plane, rear axle centre" },
-  "symmetry": false,
+  "frame": { "standard": "ISO 8855", "axes": "x forward, y left, z up",
+             "origin": "ground plane, rear axle centre, vehicle centreline" },
+  "symmetry": true,
   "license": { "id": "CC-BY-4.0", "url": "https://creativecommons.org/licenses/by/4.0/" },
   "contributors": [ { "name": "D. W.", "role": "measured" } ],
-  "attribution_text": "Example 1/10 TC — measured by D. W., 2026-10-12. CC BY 4.0.",
-  "meta": { "created": "2026-10-12", "app_version": "0.1.0", "revises": null },
+  "attribution_text": "Reference 1/10 TC — measured by D. W., 2026-10-30. CC BY 4.0.",
+  "meta": { "created": "2026-10-30", "app_version": "0.1.0", "revises": null },
 
   "sources": {
-    "s1": { "type": "measured", "method": "digital caliper 150 mm", "datum": "flat plate, hinge-pin centre",
-            "by": "D. W.", "date": "2026-10-12", "note": "car on setup stands, wheels off" },
-    "s2": { "type": "manufacturer", "ref": "kit manual p.14, exploded view" },
-    "s3": { "type": "measured", "method": "corner scales", "datum": "four pads, ride height 5.0 mm",
-            "by": "D. W.", "date": "2026-10-12" },
-    "s4": { "type": "derived", "from": ["body.mass.total", "body.mass.unsprung_front", "body.mass.unsprung_rear"],
+    "s1": { "type": "measured", "method": "digital caliper 150 mm",
+            "datum": "flat plate, hinge-pin centre", "by": "D. W.", "date": "2026-10-30",
+            "note": "car on setup stands, wheels off" },
+    "s2": { "type": "inferred", "method": "two_hang_plumb_line",
+            "basis": "chassis hung from one point at each end, plumb line photographed square-on",
+            "tolerance_pct": 15.0, "by": "D. W.", "date": "2026-10-30" },
+    "s3": { "type": "estimated", "method": "unsprung_corner_weighing",
+            "basis": "wheel, tyre, hub, carrier and outboard link ends on a kitchen scale",
+            "tolerance_pct": 20.0, "by": "D. W.", "date": "2026-10-30" },
+    "s4": { "type": "derived",
+            "from": ["body.mass.total", "body.mass.sprung_front", "body.mass.sprung_rear"],
             "note": "corner weights minus unsprung" },
-    "s5": { "type": "inferred", "method": "two_hang_plumb_line", "basis": "chassis hung from two heights, plumb line recorded",
-            "tolerance_pct": 15.0, "by": "D. W.", "date": "2026-10-12" }
+    "s5": { "type": "measured", "method": "corner scales", "datum": "four pads, ride height 5.0 mm",
+            "by": "D. W.", "date": "2026-10-30" },
+    "s6": { "type": "manufacturer", "ref": "kit manual p.14, exploded view and spring table" }
   },
 
   "body": {
-    "reference_ride_height": { "v": 5.0, "s": "s1" },
-    "wheelbase":             { "v": 257.0, "s": "s1" },
+    "reference_ride_height": { "value": 5.0,   "source": "s1" },
+    "wheelbase":             { "value": 257.0, "source": "s1" },
     "cg": {
-      "height":              { "v": 38.0, "s": "s5" },
-      "longitudinal_front":  { "v": 50.5, "s": "s4" }
+      "height":           { "value": 28.0, "source": "s2" },
+      "front_mass_share": { "value": 45.0, "source": "s4" },
+      "unsprung_height":  { "value": 20.0, "source": "s3" }
     },
     "mass": {
-      "total":            { "v": 1352.0, "s": "s3" },
-      "sprung_front":     { "v": 486.0,  "s": "s4" },
-      "sprung_rear":      { "v": 552.0,  "s": "s4" },
-      "unsprung_front":   { "v": 157.0,  "s": "s4" },
-      "unsprung_rear":    { "v": 157.0,  "s": "s4" }
+      "total":          { "value": 1350.00, "source": "s5" },
+      "sprung_front":   { "value": 487.49,  "source": "s4" },
+      "sprung_rear":    { "value": 622.49,  "source": "s4" },
+      "unsprung_front": { "value": 120.00,  "source": "s3" },
+      "unsprung_rear":  { "value": 120.00,  "source": "s3" }
     },
-    "axles": {
-      "front": {
-        "track":                 { "v": 163.0, "s": "s1" },
-        "tyre_radius":           { "v": 31.0,  "s": "s1" },
-        "roll_centre_validity":  { "v": 40.0,  "s": "s2" },
-        "droop_limit_wheel":     { "v": 6.0,   "s": "s1" },
-        "bump_limit_wheel":      { "v": 6.0,   "s": "s1" },
-        "arb": { "type": "blade", "rate_at_full_stiff": { "v": 0.42, "s": "s2" } },
-        "steering": {
-          "rack": { "x": { "v": 88.5, "s": "s1" }, "z": { "v": 14.0, "s": "s1" },
-                    "y_left": { "v": 46.0, "s": "s1" }, "y_right": { "v": -46.0, "s": "s1" },
-                    "travel_per_turn": { "v": 12.0, "s": "s2" } }
-        },
-        "corners": {
-          "left": {
-            "lower_arm": {
-              "inboard_front": { "v": [ 18.5,  78.0, 12.0], "s": "s1" },
-              "inboard_rear":  { "v": [ 66.5,  78.0, 12.0], "s": "s1" },
-              "outboard":      { "v": [128.5,  80.0, 10.5], "s": "s1" }
-            },
-            "upper_link": {
-              "type": "single_link",
-              "inboard":  { "v": [ 40.5,  60.0, 38.0], "s": "s1" },
-              "outboard": { "v": [126.5,  76.0, 34.0], "s": "s1" }
-            },
-            "upright": {
-              "lower_ball":   { "v": [128.5,  80.0, 10.5], "s": "s1" },
-              "upper_ball":   { "v": [126.5,  76.0, 34.0], "s": "s1" },
-              "wheel_centre": { "v": [128.5,  81.5, 31.0], "s": "s1" }
-            },
-            "damper": {
-              "lower_mount":  { "v": [ 76.5,  72.0, 15.0], "s": "s1" },
-              "upper_mount":  { "v": [ 72.5,  66.0, 62.0], "s": "s1" }
-            },
-            "spring": { "location": "coilover_at_damper",
-                        "rate": { "v": 3.10, "s": "s2" },
-                        "free_length": { "v": 20.0, "s": "s2" } },
-            "steering": {
-              "tie_rod_inboard":  { "v": [ 88.5,  46.0, 14.0], "s": "s1" },
-              "tie_rod_outboard": { "v": [120.5,  74.0, 16.0], "s": "s1" }
-            },
-            "arb_pickup": { "v": [ 84.5,  70.0, 13.0], "s": "s1" }
-          },
-          "right": {
-            "lower_arm": {
-              "inboard_front": { "v": [ 18.5, -78.0, 12.0], "s": "mirror:s1" },
-              "inboard_rear":  { "v": [ 66.5, -78.0, 12.0], "s": "mirror:s1" },
-              "outboard":      { "v": [128.5, -80.0, 10.5], "s": "mirror:s1" }
-            },
-            "upper_link": {
-              "type": "single_link",
-              "inboard":  { "v": [ 40.5, -60.0, 38.0], "s": "mirror:s1" },
-              "outboard": { "v": [126.5, -76.0, 34.0], "s": "mirror:s1" }
-            },
-            "upright": {
-              "lower_ball":   { "v": [128.5, -80.0, 10.5], "s": "mirror:s1" },
-              "upper_ball":   { "v": [126.5, -76.0, 34.0], "s": "mirror:s1" },
-              "wheel_centre": { "v": [128.5, -81.5, 31.0], "s": "mirror:s1" }
-            },
-            "damper": {
-              "lower_mount":  { "v": [ 76.5, -72.0, 15.0], "s": "mirror:s1" },
-              "upper_mount":  { "v": [ 72.5, -66.0, 62.0], "s": "mirror:s1" }
-            },
-            "spring": { "location": "coilover_at_damper",
-                        "rate": { "v": 3.10, "s": "s2" },
-                        "free_length": { "v": 20.0, "s": "s2" } },
-            "steering": {
-              "tie_rod_inboard":  { "v": [ 88.5, -46.0, 14.0], "s": "mirror:s1" },
-              "tie_rod_outboard": { "v": [120.5, -74.0, 16.0], "s": "mirror:s1" }
-            },
-            "arb_pickup": { "v": [ 84.5, -70.0, 13.0], "s": "mirror:s1" }
-          }
-        }
+    "chassis": { "material": "cfrp", "thickness": { "value": 2.0, "source": "s6" } }
+  },
+
+  "axles": {
+    "front": {
+      "track":                { "value": 172.0, "source": "s1" },
+      "tyre_radius":          { "value": 32.0,  "source": "s1" },
+      "roll_centre_validity": { "value": 40.0,  "source": "s6" },
+      "droop_limit_wheel":    { "value": 5.0,   "source": "s6" },
+      "bump_limit_wheel":     { "value": 5.0,   "source": "s6" },
+      "spring": { "location": "coilover_at_damper", "rate": { "value": 3.50, "source": "s6" } },
+      "arb": { "type": "torsion_bar",
+               "bar_diameter":  { "value": 1.50, "source": "s6" },
+               "span":          { "value": 90.0, "source": "s6" },
+               "arm_length":    { "value": 20.0, "source": "s6" },
+               "shear_modulus": { "value": 79.3, "source": "s6" } },
+      "steering": { "rack": {
+        "x":               { "value": 225.0, "source": "s1" },
+        "z":               { "value": 30.0,  "source": "s1" },
+        "y_left":          { "value": 26.0,  "source": "s1" },
+        "y_right":         { "value": -26.0, "source": "s1" },
+        "travel_per_turn": { "value": 12.0,  "source": "s6" } } }
+    },
+    "rear": {
+      "track":       { "value": 174.0, "source": "s5" },
+      "tyre_radius": { "value": 32.0,  "source": "s1" },
+      "spring": { "location": "coilover_at_damper", "rate": { "value": 2.60, "source": "s6" } },
+      "arb": { "type": "torsion_bar",
+               "bar_diameter":  { "value": 1.20, "source": "s6" },
+               "span":          { "value": 90.0, "source": "s6" },
+               "arm_length":    { "value": 20.0, "source": "s6" },
+               "shear_modulus": { "value": 79.3, "source": "s6" } }
+    }
+  },
+
+  "corners": {
+    "LF": {
+      "arm_type": { "lower": "hinge", "upper": "single_link" },
+      "points": {
+        "lca_in_a":  { "value": [238.00, 30.00, 12.00],  "source": "s1" },
+        "lca_in_b":  { "value": [272.00, 30.00, 12.00],  "source": "s1" },
+        "lca_out":   { "value": [259.00, 78.00,  7.00],  "source": "s1" },
+        "uca_in":    { "value": [250.00, 42.00, 45.00],  "source": "s1" },
+        "uca_out":   { "value": [254.00, 72.80, 44.00],  "source": "s1" },
+        "tie_in":    { "value": [225.00, 26.00, 30.00],  "source": "s1" },
+        "tie_out":   { "value": [243.68, 74.04, 32.00],  "source": "s1" },
+        "wc":        { "value": [257.00, 86.00, 32.00],  "source": "s1" },
+        "damper_lo": { "value": [257.00, 60.00,  8.875], "source": "s1" },
+        "damper_up": { "value": [257.00, 44.00, 58.00],  "source": "s1" },
+        "arb_drop":  { "value": [250.00, 55.00,  9.40],  "source": "s1" }
+      },
+      "damper": {
+        "piston_bore":     { "value": 9.6,   "source": "s6" },
+        "shaft_dia":       { "value": 2.5,   "source": "s6" },
+        "piston_holes":    { "value": 3,     "source": "s6" },
+        "piston_hole_dia": { "value": 0.60,  "source": "s6" },
+        "oil_cst":         { "value": 500.0, "source": "s6" }
       }
     }
   }
 }
 ```
 
-This example is deliberately incomplete: the whole `body.axles.rear` block is
-omitted, which rule 3 permits and which E1.2 requires the app to report rather
-than fill in. Both front corners are present with `symmetry: false`, so the
-example does not depend on any mirroring behaviour to be complete for the front
-axle. A `mirror:s1` source id means "the left corner's `s1` value, y-negated":
-the loader resolves it to a `derived_by_mirror` source whose `from` names the
-left field path. Values are re-derived once from the pre-round-2 frame
-(`x_new = x_old + wheelbase/2`, `y_new = −y_old`, z unchanged), so the rear
-contact patches sit at `x = 0` and the front at `x = 257`.
+**This is the reference car of `physics/01` §8 — the same car, not a car with the
+same wheelbase.** Wheelbase 257.0 mm, tracks 172.0 / 174.0 mm, tyre radius
+32.0 mm, CG height 28.0 mm, unsprung 120 g per axle (240 g per car), sprung
+487.49 g front and 622.49 g rear per axle, total 1350 g. Every number in modules
+2–10 is a function of that table; an example that was a *different* car with the
+same wheelbase made every physics golden case unreachable from the only complete
+model in the normative document (round-2 finding D-13).
+
+Notes on the example:
+
+- **`symmetry: true` and no `RF` key.** The right corner is derived at load from
+  the left by negating y, with `derived_by_mirror` provenance, and is **never
+  stored** (E1.4). Camber and toe are copied through **unchanged** (D-17). A
+  model that stores both corners says `symmetry: false` and is computed per side.
+- **The rear corners are absent**, which is the honest debt of `physics/01`
+  §8.4: the reference car has never had its rear hardpoints measured. Rear
+  axle-level values (track, spring, bar) are present, so roll stiffness and ride
+  frequency compute for both axles; a rear roll-centre or camber-gain output is
+  `REFUSED` naming `corners.LR.points.*`, and the app says which measurement
+  would fix it. Absence is expressed by the key not existing — never by `0`,
+  `null` or a sentinel (§4.1 rule 3).
+- **`units` declares exactly the nine dimensions this file uses.** A file that
+  uses a dimension it does not declare is refused (rule 1); physics/01 §5's
+  previous example used five dimensions it did not declare, which is why its
+  `units` block looked complete and was not.
+- **`cg.height` carries `source: "s2"`, an `inferred` source with a
+  `tolerance_pct`.** 28.0 mm is the procedure's stated default, not a
+  measurement of this car — no instrument a club racer owns locates a CG (§4.11,
+  `physics/01` §4.5). Every output that consumes it is `inferred` with a band.
+- **`body.cg.front_mass_share` is 45.0 %**, which is what the masses in this file
+  give (607.49 g of 1350 g on the front axle); `x_cg = 257 · (1 − 0.45) =
+  141.35 mm` is derived from it and never stored.
+- **`schema_version` 1.0.0** is the only version this app writes (§4.7), so one
+  fixture covers it. The `1.1.0` of physics/01 §5 is retired.
 
 #### 4.2.1 Field table — car model
 
-`Req` = required for the document to be valid. `on_absence` = the policy of §4.1
-rule 3, applied when the field is absent. Generated from
-`docs/specs/fields.yaml` (§4.10); E9.10 fails the build if this table and the
-YAML disagree.
+**Generated view — do not edit a row here.** Every row below is generated from
+`docs/specs/fields.yaml`, and the gate's `schema` stage (E9.10) fails if this
+table and the YAML disagree: a field in one and not the other, a differing
+`on_absence`, unit or `req`, or a `consumed_by` id that is not one of §4.4's
+output ids. To change a field, change the YAML and regenerate.
 
-| Field | Type | Unit | Req | `on_absence` | Notes |
-|---|---|---|---|---|---|
-| `schema_version` | string | — | yes | `REFUSE` | `MAJOR.MINOR.PATCH`; a greater major is refused (E6.6) |
-| `kind` | string | — | yes | `REFUSE` | `car_model` |
-| `id` | string | — | yes | `REFUSE` | Stable, opaque, never reused |
-| `name` | string | — | yes | `REFUSE` | Free text, shown in the library |
-| `class` | enum | — | yes | `REFUSE` | `touring_car_1_10`, `buggy_1_10_2wd`, `buggy_1_10_4wd`, `truck_1_10`, `other` |
-| `units` | object | — | yes | `REFUSE` | One entry per dimension used; a missing dimension refuses the document |
-| `frame` | object | — | yes | `REFUSE` | Must equal §4.2's frame exactly |
-| `symmetry` | bool | — | yes | `REFUSE` | `true` → the right corner is derived, never stored (E1.4). No default. |
-| `license` | object | — | yes | `REFUSE` | `{id, url}`; §4.9 |
-| `contributors` | array | — | conditional | `REFUSE` | Mandatory where `license.id` begins `CC-BY`; `[{name, role, contact?}]` |
-| `attribution_text` | string | — | conditional | `REFUSE` | Mandatory where `license.id` begins `CC-BY`; the exact string a re-sharer reproduces |
-| `sources` | object | — | yes | `REFUSE` | Map of source id → source record (§4.1 rule 4); every `s` must resolve |
-| `body.reference_ride_height` | value | mm | yes | `REFUSE` | Datum for all vertical geometry (E1.9) |
-| `body.wheelbase` | value | mm | yes | `REFUSE` | Validated against the front wheel centres (±3 mm) |
-| `body.cg.height` | value | mm | no | `ESTIMATE(two_hang_plumb_line)` | **Never asked as a measurement** — corner scales cannot locate a CG. Inferred by the two-hang plumb-line procedure or a component-mass estimate, with a computed band and `inferred` provenance (§4.11); every output consuming it is `inferred` |
-| `body.cg.longitudinal_front` | value | % | no | `REFUSE` | Front share of total mass; normally `derived` from corner weights |
-| `body.mass.total` | value | g | yes | `REFUSE` | |
-| `body.mass.sprung_front` / `.sprung_rear` | value | g | no | `REFUSE` | Ride frequency and roll stiffness need these; absence refuses those outputs only (M1) |
-| `body.mass.unsprung_front` / `.unsprung_rear` | value | g | no | `ASSUME(0)` | The only `ASSUME` in the model. Visible flag, on screen and in every export (E1.8) |
-| `body.axles.<axle>.track` | value | mm | yes | `REFUSE` | Hub-face to hub-face at static ride height |
-| `body.axles.<axle>.tyre_radius` | value | mm | yes | `REFUSE` | Contact-patch height and travel conversion |
-| `body.axles.<axle>.roll_centre_validity` | value | mm | no | `OMIT` | Domain bound for E3.9; absent → no domain flag, and the health line says the bound is not recorded |
-| `body.axles.<axle>.droop_limit_wheel` / `.bump_limit_wheel` | value | mm | no | `OMIT` | Wheel travel, not shaft travel |
-| `body.axles.<axle>.arb` | object | — | no | `OMIT` | Absent → roll stiffness computed without a bar contribution and says so |
-| `body.axles.<axle>.arb.type` | enum | — | yes if `arb` present | `OMIT` | `blade`, `fixed`, `torsion_bar`, `none` (§4.3.3) |
-| `body.axles.<axle>.arb.rate_at_full_stiff` | value | N/mm at the link | yes if `type` ≠ `none` | `REFUSE` | The blade/fixed form. Refuses roll stiffness for that axle only |
-| `body.axles.<axle>.arb.arm_length` | value | mm | yes if `type` = `torsion_bar` | `REFUSE` | Torsion-bar form (§4.3.3) |
-| `body.axles.<axle>.arb.setting_table` | array | — | no | `OMIT` | Non-linear blade curve, `[{setting, rate_at_full_stiff}]`; R2 |
-| `body.axles.front.steering.rack` | object | — | no | `REFUSE` | `{x, z, y_left, y_right, travel_per_turn}`; refuses bump steer and the Ackermann readout (C3) |
-| `…corners.<side>.lower_arm.inboard_front` / `.inboard_rear` / `.outboard` | point | mm | yes | `REFUSE` | Defines the lower hinge axis and the outer ball joint |
-| `…corners.<side>.upper_link.type` | enum | — | yes | `REFUSE` | `single_link` (one `inboard` point) or `wishbone` (`inboard_front`/`inboard_rear`) — M3 |
-| `…corners.<side>.upper_link.inboard` | point | mm | if `type` = `single_link` | `REFUSE` | The touring-car camber link: **one** inner ball stud, not two coincident ones |
-| `…corners.<side>.upper_link.inboard_front` / `.inboard_rear` | point | mm | if `type` = `wishbone` | `REFUSE` | |
-| `…corners.<side>.upper_link.outboard` | point | mm | yes | `REFUSE` | |
-| `…corners.<side>.upright.lower_ball` / `.upper_ball` / `.wheel_centre` | point | mm | yes | `REFUSE` | `wheel_centre` fixes track and scrub radius |
-| `…corners.<side>.damper.lower_mount` / `.upper_mount` | point | mm | yes | `REFUSE` | Eye-to-eye at static ride height defines motion ratio |
-| `…corners.<side>.spring.location` | enum | — | yes | `REFUSE` | `coilover_at_damper`, `separate_seat`, `inboard_rocker` |
-| `…corners.<side>.spring.rate` | value | N/mm | yes | `REFUSE` | The baseline rate; a setup's per-corner `spring_rate` overrides it (§4.3) |
-| `…corners.<side>.spring.free_length` | value | mm | no | `OMIT` | Preload and coil-bind only |
-| `…corners.<side>.steering.tie_rod_inboard` / `.tie_rod_outboard` | point | mm | front only | `REFUSE` | Refuses bump steer only; rear toe links use the same shape |
-| `…corners.<side>.arb_pickup` | point | mm | no | `OMIT` | The drop-link attachment on the lower arm; without it the bar's link motion ratio is not derived and roll stiffness says so |
-| `representation_note` | string | — | no | `OMIT` | Free text, ≤ 500 chars; shown in the share summary (E1.11) |
-| `x_*` | any | — | no | `OMIT` | Preserved verbatim on export; part of the hash |
+`Req` = required for the document to be valid. `on_absence` is the policy of
+§4.1 rule 3 and has **four** values — `ASSUME`, `ESTIMATE`, `REFUSE`, `OMIT`.
+`ESTIMATE` is a policy in its own right, not a variety of `ASSUME`: it is how
+`body.cg.height` and both unsprung masses are carried, it always names a
+procedure in `docs/specs/procedures/` and it always produces a band. `Consumed
+by` lists §4.4's output ids, so a field that feeds nothing says so.
+
+| Field | Type | Unit | Req | `on_absence` | Consumed by | Notes |
+|---|---|---|---|---|---|---|
+| `schema_version` | string | — | yes | `REFUSE` | `all` | `MAJOR.MINOR.PATCH`; this file defines 1.0.0. A greater major is refused with the version named (spec E6.6). |
+| `kind` | enum: `car_model` | — | yes | `REFUSE` | — | Tells the loader which field list to validate against. |
+| `id` | string | — | yes | `REFUSE` | — | Opaque, stable, never reused. `mdl_` prefix by convention. |
+| `name` | string | — | yes | `REFUSE` | — | Free text, shown in the library. |
+| `class` | enum: `touring_car_1_10`, `buggy_1_10_2wd`, `buggy_1_10_4wd`, `truck_1_10`, `other` | — | yes | `REFUSE` | — | Selects the plausible ranges and the worksheet order; it never changes a formula. |
+| `units` | object | — | yes | `REFUSE` | `all` | One entry per dimension in `meta.dimensions` that the file uses. A missing dimension refuses the document; a unit other than the declared one is refused, never rescaled. |
+| `frame` | object | — | yes | `REFUSE` | `roll_centre_height`, `camber_gain`, `bump_steer` | `{standard, axes, origin}`; must equal `meta.frame` in this file. A disagreeing frame is refused, never reinterpreted. |
+| `symmetry` | bool | — | yes | `REFUSE` | `motion_ratio`, `roll_centre_height`, `camber_gain` | `true` → the right corner is derived at load from the left with `derived_by_mirror` provenance and is never stored (E1.4). No default: a model that does not say is refused. |
+| `license` | object | — | yes | `REFUSE` | — | `{id, url}`; spec §4.9. Hashed content. |
+| `contributors` | array | — | yes if license.id begins CC-BY | `REFUSE` | — | `[{name, role, contact?}]`, role ∈ measured \| contributed \| reviewed \| licensed_from \| maintained. |
+| `attribution_text` | string | — | yes if license.id begins CC-BY | `REFUSE` | — | The exact string a re-sharer reproduces. Stored, never generated. |
+| `sources` | object | — | yes | `REFUSE` | `motion_ratio`, `wheel_rate`, `ride_frequency`, `roll_stiffness`, `load_transfer_split`, `roll_centre_height`, `camber_gain`, `bump_steer`, `damping_ratio` | Map source id → source record (spec §4.1 rule 4). Replaces physics/01 §5's per-point prose map: every `source` on a value must resolve here. |
+| `meta` | object | — | no | `OMIT` | — | `{created, app_version, revises, mapped_at}`. Excluded from `content_hash` (spec §4.5.1). |
+| `representation_note` | string | — | no | `OMIT` | — | Free text ≤ 500 chars; shown in the share summary (E1.11). |
+| `body.reference_ride_height` | value | mm | yes | `REFUSE` | `roll_centre_height`, `camber_gain`, `bump_steer` | The ride height every z was measured at. Replaces `measured_at_ride_height` (physics/01 §5). See also `body.chassis.ride_height_basis`. |
+| `body.wheelbase` | value | mm | yes | `REFUSE` | `roll_centre_migration`, `load_transfer_split`, `camber_gain` | Stored and cross-checked against the front wheel centres to ±3 mm (spec §4.2); it is not derived, because a model with no front corner yet still needs the number. |
+| `body.cg.height` | value | mm | no | `ESTIMATE(two_hang_plumb_line)` | `load_transfer_split`, `roll_centre_height` | **Never asked as a measurement** — corner scales cannot locate a CG (D-14). `ASSUME` on this field is a schema error (spec §4.1 rule iii). Tier `inferred` on every consuming output; the band comes from the procedure (hang: ±1.5 mm) or from the component table's own ranges. 28.0 mm is the reference default, not a measurement: the component route on the reference car gives 18.7 mm (physics/01 §4.5). |
+| `body.cg.front_mass_share` | value | % | no | `REFUSE` | `load_transfer_split` | Front share of total mass, normally `derived` from corner weights. `x_cg = wheelbase · front_mass_share`, measured from the rear axle line — derived, never stored. Replaces `cg.longitudinal_front`. |
+| `body.cg.lateral` | value | mm | no | `ASSUME(0.0)` | `load_transfer_split` | Positive to the left. A car built with a left-biased battery genuinely differs; `ASSUME(0)` is stated on screen when absent. |
+| `body.cg.unsprung_height` | value | mm | no | `ASSUME(0.625 × tyre_radius)` | `load_transfer_split` | 0.55–0.75 × tyre radius is the plausible band; 0.625 (20.0 mm at R = 32) is the stated default. |
+| `body.cg.components[]` | array | — | no | `OMIT` | — | `[{component, mass, x, y, z, basis}]` — the component-mass route to `body.cg.height` (physics/01 §4.5). Absent → that route is unavailable and the hang procedure or the default is used, named on screen. Feeds the `body.cg.height` ESTIMATE, so it has no v1 output id of its own. |
+| `body.cg.provenance` | enum: `two_hang_plumb_line`, `component_mass_moment` | — | no | `OMIT` | `load_transfer_split` | Derived, never written by the app (D10 above). Accepted on import from files that carry it and rewritten from the source record; a stored copy that disagrees is a warning, not a refusal. |
+| `body.mass.total` | value | g | yes | `REFUSE` | `load_transfer_split`, `ride_frequency` | Corner scales. The four corner weights, where present, must sum to it to ±2 g. |
+| `body.mass.sprung_front` | value | g | no | `REFUSE` | `ride_frequency`, `roll_stiffness`, `load_transfer_split` | Sprung mass carried by the **front axle** (both corners). Ride frequency and roll stiffness need it; absence refuses those outputs only. |
+| `body.mass.sprung_rear` | value | g | no | `REFUSE` | `ride_frequency`, `roll_stiffness`, `load_transfer_split` | Sprung mass carried by the **rear axle**. |
+| `body.mass.unsprung_front` | value | g | no | `ESTIMATE(unsprung_corner_weighing)` | `load_transfer_split`, `ride_frequency` | Grams per **axle** (both front corners). Default 120 g = 60 g per corner = the reference car's 240 g total. Range 80–160 g per axle (160–320 g per car). `ASSUME(0)` is retired: 0 is outside the range and drops the reference front ride frequency from 10.782 to 9.156 Hz. |
+| `body.mass.unsprung_rear` | value | g | no | `ESTIMATE(unsprung_corner_weighing)` | `load_transfer_split`, `ride_frequency` | Grams per **axle**. Same procedure and band as the front. |
+| `body.chassis.material` | enum: `cfrp`, `aluminium`, `steel` | — | no | `OMIT` | — | Mass, CG height and (R2) torsional stiffness. Absent → the chassis is a rigid plate of the class default and the assumption is stated. Selects the default `shear_modulus` when the bar's material is the same. |
+| `body.chassis.thickness` | value | mm | no | `OMIT` | — | Plate thickness, caliper-measured. Moves mass, CG height and ride height (see `ride_height_basis`), never the roll centre. |
+| `body.chassis.span` | value | mm | no | `OMIT` | — | Plate width across the rails (`w` in physics/10 §4; 90 mm on the reference car). |
+| `body.chassis.rail_factor` | value | 1 | no | `ASSUME(1.0)` | — | κ_rail, the effective-torsion factor for a plate with rails and cut-outs (physics/10 §4). 1.0 = the thin-plate estimate taken at face value; the estimator's own range is ±1–3×, which is why no v1 output claims precision from it. |
+| `body.chassis.torsion_measured` | value | N·m/deg | no | `OMIT` | — | N·m/deg on disk (the racer's unit), converted to N·m/rad at the adapter. Absent → the thin-plate estimate is used and labelled as one. |
+| `body.chassis.ride_height_basis` | enum: `underside_clearance`, `axle_height` | — | no | `ASSUME(underside_clearance)` | — | Decides whether a thickness change moves the car (physics/10 §3.4). On screen with the chassis card. |
+| `axles.<axle>.track` | value | mm | yes | `REFUSE` | `roll_stiffness`, `roll_centre_height`, `roll_centre_migration`, `camber_gain` | Contact patch to contact patch at static ride height (hub-face-to-hub-face minus the cambered offset; physics/01 §6 note). |
+| `axles.<axle>.tyre_radius` | value | mm | yes | `REFUSE` | `roll_centre_height`, `load_transfer_split`, `camber_gain`, `bump_steer` | Contact-patch height and the bump/droop conversion. A setup's `conditions.tyre.diameter` overrides it for one run. |
+| `axles.<axle>.roll_centre_validity` | value | mm | no | `OMIT` | `roll_centre_height` | The bound above which the roll-centre number is `OUT_OF_DOMAIN` (E3.9). Absent → no domain flag and the health line says the bound is not recorded. |
+| `axles.<axle>.droop_limit_wheel` | value | mm | no | `OMIT` | `camber_gain`, `bump_steer` | Wheel travel, not shaft travel; the static limits check only. |
+| `axles.<axle>.bump_limit_wheel` | value | mm | no | `OMIT` | `camber_gain`, `bump_steer` | Wheel travel, not shaft travel. |
+| `axles.<axle>.spring.location` | enum: `coilover_at_damper`, `separate_seat`, `inboard_rocker` | — | yes | `REFUSE` | `motion_ratio`, `wheel_rate` | Selects which pair of points defines the spring axis. |
+| `axles.<axle>.spring.rate` | value | N/mm | yes | `REFUSE` | `wheel_rate`, `ride_frequency`, `roll_stiffness` | Baseline rate at the spring. A setup's `corners.<corner>.spring_rate` overrides it (§4.3); the override is named in the "how" view. |
+| `axles.<axle>.spring.free_length` | value | mm | no | `OMIT` | — | Preload and coil-bind only. |
+| `axles.<axle>.arb` | object | — | no | `OMIT` | `roll_stiffness` | Absent → roll stiffness is computed without a bar contribution and says so. |
+| `axles.<axle>.arb.type` | enum: `blade`, `fixed`, `torsion_bar`, `none` | — | yes if arb present | `OMIT` | `roll_stiffness` | `none` is the only way to say "no bar": `bar_diameter: 0` is not a bar and not an absence. |
+| `axles.<axle>.arb.rate_at_link` | value | N/mm | yes if arb.type is blade or fixed | `REFUSE` | `roll_stiffness` | N/mm at the drop link at full stiff. Replaces `rate_at_full_stiff`. Converted to a wheel rate through the drop-link motion ratio derived from `points.arb_drop`; without `arb_drop` the bar is excluded and the output says so. |
+| `axles.<axle>.arb.bar_diameter` | value | mm | yes if arb.type is torsion_bar | `REFUSE` | `roll_stiffness` | Torsion-bar form. k_θ = G·J/L with J = πd⁴/32. |
+| `axles.<axle>.arb.span` | value | mm | yes if arb.type is torsion_bar | `REFUSE` | `roll_stiffness` | Twisting length between the bushes. Replaces `effective_span`. |
+| `axles.<axle>.arb.arm_length` | value | mm | yes if arb.type is torsion_bar | `REFUSE` | `roll_stiffness` | Lever arm from the torsion axis to the drop link. |
+| `axles.<axle>.arb.shear_modulus` | value | GPa | no | `ASSUME(79.3)` | `roll_stiffness` | GPa. Steel 79.3, titanium 41.0, aluminium 26.0; when absent, taken from `arb.material` if that is present, else 79.3 (steel). The flag `assumedMaterial` is shown. |
+| `axles.<axle>.arb.material` | enum: `steel`, `titanium`, `aluminium`, `other` | — | no | `OMIT` | `roll_stiffness` | Selects the default `shear_modulus`. Reference only for display; it never overrides an explicit G. |
+| `axles.<axle>.arb.setting_table` | array | — | no | `OMIT` | `roll_stiffness` | `[{setting, rate_at_link}]` — a non-linear blade curve. R2. Absent on a `blade` bar → the bar is linear by definition and the app says "linear bar assumed". |
+| `axles.front.steering.rack` | object | — | no | `REFUSE` | `bump_steer`, `ackermann_toe` | `{x, z, y_left, y_right, travel_per_turn}`. Absent → bump steer and the Ackermann readout are `REFUSED(rack geometry not recorded)` and the measurement procedure is offered (C3). |
+| `axles.front.steering.rack.x` | value | mm | yes if rack present | `REFUSE` | `bump_steer`, `ackermann_toe` | x of the rack axis in the ISO 8855 frame (rear-axle origin). |
+| `axles.front.steering.rack.z` | value | mm | yes if rack present | `REFUSE` | `bump_steer`, `ackermann_toe` | z of the rack axis. |
+| `axles.front.steering.rack.y_left` | value | mm | yes if rack present | `REFUSE` | `bump_steer`, `ackermann_toe` | Left rack end y (positive, since y is left). |
+| `axles.front.steering.rack.y_right` | value | mm | yes if rack present | `REFUSE` | `bump_steer`, `ackermann_toe` | Right rack end y (negative). A right value that is positive is refused: it would put the rack end on the wrong side. |
+| `axles.front.steering.rack.travel_per_turn` | value | mm | no | `OMIT` | `ackermann_toe` | Rack travel per steering-wheel turn (mm); display only in v1. |
+| `corners.<corner>.arm_type.lower` | enum: `hinge`, `wishbone` | — | yes | `REFUSE` | `motion_ratio`, `roll_centre_height`, `camber_gain` | `hinge` needs `lca_in_a` + `lca_in_b`; `wishbone` uses the same two points. |
+| `corners.<corner>.arm_type.upper` | enum: `single_link`, `wishbone` | — | yes | `REFUSE` | `motion_ratio`, `roll_centre_height`, `camber_gain` | `aal` is accepted on import as an alias for `wishbone` and rewritten on save (D13). |
+| `corners.<corner>.points.lca_in_a` | point | mm | yes | `REFUSE` | `motion_ratio`, `roll_centre_height`, `camber_gain`, `load_transfer_split` | Front pivot on the lower hinge axis. `[x, y, z]` mm; every coordinate \|c\| ≤ 3000. |
+| `corners.<corner>.points.lca_in_b` | point | mm | yes | `REFUSE` | `motion_ratio`, `roll_centre_height`, `camber_gain` | Rear pivot on the lower hinge axis; `lca_in_a ≠ lca_in_b` or the axis is undefined. |
+| `corners.<corner>.points.lca_out` | point | mm | yes | `REFUSE` | `motion_ratio`, `roll_centre_height`, `camber_gain`, `bump_steer` | Lower ball joint. Also the carrier's lower reference point — there is no second key for it. |
+| `corners.<corner>.points.uca_in` | point | mm | yes if arm_type.upper is single_link | `REFUSE` | `motion_ratio`, `roll_centre_height`, `camber_gain` | The single camber-link inner ball stud — one point, not two coincident ones. |
+| `corners.<corner>.points.uca_in_a` | point | mm | yes if arm_type.upper is wishbone | `REFUSE` | `motion_ratio`, `roll_centre_height`, `camber_gain` | Front upper pivot (buggy). Mutually exclusive with `uca_in`. |
+| `corners.<corner>.points.uca_in_b` | point | mm | yes if arm_type.upper is wishbone | `REFUSE` | `motion_ratio`, `roll_centre_height`, `camber_gain` | Rear upper pivot (buggy). |
+| `corners.<corner>.points.uca_out` | point | mm | yes | `REFUSE` | `motion_ratio`, `roll_centre_height`, `camber_gain`, `bump_steer` | Upper ball stud on the carrier; with `lca_out` it defines the carrier span and, with `wc`, the carrier frame. |
+| `corners.<corner>.points.tie_in` | point | mm | yes on front corners | `REFUSE` | `bump_steer`, `ackermann_toe` | Inner tie-rod ball (rack end). |
+| `corners.<corner>.points.tie_out` | point | mm | yes on front corners | `REFUSE` | `bump_steer`, `ackermann_toe` | Outer tie-rod ball on the steering arm. |
+| `corners.<corner>.points.wc` | point | mm | yes | `REFUSE` | `motion_ratio`, `roll_centre_height`, `camber_gain`, `bump_steer`, `load_transfer_split` | Wheel centre at the reference ride height. Fixes track and scrub radius; the contact patch is derived from it. |
+| `corners.<corner>.points.damper_lo` | point | mm | yes | `REFUSE` | `motion_ratio`, `wheel_rate`, `ride_frequency`, `damping_ratio` | Lower damper eye (or spring seat). On the lower arm, not on the carrier. |
+| `corners.<corner>.points.damper_up` | point | mm | yes | `REFUSE` | `motion_ratio`, `wheel_rate`, `ride_frequency`, `damping_ratio` | Upper damper eye on the chassis. |
+| `corners.<corner>.points.arb_drop` | point | mm | no | `OMIT` | `roll_stiffness` | Drop-link attachment on the lower arm. Without it the bar's link motion ratio is not derived; the bar is excluded from roll stiffness and the output says so. |
+| `corners.<corner>.points.bump_stop` | point | mm | no | `OMIT` | — | Stop contact point. Not modelled in v1; stored so a measured model is not lossy. |
+| `corners.<corner>.points.droop_stop` | point | mm | no | `OMIT` | — | Stop contact point. Not modelled in v1. |
+| `corners.<corner>.corner_weight` | value | g | no | `OMIT` | `load_transfer_split`, `ride_frequency` | Measured corner weight. Absent → derived from `body.mass.total` and `body.cg.front_mass_share` and reported as `derived`, never `measured` (physics/06 §3.1). |
+| `corners.<corner>.damper.piston_bore` | value | mm | no | `REFUSE` | `damping_ratio` | Hardware: measurable with a caliper, so absence refuses ζ and names the field. Absent → ζ `REFUSED`, never guessed. |
+| `corners.<corner>.damper.shaft_dia` | value | mm | no | `REFUSE` | `damping_ratio` | Hardware: measurable. |
+| `corners.<corner>.damper.piston_holes` | count | 1 | no | `REFUSE` | `damping_ratio` | Hardware: countable. |
+| `corners.<corner>.damper.piston_hole_dia` | value | mm | no | `REFUSE` | `damping_ratio` | Hardware: pin gauge or the maker's drawing. ±0.02 mm is ±13 % of the parameter (physics/07 §9), so a measured value still carries its instrument's uncertainty into the band. |
+| `corners.<corner>.damper.oil_cst` | value | cSt | no | `ASSUME(500.0)` | `damping_ratio` | Often printed on the bottle. Reference: 500 cSt. Belongs to the setup when it is a chosen oil; the same path, so a setup overrides the model. |
+| `corners.<corner>.damper.oil_temp` | value | °C | no | `ASSUME(20.0)` | `damping_ratio` | Oil temperature used for ν(T). A setup's `conditions.air_temp` is a different number and does not substitute. |
+| `corners.<corner>.damper.f_blowoff` | value | N | no | `ASSUME(4.0)` | `damping_ratio` | Dyno-only, so on a setup it is normally `estimated` with `tolerance_pct` and flag `estimatedDamper`; the assumed default biases low by the stiction term (physics/07 §2.3). |
+| `corners.<corner>.damper.c_post` | value | N·s/m | no | `ASSUME(12.0)` | `damping_ratio` | Post-blow-off damping coefficient, N·s/m (the `damping_coefficient` dimension). Dyno-only; new in this file (F2): it is the dominant term in the ζ band and had no field at all. |
+
+Two rows deserve a note a table cannot carry. `body.cg.height` is `ESTIMATE`
+**in both documents** — `ASSUME` on it is a schema error under rule (iii), and
+the physics package's `ASSUME(component estimate, flag cgInferred)` is retired.
+The two unsprung masses are `ESTIMATE` with a stated default of **120 g per
+axle** (60 g per corner, 240 g per car), inside the model's own 80–160 g band;
+the previous `ASSUME(0)` was outside that band and cost the reference car 15 %
+of its front ride frequency (10.782 → 9.156 Hz), because it made sprung mass the
+whole car.
 
 ### 4.3 Setup
 
@@ -1431,6 +1549,15 @@ The `assumptions` block is **not stored** in a setup: it is generated at export
 time from the `on_absence` outcomes of the analysis that produced the file, so a
 hand-edited or older file can never carry a stale one.
 
+**One word, one object.** The file — and this specification — call the saved
+object a **setup**; its `kind` is `setup` and its label is `label`. The design
+layer and the screens call the same object a **sheet**, because that is what a
+racer calls the piece of paper it replaces. The mapping is fixed and is not a
+translation the implementer gets to choose: **sheet (UI) = setup (file)**, and
+"setup sheet" in this document always means the *exported* artifact (PDF or
+JSON), never the saved object. Route names and screen copy keep "sheet"; field
+names, ids and hashes keep "setup".
+
 ```json
 {
   "schema_version": "1.0.0",
@@ -1438,119 +1565,176 @@ hand-edited or older file can never carry a stale one.
   "id": "set_2b91c0",
   "label": "Carpet baseline A",
   "model_ref": {
-    "id": "mdl_8f2c41",
+    "id": "mdl_ref_1tc",
     "content_hash": "sha256:6c1f…",
-    "name": "Example 1/10 TC — measured 2026-10-12"
+    "name": "Reference 1/10 TC — measured 2026-10-30"
   },
   "geometry": {
     "base_hash": "sha256:6c1f…",
     "adjustments": [
-      { "field": "corners.fl.upper_link_inner_shims", "v": 1.0, "s": "m1" },
-      { "field": "corners.fr.upper_link_inner_shims", "v": 1.0, "s": "m1" }
+      { "field": "corners.LF.upper_link_inner_shims", "value": 1.0, "source": "m1" },
+      { "field": "corners.RF.upper_link_inner_shims", "value": 1.0, "source": "m1" }
     ],
     "geometry_hash": "sha256:0a94…"
   },
   "parent_id": null,
-  "created": "2026-10-12",
+  "created": "2026-10-30",
   "meta": { "app_version": "0.1.0" },
   "sources": {
     "m1": { "type": "measured", "method": "camber gauge + toe plates", "datum": "flat plate",
-            "by": "D. W.", "date": "2026-10-12" },
+            "by": "D. W.", "date": "2026-10-30" },
     "m2": { "type": "measured", "method": "ride-height gauge", "datum": "flat plate",
-            "by": "D. W.", "date": "2026-10-12" },
+            "by": "D. W.", "date": "2026-10-30" },
     "m3": { "type": "third_party", "by": "setup sheet, P. Smith", "ref": "printed sheet, 2026-09" },
-    "m4": { "type": "estimated", "basis": "same shock family as the kit manual part, blow-off not measured",
+    "m4": { "type": "estimated", "basis": "same shock family as the kit part, blow-off not measured",
             "by": "D. W.", "tolerance_pct": 30.0 }
   },
 
   "conditions": {
     "surface": "carpet",
-    "air_temp": { "v": 22.0, "s": "m1" },
-    "humidity": { "v": 55.0, "s": "m1" },
-    "tyre": { "compound": "handout", "diameter": { "v": 62.0, "s": "m1" } },
+    "air_temp": { "value": 22.0, "source": "m1" },
+    "humidity": { "value": 55.0, "source": "m1" },
+    "tyre": { "compound": "handout", "diameter": { "value": 64.0, "source": "m1" } },
     "motor": "13.5T stock, 5.5 FDR",
     "notes": "club night, fresh surface"
   },
 
   "corners": {
-    "fl": { "camber": { "v": -1.5, "s": "m1" }, "toe": { "v": 0.5, "s": "m1" },
-            "caster": { "v": 4.0, "s": "m3" }, "ride_height": { "v": 5.0, "s": "m2" },
-            "droop": { "v": 2.0, "s": "m2" }, "spring_rate": { "v": 3.10, "s": "m3" },
-            "spring_preload": { "v": 0.5, "s": "m2" },
-            "damper_oil_viscosity": { "v": 300.0, "s": "m3" },
-            "damper_piston_holes": { "v": 3, "s": "m3" },
-            "damper_piston_bore": { "v": 8.0, "s": "m3" },
-            "damper_shaft_dia": { "v": 3.0, "s": "m3" },
-            "damper_hole_dia": { "v": 0.8, "s": "m3" },
-            "damper_blowoff_force": { "v": 12.0, "s": "m4" },
-            "tyre_pressure": { "v": 240.0, "s": "m2" } }
+    "LF": {
+      "camber": { "value": -2.0, "source": "m1" },
+      "toe":    { "value": 0.5,  "source": "m1" },
+      "caster": { "value": 4.0,  "source": "m3" },
+      "ride_height": { "value": 5.0, "source": "m2" },
+      "droop": { "value": 2.0, "source": "m2" },
+      "spring_rate": { "value": 3.50, "source": "m3" },
+      "spring_preload": { "value": 0.5, "source": "m2" },
+      "damper": {
+        "oil_cst":  { "value": 500.0, "source": "m3" },
+        "oil_temp": { "value": 22.0,  "source": "m1" },
+        "f_blowoff": { "value": 4.0,  "source": "m4" },
+        "c_post":    { "value": 12.0, "source": "m4" }
+      },
+      "tyre_pressure": { "value": 240.0, "source": "m2" }
+    },
+    "RF": {
+      "camber": { "value": -2.0, "source": "m1" },
+      "toe":    { "value": 0.5,  "source": "m1" },
+      "caster": { "value": 4.0,  "source": "m3" },
+      "ride_height": { "value": 5.0, "source": "m2" },
+      "droop": { "value": 2.0, "source": "m2" },
+      "spring_rate": { "value": 3.50, "source": "m3" },
+      "spring_preload": { "value": 0.5, "source": "m2" },
+      "damper": {
+        "oil_cst":  { "value": 500.0, "source": "m3" },
+        "oil_temp": { "value": 22.0,  "source": "m1" },
+        "f_blowoff": { "value": 4.0,  "source": "m4" },
+        "c_post":    { "value": 12.0, "source": "m4" }
+      },
+      "tyre_pressure": { "value": 240.0, "source": "m2" }
+    }
   },
 
-  "axles": { "front": { "arb_setting": { "v": 0.6, "s": "m3" } },
-             "rear":  { "arb_setting": { "v": 0.4, "s": "m3" } } },
+  "axles": { "front": { "arb_setting": { "value": 0.6, "source": "m3" } },
+             "rear":  { "arb_setting": { "value": 0.4, "source": "m3" } } },
 
-  "transmission": { "diff_front_oil_viscosity": { "v": 3000.0, "s": "m3" },
-                    "diff_rear_oil_viscosity": { "v": 1000.0, "s": "m3" },
-                    "diff_height": { "v": 0.0, "s": "m3" } },
+  "transmission": { "diff_front_oil_viscosity": { "value": 3000.0, "source": "m3" },
+                    "diff_rear_oil_viscosity":  { "value": 1000.0, "source": "m3" },
+                    "diff_height": { "value": 0.0, "source": "m3" } },
 
-  "analysis_inputs": { "lateral_g": { "v": 1.2, "s": "m1" },
-                       "roll_sweep": { "v": 3.0, "s": "m1" },
-                       "damping_low_speed": { "v": 0.05, "s": "m1" },
-                       "damping_high_speed": { "v": 0.30, "s": "m1" } },
+  "analysis_inputs": { "lateral_g":          { "value": 1.2,  "source": "m1" },
+                       "roll_sweep":         { "value": 1.0,  "source": "m1" },
+                       "damping_low_speed":  { "value": 0.050, "source": "m1" },
+                       "damping_high_speed": { "value": 0.200, "source": "m1" } },
 
   "notes": { "track": "club layout, clockwise", "setup": "droop 2 mm front, 3 mm rear",
              "tyres": "handout, 2 runs old" }
 }
 ```
 
-Only the front-left corner is shown for brevity; `.fr`, `.rl`, `.rr` use the same
-shape, and the two shim adjustments are shown because a shim change is the
-canonical case (§4.3.2).
+Both front corners are shown, with **identical camber (−2.0°) and toe (+0.5°)**
+— that is D-17 in one screenful: a symmetric car has equal stored values left and
+right, and the axle's total toe is +1.0° because it is the *sum* of two per-wheel
+values, not a difference. `.LR` and `.RR` use the same shape; they are absent
+from this example because the model has no rear hardpoints (`physics/01` §8.4).
+The two shim adjustments are shown because a shim change is the canonical case
+(§4.3.2), and they are stored in `geometry.adjustments[]`, never as keys on a
+corner.
+
+`damper.oil_cst`, `.oil_temp`, `.f_blowoff` and `.c_post` live here rather than in
+the model because they are what a run changes or cannot measure: the bore, shaft
+and hole geometry stay in the model at the same path, and a setup value overrides
+it. `f_blowoff` and `c_post` are `estimated` with a 30 % tolerance, and those two
+tolerances are the dominant terms in the computed ζ band (§4.8).
 
 #### 4.3.1 Field table — setup
 
-| Field | Type | Unit | Req | `on_absence` | Consumed by |
-|---|---|---|---|---|---|
-| `schema_version` | string | — | yes | `REFUSE` | — |
-| `kind` | string | — | yes | `REFUSE` | — |
-| `id` | string | — | yes | `REFUSE` | — |
-| `label` | string | — | yes | `REFUSE` | — |
-| `model_ref.id` / `.content_hash` / `.name` | string | — | yes | `REFUSE` | Every output (§4.6 when unresolved) |
-| `geometry.base_hash` / `.geometry_hash` | string | — | yes | `REFUSE` | Selects the geometry every output uses (§4.5.3) |
-| `geometry.adjustments[]` | array | mm | yes (may be empty) | `OMIT` | Camber gain, roll centre, bump steer, wheel rate (§4.3.2) |
-| `parent_id` | string \| null | — | yes | `REFUSE` | History chain (E2.2) |
-| `created`, `meta.app_version` | string | — | yes | `REFUSE` | Carried in exports (E7.1a) |
-| `sources` | object | — | yes | `REFUSE` | As §4.1 |
-| `derived_from_models[]` | array | — | no | `OMIT` | `[{id, content_hash, attribution_text}]` — attribution for a copied sheet (§4.9) |
-| `conditions.surface` | enum | — | no | `OMIT` | `carpet`, `asphalt`, `other`. Reference only in the maths; a sheet diff warns when two sheets differ (E4.9) |
-| `conditions.air_temp` | value | °C | no | `OMIT` | Reference only in the maths; used by the damping-ratio band (§4.8) and warned on in a sheet diff (E4.9) |
-| `conditions.humidity` | value | % | no | `OMIT` | Reference only; warned on in a sheet diff (E4.9) |
-| `conditions.tyre.compound` / `.diameter` / `.motor` | value / string | mm / — | no | `OMIT` | Diameter → contact-patch height (absent → the model's `tyre_radius` is used and named); `compound` and `motor` are free text, reference only |
-| `corners.<c>.camber` | value | deg | no | `REFUSE` | Camber at roll; camber gain's baseline |
-| `corners.<c>.toe` | value | deg | no | `REFUSE` | Toe at roll; Ackermann readout |
-| `corners.<c>.caster` | value | deg | no | `OMIT` | Reference only in v1; shown as such (E2.5) |
-| `corners.<c>.ride_height` | value | mm | no | `REFUSE` | Static geometry; roll-centre datum |
-| `corners.<c>.droop` | value | mm | no | `OMIT` | Static limits check only |
-| `corners.<c>.spring_rate` | value | N/mm | no | `OMIT` | Wheel rate, ride frequency, roll stiffness; absent → the model's `spring.rate` is used and named in the "how" view |
-| `corners.<c>.spring_preload` | value | mm | no | `OMIT` | Static ride height / load |
-| `corners.<c>.damper_oil_viscosity` / `.damper_piston_holes` / `.damper_piston_bore` / `.damper_shaft_dia` / `.damper_hole_dia` / `.damper_blowoff_force` | value | cSt / count / mm / mm / mm / N | no | `REFUSE` | Damping ratio (§4.8). Absent → ζ is `REFUSED` naming the missing field, never guessed. `damper_blowoff_force` is normally `estimated` with a `tolerance_pct` |
-| `corners.<c>.upper_link_inner_shims` / `.upper_link_outer_shims` | adjustment | mm | no | `OMIT` | A geometry adjustment: stored as `{field, v, s}` inside `geometry.adjustments[]`, never as a key at this path (§4.3.2) |
-| `corners.<c>.wheel_offset` | adjustment | mm | no | `OMIT` | A geometry adjustment, stored in `geometry.adjustments[]` like the shims (§4.3.2) |
-| `corners.<c>.tyre_pressure` | value | kPa | no | `OMIT` | Reference only |
-| `axles.<a>.arb_setting` | value | ratio 0–1 | no | `OMIT` | Roll stiffness; a **linear fraction of the link rate** (§4.3.3) |
-| `transmission.diff_front_oil_viscosity` / `diff_rear_oil_viscosity` | value | cSt | no | `OMIT` | Reference only in v1 |
-| `transmission.diff_height` | value | mm | no | `OMIT` | Reference only; named in the limits block as not modelled |
-| `analysis_inputs.lateral_g` | value | ratio | yes | `REFUSE` | Load-transfer split |
-| `analysis_inputs.roll_sweep` | value | deg | yes | `REFUSE` | Roll-centre migration table, camber at roll |
-| `analysis_inputs.damping_low_speed` / `.damping_high_speed` | value | m/s | no | `OMIT` | The two shaft speeds ζ is reported at (§4.8); absent → the app's two stated defaults are used and shown, never hidden |
-| `notes.track` / `.setup` / `.tyres` | string | — | no | `OMIT` | Exported and searchable (E2.8) |
-| `x_*` | any | — | no | `OMIT` | Preserved verbatim |
+**Generated view — do not edit a row here.** Generated from
+`docs/specs/fields.yaml` by the same generator as §4.2.1, and the same gate stage
+(E9.10) fails if the two diverge. `Consumed by` lists §4.4's output ids.
 
-A value the user confirms as zero is written as `{"v": 0.0, "s": …}`; a value the
-user never entered is **absent**. For the three geometry adjustments in §4.3.2
-absence and an explicit zero have the same physical effect, and the difference is
-preserved in the file so the app can say "no shim recorded" rather than
-"0 mm shim".
+A value the user confirms as zero is written as
+`{ "value": 0.0, "source": … }`; a value the user never entered is **absent**.
+For the three geometry adjustments in §4.3.2 absence and an explicit zero have
+the same physical effect, and the difference is preserved in the file so the app
+can say "no shim recorded" rather than "0 mm shim".
+
+| Field | Type | Unit | Req | `on_absence` | Consumed by | Notes |
+|---|---|---|---|---|---|---|
+| `schema_version` | string | — | yes | `REFUSE` | — | Same major/minor as the model the setup is written against. |
+| `kind` | enum: `setup` | — | yes | `REFUSE` | — |  |
+| `id` | string | — | yes | `REFUSE` | — |  |
+| `label` | string | — | yes | `REFUSE` | — | What the racer calls it. The design's word for this object is "sheet"; the file's word is `setup`. |
+| `model_ref.id` | string | — | yes | `REFUSE` | `roll_centre_height`, `camber_gain`, `wheel_rate` | Unresolvable → the `model_missing` library state (spec §4.6, E6.9). |
+| `model_ref.content_hash` | string | — | yes | `REFUSE` | `roll_centre_height`, `camber_gain`, `wheel_rate` | `sha256:` + 64 lowercase hex; pins the base revision. |
+| `model_ref.name` | string | — | yes | `REFUSE` | — | Carried so a shared setup names its car even when the recipient has no model. |
+| `geometry.base_hash` | string | — | yes | `REFUSE` | — | Equals `model_ref.content_hash` unless the setup was mapped (§4.6). |
+| `geometry.adjustments[]` | array | mm | yes (may be empty) | `OMIT` | `camber_gain`, `roll_centre_height`, `bump_steer`, `wheel_rate` | `[{field, value, source}]` where field ∈ `corners.<corner>.upper_link_inner_shims`, `.upper_link_outer_shims`, `.wheel_offset`. At most one entry per field; a duplicate is a schema error. Empty list = the base geometry, and that is a different statement from "absent". |
+| `geometry.geometry_hash` | string | — | yes | `REFUSE` | `camber_gain`, `roll_centre_height`, `bump_steer`, `wheel_rate` | SHA-256 of the canonical transformed geometry (§4.5.3). |
+| `parent_id` | string\|null | — | yes | `REFUSE` | — | `null` for a first sheet; otherwise the id of the sheet it was derived from (E2.2). |
+| `created` | string | — | yes | `REFUSE` | — |  |
+| `meta.app_version` | string | — | yes | `REFUSE` | — | `meta` is excluded from the hash; `app_version` is still required so an export is traceable. |
+| `sources` | object | — | yes | `REFUSE` | `damping_ratio`, `camber_at_roll` | As the car model: every `source` on a value resolves here. |
+| `derived_from_models[]` | array | — | no | `OMIT` | — | `[{id, content_hash, attribution_text}]` — attribution travels with a copied sheet (§4.9). |
+| `conditions.surface` | enum: `carpet`, `asphalt`, `other` | — | no | `OMIT` | — | Reference only in the maths; a sheet diff warns when two sheets differ (E4.9). |
+| `conditions.air_temp` | value | °C | no | `OMIT` | `damping_ratio` | Ambient temperature. Reference only in the maths except as the default for the damper's oil temperature when that is absent; warned on in a sheet diff. |
+| `conditions.humidity` | value | % | no | `OMIT` | — | Reference only; warned on in a sheet diff (E4.9). |
+| `conditions.tyre.compound` | string | — | no | `OMIT` | — | Free text ("handout", "Sorex 28"). Never parsed into grip: grip is inference (§4.11). |
+| `conditions.tyre.diameter` | value | mm | no | `OMIT` | `roll_centre_height`, `load_transfer_split` | Overrides the model's `tyre_radius` for this run (radius = diameter / 2). Absent → the model's value is used and named. |
+| `conditions.motor` | string | — | no | `OMIT` | — | Free text ("13.5T stock, 5.5 FDR"). Top-level in `conditions`, not under `tyre` (D17). |
+| `conditions.notes` | string | — | no | `OMIT` | — | Free text. |
+| `corners.<corner>.camber` | value | deg | no | `REFUSE` | `camber_at_roll`, `camber_gain` | Per wheel, signed, positive = top outboard. Identical on left and right for a symmetric car; never negated on mirror (D-17). The solver applies `s`. |
+| `corners.<corner>.toe` | value | deg | no | `REFUSE` | `ackermann_toe` | Per wheel, signed, positive = toe-in. Identical on left and right for a symmetric car; never negated on mirror (D-17); axle total toe = sum of the two per-wheel values. |
+| `corners.<corner>.caster` | value | deg | no | `OMIT` | — | Reference only in v1; shown as such (E2.5). |
+| `corners.<corner>.ride_height` | value | mm | no | `REFUSE` | `roll_centre_height`, `camber_gain`, `bump_steer` | Static geometry datum for this run; drives the `setRideHeight` re-solve (physics/01 §6.2). |
+| `corners.<corner>.droop` | value | mm | no | `OMIT` | — | Static limits check only. |
+| `corners.<corner>.spring_rate` | value | N/mm | no | `OMIT` | `wheel_rate`, `ride_frequency`, `roll_stiffness` | Overrides `axles.<axle>.spring.rate` for this corner; absent → the model's rate is used and named in the "how" view. |
+| `corners.<corner>.spring_preload` | value | mm | no | `OMIT` | — | Static ride height and load. |
+| `corners.<corner>.damper.oil_cst` | value | cSt | no | `REFUSE` | `damping_ratio` | Chosen oil. Absent → the model's value is used if it has one, else ζ is `REFUSED` naming the field. Never guessed. |
+| `corners.<corner>.damper.oil_temp` | value | °C | no | `OMIT` | `damping_ratio` | Absent → `conditions.air_temp`, then the model's value, then ASSUME(20). The route taken is named. |
+| `corners.<corner>.damper.f_blowoff` | value | N | no | `OMIT` | `damping_ratio` | Dyno-only. Normally `estimated` with `basis` and `tolerance_pct`; the tolerance is what widens the computed ζ band (§4.8). |
+| `corners.<corner>.damper.c_post` | value | N·s/m | no | `OMIT` | `damping_ratio` | N·s/m. Dyno-only, same treatment as `f_blowoff`, and it must be in §4.8's band inputs (§4.8 said a fixed ±30 % label is not acceptable — this field is how the band gets its dominant term). |
+| `corners.<corner>.upper_link_inner_shims` | adjustment | mm | no | `OMIT` | `camber_gain`, `roll_centre_height` | Stored inside `geometry.adjustments[]`, never as a key at this path. Positive = outboard: `y += sgn(y_corner) · shim`. |
+| `corners.<corner>.upper_link_outer_shims` | adjustment | mm | no | `OMIT` | `camber_gain`, `camber_at_roll` | Positive = outboard. |
+| `corners.<corner>.wheel_offset` | adjustment | mm | no | `OMIT` | `camber_gain`, `roll_centre_height` | Positive = track increase per side; moves `points.wc` and the contact patch, not the ball joints. |
+| `corners.<corner>.tyre_pressure` | value | kPa | no | `OMIT` | — | Reference only. |
+| `axles.<axle>.arb_setting` | value | 1 | no | `OMIT` | `roll_stiffness` | A **linear fraction of the link rate**: 0 = no bar contribution, 1 = `arb.rate_at_link`. Never a fraction of blade travel (§4.3.3). |
+| `transmission.diff_front_oil_viscosity` | value | cSt | no | `OMIT` | — | Reference only in v1. |
+| `transmission.diff_rear_oil_viscosity` | value | cSt | no | `OMIT` | — | Reference only in v1. |
+| `transmission.diff_height` | value | mm | no | `OMIT` | — | Reference only; named in the limits block as not modelled. |
+| `analysis_inputs.lateral_g` | value | 1 | yes | `REFUSE` | `load_transfer_split`, `roll_centre_migration`, `camber_at_roll` | The lateral acceleration the load-transfer split is reported at. |
+| `analysis_inputs.roll_sweep` | value | deg | yes | `REFUSE` | `camber_at_roll`, `camber_per_roll`, `roll_centre_migration` | The roll angle the migration and camber-at-roll numbers are reported at (physics/02 §3.5). |
+| `analysis_inputs.damping_low_speed` | value | m/s | no | `OMIT` | `damping_ratio` | Default 0.050 m/s (50 mm/s). Below 0.020 m/s the model does not apply (stiction dominates; physics/07 §8) and the app says so instead of printing a band. |
+| `analysis_inputs.damping_high_speed` | value | m/s | no | `OMIT` | `damping_ratio` | Default 0.200 m/s (200 mm/s). |
+| `notes.track` | string | — | no | `OMIT` | — | Exported and searchable (E2.8). |
+| `notes.setup` | string | — | no | `OMIT` | — |  |
+| `notes.tyres` | string | — | no | `OMIT` | — |  |
+| `x_*` | any | — | no | `OMIT` | — | Extension keys, preserved verbatim on export and included in the hash. Applies at every depth in both kinds. |
+
+The four damper paths appear in both this table and §4.2.1 on purpose: the model
+carries the hardware and the baseline fluid, and a setup overrides the fluid and
+valve values at the same path. `on_absence` in the *setup* row is the policy for
+a field the setup does not carry, which for `damper.oil_cst` is `REFUSE` — ζ is
+never guessed from a setup that does not say what oil is in the car.
 
 #### 4.3.2 Geometry transform pipeline
 
@@ -1565,9 +1749,9 @@ is what all outputs are computed from.
 
 | Adjustment | Base points moved | Axis | Direction | Unit | Effect |
 |---|---|---|---|---|---|
-| `upper_link_inner_shims` | `upper_link.inboard` (single_link) or `upper_link.inboard_front` **and** `inboard_rear` (wishbone), on that corner | vehicle **y** | **positive = outboard** (away from the centreline): `y += sgn(y_corner) · shim` | mm | Changes upper-link length and inboard pivot line → camber gain, roll-centre height |
-| `upper_link_outer_shims` | `upper_link.outboard` | vehicle **y** | positive = outboard: `y += sgn(y_corner) · shim` | mm | Moves the upper ball joint outboard → camber, camber gain |
-| `wheel_offset` | `upright.wheel_centre` (the contact patch follows) | vehicle **y** | positive = track **increase** per side: `y += sgn(y_corner) · offset` | mm | Track, scrub radius; ball joints do not move |
+| `upper_link_inner_shims` | `points.uca_in` (single_link) or `points.uca_in_a` **and** `points.uca_in_b` (wishbone), on that corner | vehicle **y** | **positive = outboard** (away from the centreline): `y += sgn(y_corner) · shim` | mm | Changes upper-link length and inboard pivot line → camber gain, roll-centre height |
+| `upper_link_outer_shims` | `points.uca_out` | vehicle **y** | positive = outboard: `y += sgn(y_corner) · shim` | mm | Moves the upper ball joint outboard → camber, camber gain |
+| `wheel_offset` | `points.wc` (the contact patch follows) | vehicle **y** | positive = track **increase** per side: `y += sgn(y_corner) · offset` | mm | Track, scrub radius; ball joints do not move |
 
 `sgn(y_corner)` is `+1` for a corner with `y > 0` and `−1` for `y < 0`, computed
 from the base model rather than assumed from the corner's name, so a mirrored
@@ -1591,17 +1775,26 @@ Two representations exist and the file says which one it carries, in
 
 | `arb.type` | Fields used | Rate meaning | Wheel-rate conversion |
 |---|---|---|---|
-| `blade` or `fixed` | `rate_at_full_stiff` | **N/mm at the drop link**, the stiffness the bar applies at its link at full stiff | divided by the square of the drop-link motion ratio, which is derived from `arb_pickup` and the lower arm; without `arb_pickup` the conversion is not performed and roll stiffness says the bar was excluded |
-| `torsion_bar` | `bar_diameter`, `effective_span`, `arm_length`, `shear_modulus` — **R2** | torsional stiffness `k = GJ/L` | same conversion; the fields do not exist in the v1 schema and their absence refuses nothing in v1 because no v1 model declares this type |
+| `blade` or `fixed` | `rate_at_link` | **N/mm at the drop link**, the stiffness the bar applies at its link at full stiff | divided by the square of the drop-link motion ratio, which is derived from `points.arb_drop` and the lower arm; without `arb_drop` the conversion is not performed and roll stiffness says the bar was excluded |
+| `torsion_bar` | `bar_diameter`, `span`, `arm_length`, `shear_modulus` | torsional stiffness `k_θ = GJ/L`, then a wheel rate | same conversion from `points.arb_drop` |
 | `none` | none | no bar | zero contribution, stated |
 
 `arb_setting` is a **linear fraction of the link rate**: 0 = no contribution from
-the bar, 1 = `rate_at_full_stiff`. It is **not** a fraction of blade travel —
+the bar, 1 = `arb.rate_at_link`. It is **not** a fraction of blade travel —
 that reading differs by tens of percent on a real blade and is the ambiguity the
 round-1 review found. A non-linear blade curve is expressible only through
 `arb.setting_table` (R2); a model that declares `blade` and omits the table is
 linear by definition and the app says "linear bar assumed" in the assumptions
 block.
+
+The torsion-bar fields **are in the v1 schema** — they are fields like any other,
+typed, ranged and with an `on_absence`, and §4.2.1 lists them. What is R2 about
+them is the *release* of a v1 model that declares `torsion_bar`, not their
+existence: a file that carries them validates today, and §4.3.3's earlier claim
+that they "do not exist in the v1 schema" while §4.2.1 required them was the
+round-2 contradiction. The reference car is such a file, and it is why
+`arb.bar_diameter` — never `bar_diameter: 0`, which is not a bar and not an
+absence — is how a torsion bar is described.
 
 ### 4.4 Computed outputs — names, units, inputs, release
 
@@ -1609,20 +1802,42 @@ Outputs are never stored in a setup file. They are functions of (transformed
 model geometry, setup, analysis inputs) and are recorded only in exports, where
 they are labelled as derived and carry the state from §4.4.1.
 
-| Output | Unit | Depends on (field paths, §4.2.1/§4.3.1) | AC | Release |
-|---|---|---|---|---|
-| Motion ratio | – | damper mounts, lower arm, upper link, wheel centre, spring location | E3.1 | R0 |
-| Wheel rate ("ride stiffness") | N/mm | motion ratio, spring rate (setup overrides model), spring preload, ARB contribution | E3.1 | R0 |
-| Ride frequency | Hz | wheel rate, `mass.sprung_front`/`sprung_rear` | E3.2 | R1 |
-| Roll stiffness | N·m/deg | wheel rates, track, `arb.*`, `arb_setting`, `arb_pickup` | E3.2 | R1 |
-| Lateral load-transfer split | % front | roll stiffness front/rear, `cg.height`, roll-centre heights, `mass.total`, `analysis_inputs.lateral_g` | E3.2 | R1 |
-| Roll-centre height (static) | mm | both arms' inboard points and outboard points, wheel centre, `reference_ride_height` | E3.3 | R0 |
-| Roll-centre migration | mm per 0.5° roll | as above, swept over `analysis_inputs.roll_sweep` | E3.3 | R0 |
-| Camber gain | deg/deg | upper and lower link geometry, upright, `geometry.adjustments[]` | E3.4 | R0 |
-| Camber at roll | deg | camber gain, `corners.<c>.camber` | E3.4 | R0 |
-| Bump steer | deg/mm | tie-rod inner and outer points, lower arm, `steering.rack` | E3.5 | R1 |
-| Damping ratio (low/high speed) | – | damper orifice inputs (§4.8), sprung mass at the corner, wheel rate, motion ratio | E3.6 | R1 |
-| Ackermann / toe at roll | deg | tie-rod geometry, `steering.rack`, `corners.<c>.toe` | E3.18 | R2 |
+| id | Output | Solver unit | Displayed as | Depends on (field paths, §4.2.1/§4.3.1) | AC | Release |
+|---|---|---|---|---|---|---|
+| `motion_ratio` | Motion ratio | – | – | `points.lca_in_*`, `lca_out`, `uca_*`, `wc`, `damper_lo`, `damper_up`; `axles.<axle>.spring.location` | E3.1 | R0 |
+| `wheel_rate` | Wheel rate ("ride stiffness") | N/m | N/mm | motion ratio, `spring.rate` (setup override), `spring_preload`, ARB contribution | E3.1 | R0 |
+| `ride_frequency` | Ride frequency | Hz | Hz | wheel rate, `body.mass.sprung_front` / `.sprung_rear` | E3.2 | R1 |
+| `roll_stiffness` | Roll stiffness | **N·m/rad** | N·m/deg (÷ 57.29578) | wheel rates, `axles.<axle>.track`, `arb.*`, `arb_setting`, `points.arb_drop` | E3.2 | R1 |
+| `load_transfer_split` | Lateral load-transfer split | – | % front | roll stiffness front/rear, `body.cg.height`, roll-centre heights, `body.mass.total`, `body.mass.unsprung_front`/`_rear`, `analysis_inputs.lateral_g` | E3.2 | R1 |
+| `roll_centre_height` | Roll-centre height (static) | m | mm | both arms' inboard and outboard points, `points.wc`, `body.reference_ride_height` | E3.3 | R0 |
+| `roll_centre_migration` | Roll-centre **displacement** at φ = ±`analysis_inputs.roll_sweep` | m | mm | as above, re-solved at ±φ | E3.3 | R0 |
+| `camber_gain` | Camber gain κ = dγ/dz_wheel | **rad/m** | ° per 10 mm bump (detail: °/mm) | upper and lower link geometry, `points.wc`, `arm_type.*`, `geometry.adjustments[]` | E3.4 | R0 |
+| `camber_per_roll` | Camber change per degree of roll | rad/rad | °/° | `camber_gain` × wheel travel per degree of roll | E3.4 | R0 |
+| `camber_at_roll` | Camber at roll | rad | ° | `camber_per_roll` (or `camber_gain`), `corners.<corner>.camber`, `analysis_inputs.roll_sweep` | E3.4 | R0 |
+| `bump_steer` | Bump steer | rad/m | mm of toe per 10 mm bump (detail: °/mm) | `points.tie_in`/`tie_out`, lower arm, `axles.front.steering.rack` | E3.5 | R1 |
+| `damping_ratio` | Damping ratio at each stated shaft speed | – | – | `damper.*` (§4.8), sprung mass at the corner, wheel rate, motion ratio | E3.6 | R1 |
+| `ackermann_toe` | Ackermann / toe at roll | rad | ° | tie-rod geometry, `axles.front.steering.rack`, `corners.<corner>.toe` | E3.18 | R2 |
+
+These ids are what `fields.yaml`'s `consumed_by` refers to and what E4.1's diff
+rows carry, so a new output is a new id here, in the YAML and in an AC — in that
+order.
+
+**Three units changed in this table, and each one changed a definition**
+(round-2 finding D-13):
+
+- **`roll_stiffness` is N·m/rad**, the unit `physics/05` §3.3, `physics/06` (6.6)
+  and `physics/99` §7 actually compute in. The v0.2 table said N·m/deg, which
+  is 57.3× smaller — a table that would have shipped a number nobody could
+  reproduce. N·m/deg remains the **display** unit, converted once in the
+  formatter.
+- **`camber_gain` is °/mm** — κ = dγ/dz in `physics/02` (2.14), which is also
+  what the design's headline ("° per 10 mm bump") reads. `deg/deg` is a
+  *different quantity*, the derivative with respect to roll, and it is the
+  `camber_per_roll` row. One name per quantity, so "camber gain deg/deg" can no
+  longer mean either.
+- **`roll_centre_migration` is a displacement in mm at a stated roll angle**, not
+  a rate "per 0.5°". `physics/02` §3.5 reports it at φ = ±1.0° and §6.6 prints
+  the numbers that way; a per-0.5° rate is not something any module computes.
 
 Every output has an AC: the audit in E9.9 fails an output id here with no AC, so
 the two orphan outputs the round-1 review found (Ackermann, dynamic toe) cannot
@@ -1728,8 +1943,8 @@ JCS form of exactly this object, and of nothing else:
 (schematic — the placeholders are not JSON)
 
 with points in **canonical, transformed** form (after every adjustment in
-§4.3.2), bare numbers rather than `{v, s}` objects (provenance does not change
-geometry), and sides ordered as JCS orders them. Two setups with the same base
+§4.3.2), bare numbers rather than `{value, source}` objects (provenance does not
+change geometry), and sides ordered as JCS orders them. Two setups with the same base
 model and the same adjustments therefore have the same `geometry_hash` on any
 device, which is what E7.1b asserts and what makes a shared sheet reproducible.
 
@@ -1797,7 +2012,10 @@ path is E6.9.
 
 - `schema_version` is `MAJOR.MINOR.PATCH` semantic versioning, as a **string**.
   There is no integer form anywhere; `docs/specs/physics/01`'s former integer is
-  withdrawn (§4 preamble).
+  withdrawn (§4 preamble). This build writes **1.0.0** only. `1.1.0`, declared by
+  `physics/01` §5 for the same document kind in a different shape, is withdrawn:
+  two versions with no migration between them is the defect this section exists
+  to prevent, and nothing has shipped, so there is nothing to migrate.
 - A reader **refuses** a document whose major is greater than it supports, naming
   both versions and writing nothing (E6.6).
 - A reader **accepts** a greater minor within the same major, preserves unknown
@@ -1848,10 +2066,22 @@ they are not rediscovered:
    oscillation period from a video, and ζ follows from the log decrement. One
    afternoon of user effort, no dyno, real data.
 
-**Fields the model needs for §4.8**, all in §4.3.1 with `on_absence: REFUSE`:
-`corners.<c>.damper_piston_bore`, `.damper_shaft_dia`, `.damper_hole_dia`,
-`.damper_piston_holes`, `.damper_oil_viscosity`, `.damper_blowoff_force`. Without
-them ζ is `REFUSED`, and the app says which field is missing rather than guessing.
+**Fields the model needs for §4.8.** The hardware — piston bore, shaft diameter,
+hole diameter and hole count — is in the car model at
+`corners.<corner>.damper.{piston_bore, shaft_dia, piston_hole_dia,
+piston_holes}`, all with `on_absence: REFUSE`: a racer can measure or read every
+one of them, so their absence refuses ζ and names the field. The fluid and the
+valve — `.oil_cst`, `.oil_temp`, `.f_blowoff`, `.c_post` — are in the setup at
+the same path, because that is what changes between runs.
+
+`f_blowoff` **and** `c_post` are both `estimated` with a `tolerance_pct`, and
+both are inputs to the band: `07` §2.3 says the blow-off assumptions *are* the
+±30 % band, and `c_post` had no field in v0.2, so the parameter that dominates
+the band could not enter it. A fixed "±30 %" label is still not acceptable —
+the band is recomputed from the tolerances, and it must move when they move.
+
+Without the hardware fields ζ is `REFUSED`, and the app says which field is
+missing rather than guessing.
 
 ### 4.9 Licence, contributors and attribution
 
@@ -1889,33 +2119,50 @@ screen (E7.12).
 
 ### 4.10 The machine-readable field map
 
-`docs/specs/fields.yaml` is the single source for both field tables and for every
-test that iterates fields. One entry per field:
+`docs/specs/fields.yaml` **exists** (it did not in v0.2, which is why this
+section described a file nobody could read) and is the single source for both
+field tables, for the generated Dart table the validator interprets, and for
+every test that iterates fields. One entry per field:
 
 ```yaml
-- field: body.cg.height
+- path: body.cg.height
   type: value
-  unit: mm
-  req: no
-  on_absence: ESTIMATE          # ASSUME | ESTIMATE | REFUSE | OMIT
-  estimate: two_hang_plumb_line # names the procedure in docs/specs/procedures/
-  band: true                    # the value carries a computed band
-  plausible: [10, 120]
-  consumed_by: [load_transfer_split]
-  worksheet: yes
-  datum: "flat plate, chassis pivot axis"
+  unit: length               # a dimension from meta.dimensions → mm
+  req: "no"
+  on_absence: ESTIMATE       # ASSUME | ESTIMATE | REFUSE | OMIT
+  estimate: two_hang_plumb_line   # a procedure id in the same file's `procedures`
+  estimate_alt: component_mass_moment
+  band: true                 # the value carries a computed band
+  default: 28.0
+  plausible: [15, 45]
+  consumed_by: [load_transfer_split, roll_centre_height]
+  notes: "Never asked as a measurement (D-14)."
 ```
 
 Rules, all enforced by E9.10:
 
-- `on_absence` is mandatory and is one of the four legal values.
+- `on_absence` is mandatory and is one of the **four** legal values. A table, an
+  enum or a validation rule that knows only three is wrong: `ESTIMATE` is the
+  policy that carries CG height and the unsprung masses, and a loader that
+  collapses it into `ASSUME` turns an inferred number into an assumed one and
+  loses its band.
 - `assume` is mandatory where the policy is `ASSUME` and forbidden otherwise.
-- `estimate` and `band` are mandatory where the policy is `ESTIMATE`.
-- `consumed_by` lists output ids from §4.4; every id must exist there.
+- `estimate` and `band` are mandatory where the policy is `ESTIMATE`, and
+  `estimate` must name an entry in the file's `procedures` map.
+- `consumed_by` lists output ids from §4.4; every id must exist there, and the
+  single sentinel `all` is legal on envelope fields only.
 - `plausible` is a closed interval in the field's own unit, or absent for a field
-  with no meaningful range.
+  with no meaningful range. A default that falls outside its own `plausible`
+  interval is a schema error — which is how `ASSUME(0)` for unsprung mass would
+  have been caught by the gate rather than by a review.
 - The Markdown tables in §4.2.1 and §4.3.1 are **generated** from this file, and
-  the gate fails if the checked-in tables differ from the generated ones.
+  the gate fails if the checked-in tables differ from the generated ones. So are
+  the Dart table and the fixture set.
+
+The file's own header records every place the two documents disagreed and which
+name survived, so a reader of an older file can find what happened to a key
+instead of guessing. `docs/specs/physics/01` §5 is the same schema shown as a
+worked model.
 
 ### 4.11 Tiers of claim: firm, inferred, speculative
 
@@ -2125,19 +2372,24 @@ that a user is never promised them by accident.
 
 | # | Decision | Lands in |
 |---|---|---|
-| R-1 | **Frame is ISO 8855**: x forward, y **left**, z up, origin on the ground plane at the rear axle centre. Per-wheel quantities are per-wheel signed (camber positive = top outboard, toe positive = toe-in) and negated on mirroring; car-level quantities are never signed per side. | §4.2, E3.3, E3.4, all hardpoints re-derived |
+| R-1 | **Frame is ISO 8855**: x forward, y **left**, z up, origin on the ground plane at the rear axle centre. Per-wheel quantities are per-wheel signed (camber positive = top outboard, toe positive = toe-in) and mirroring copies them **unchanged** — it negates point `y` only (D-17, `docs/decisions.md`); the side factor `s` is applied once in the solver. Car-level quantities are never signed per side. | §4.2, E3.3, E3.4, all hardpoints re-derived |
 | R-2 | **Storage is mm, g, degrees**; SI exists only inside the physics package, at one conversion boundary; the metre-value guard is `\|c\| > 3000 mm`. | §4.1 rule 1, §4.5.4 |
 | D-09 | One gate command: `cd app && dart run tool/gate.dart`. | E9.8, AGENTS.md |
 | D-10 | **iOS is deferred; Android is the v1 release target.** No AC may require an Apple-only capability. | E8.1, §2.4, L-10, §8.3 |
 | D-11 | Every computed property carries a visible validity state, `not_yet_validated` initially. | §4.4.1, E3.16 |
 | D-12 | v1 = geometry, balance and damping ratio. Round 2 could not support damping ratio as specified, and the owner's decision of 2026-10-30 resolved it as an estimate with a band rather than a measurement. | §2.1, §4.8, E3.6 |
-| D-13 | **Absence policy**: every field declares `on_absence` ∈ `ASSUME`/`ESTIMATE`/`REFUSE`/`OMIT`; three prose policies were deleted and the tests are generated from the table. | §4.1 rule 3, E1.2, E2.4, E9.10 |
-| D-14 | **Canonical form is RFC 8785 JCS**, scope = body minus `meta` and `content_hash`, with published fixtures. | §4.5, E1.7 |
-| D-15 | **Geometry in setups is a closed transform**: three adjustments, each with one axis, one sign and one unit; `geometry_hash` identifies the geometry actually used. | §4.3.2, §4.5.3, E2.1, E7.1b |
-| D-16 | **Attribution is schema**: `license`, `contributors[]`, `attribution_text`, hashed and preserved through every hop. | §4.9, E7.12, E9.6 |
-| D-17 | **Model-missing is a first-class state** with three actions and a recorded mapping. | §4.6, E6.9 |
-| D-18 | **Release markers** R0/R1/R2 on every AC; v1 capped. | §2, §8.2 |
-| D-19 | **Owner decisions of 2026-10-30**: optional conditions with a sheet-diff warning; damping ratio as a banded estimate in v1; CG height inferred, never measured; grip inference-only; the sheet interpreter's vocabulary, phases and tiers. | E4.9, E3.6, §4.2.1, §4.11, E2.13 |
+| S-01 | **Absence policy**: every field declares `on_absence` ∈ `ASSUME`/`ESTIMATE`/`REFUSE`/`OMIT`; three prose policies were deleted and the tests are generated from the table. | §4.1 rule 3, E1.2, E2.4, E9.10 |
+| S-02 | **Canonical form is RFC 8785 JCS**, scope = body minus `meta` and `content_hash`, with published fixtures. | §4.5, E1.7 |
+| S-03 | **Geometry in setups is a closed transform**: three adjustments, each with one axis, one sign and one unit; `geometry_hash` identifies the geometry actually used. | §4.3.2, §4.5.3, E2.1, E7.1b |
+| S-04 | **Attribution is schema**: `license`, `contributors[]`, `attribution_text`, hashed and preserved through every hop. | §4.9, E7.12, E9.6 |
+| S-05 | **Model-missing is a first-class state** with three actions and a recorded mapping. | §4.6, E6.9 |
+| S-06 | **Release markers** R0/R1/R2 on every AC; v1 capped. | §2, §8.2 |
+| S-07 | **Owner decisions of 2026-10-30**: optional conditions with a sheet-diff warning; damping ratio as a banded estimate in v1; CG height inferred, never measured; grip inference-only; the sheet interpreter's vocabulary, phases and tiers. | E4.9, E3.6, §4.2.1, §4.11, E2.13 |
+
+**Two numbering namespaces, deliberately.** `D-nn` in this document always means a decision in
+`docs/decisions.md` (the project record). `S-nn` means a decision taken inside this specification —
+they are different lists and must not be confused. Before round 3 they shared the `D-` prefix, so
+"D-17" meant camber/toe in the body and model-missing in this table.
 
 ### 7.2 Still open for the owner
 

@@ -296,9 +296,12 @@ IR = 30.1623 × 0.91364 / 48.7475 = 0.56532   ✓
 ```
 k_w = 3.50 × 0.565308² = 3.50 × 0.319573 = 1.11851 N/mm = 1118.51 N/m
 ω_n = √(1118.51/0.24375) = √4588.8 = 67.741 rad/s
-f   = 67.741/(2π) = 10.782 Hz                      (round 1: 9.560 Hz)
+f   = 67.741/(2π) = 10.781 Hz                     (round 1: 9.560 Hz)
 c_crit = 2 × √(1118.51 × 0.24375) = 2 × 16.5115 = 33.023 N·s/m   (round 1: 37.242)
 ```
+
+Round 2 printed `10.782 Hz` beside a correct `ω_n = 67.741`: the division slipped in the last digit,
+and 67.741/6.28319 = 10.7813. The value is **10.781 Hz** (G05.3, `00` §5).
 
 10.8 Hz is a normal touring-car front frequency, inside §3.5's 8–12 Hz band — as 9.56 Hz also was,
 which is why the band could not catch the error.
@@ -330,7 +333,7 @@ k_φ,total = 65.642 N·m/rad       front share 56.78 %
 
 **`IR_r = 0.7071` is an assumed input, not a computed value.** The reference car has no rear
 hardpoints (module 1 §8.4), so `IR_r`, the rear bar rate and `z_rc,r` are labelled inputs with ranges.
-Round 1 presented them as "the same geometry" and quoted every value as a hand calculation; 00 §10's
+Round 1 presented them as "the same geometry" and quoted every value as a hand calculation; 00 §12's
 checklist ("no step relies on a number that appears nowhere else") failed on all three.
 
 ```
@@ -342,7 +345,7 @@ f   = 10.286 Hz                                    (round 1: 9.073 Hz)
 c_crit = 2 × √(1300 × 0.31125) = 2 × 20.115 = 40.230 N·s/m   (round 1: 45.607)
 ```
 
-Front 10.782 Hz, rear 10.286 Hz — a 4.8 % split with a small front bias. **Both figures inherit the
+Front 10.781 Hz, rear 10.286 Hz — a 4.8 % split with a small front bias. **Both figures inherit the
 assumed `IR_r`**: a 10 % error in `IR_r` moves the rear frequency by 5 % and, because the split is the
 headline, moves the *relative* front/rear balance of the frequency pair by the same amount.
 
@@ -354,7 +357,7 @@ headline, moves the *relative* front/rear balance of the frequency pair by the s
 |---|---|---|---|
 | G05.1 | reference front damper geometry | IR = 0.565308 ± 1e-5 | hand calc §6.1 (closed form agrees to 5 s.f.) |
 | G05.2 | k_s = 3.50 N/mm, IR = 0.565308 | k_w = 1.11851 N/mm | hand calc §6.2 |
-| **G05.3** | k_w = 1.11851 N/mm, **m_s = 0.24375 kg** | f = **10.782 Hz**, c_crit = **33.023 N·s/m** | hand calc §6.2 |
+| **G05.3** | k_w = 1.11851 N/mm, **m_s = 0.24375 kg** | f = **10.781 Hz**, c_crit = **33.023 N·s/m** | hand calc §6.2 |
 | G05.4 | bar d = 1.50, L = 90, a = 20, IR_arm = 0.80, G = 79.3 GPa | k_bar = 0.70067 N/mm | hand calc §6.3 |
 | G05.5 | front axle, §6.4 data | k_φ,f = 37.274 N·m/rad; front share 56.78 % | hand calc §6.4 |
 | **G05.6** | rear, §6.5 data, **m_s = 0.31125 kg** | f = **10.286 Hz**, c_crit = **40.230 N·s/m** | hand calc §6.5 (IR_r assumed) |

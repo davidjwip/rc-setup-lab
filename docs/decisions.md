@@ -30,20 +30,32 @@ shaft diameter, hole diameter, hole count, oil viscosity, blow-off force).
 ---
 
 **D-13 — Damping ratio ships in v1 as an estimate, and the trend is the product.** Dave, 2026-10-30.
-ζ is computed with a stated band and an `estimated`/`inferred` badge; the absolute value is
-explicitly not accurate (±30% at ≥ 50 mm/s, ±50% between 20 and 50 mm/s, and **no band at all below
-20 mm/s** where stiction dominates and the model does not apply). What must be trustworthy is the
-*direction*: heavier oil damps more; laying a shock down reduces the motion ratio and therefore the
-wheel-level damping; more or larger piston holes reduce low-speed force; hotter oil damps less.
+ζ is computed with a **computed** band and an `estimated`/`inferred` badge; the absolute value is
+explicitly not accurate. The band is not a fixed label: it is produced by re-running the model at each
+input's stored tolerance and taking the union (physics/07 §6.6). On the reference car that gives
+**−40/+15 % at 20–50 mm/s** (hole diameter sets the low side, discharge coefficient the high),
+**−50/+4 % at 99 mm/s**, and **±50 % at 200–500 mm/s** (blow-off force and post-blow-off rate
+dominate) — and **no band at all below 20 mm/s**, where stiction dominates and the model does not
+apply. What must be trustworthy is the *direction*: heavier oil damps more; laying a shock down
+reduces the motion ratio and therefore the wheel-level damping; more or larger piston holes reduce
+low-speed force; hotter oil damps less.
 
-> **Correction (this entry was wrong on first writing).** It originally listed "a stiffer spring
-> raises ζ" as a direction to trust. That is backwards: ζ = c / (2√(k·m)), so a +20% spring rate
-> gives **−8.7%** ζ for the same damper. The physics revision caught it; the corrected direction is
-> in the table above and in `07-damping.md` §9. The lesson is the standing one: directions are only
-> trustworthy once the equation has been written down.
+> **Correction (this entry was wrong twice).** It first listed "a stiffer spring raises ζ" as a
+> direction to trust — backwards: ζ = c / (2√(k·m)), so +20% spring rate gives **−8.7%** ζ for the
+> same damper. It then carried a fixed ±30 %/±50 % band, which the requirements explicitly refuse: a
+> band that ignores which input dominates tells the user nothing about what to measure next. Both are
+> fixed above. The lesson is the standing one: directions and bands are only trustworthy once the
+> equation has been written down.
 
 Forecloses: nothing — the drop-test workflow (§3 option 3 of `docs/reviews/round1/CONSOLIDATED.md`)
 remains the route to a measured ζ later, and upgrades this badge per property when it lands.
+
+**D-18 — CG height keeps 28.0 mm as the stated default, and the band tells the truth.** Ruled
+2026-10-31. The reference car's own component build-up gives 18.7 mm, which is 33% away; moving the
+goldens to it would swap one unmeasured number for another. So the default stays 28.0 mm, every
+consuming output is tiered `inferred`, and the band (±14% on TLLT, ±22% on roll angle, ±0.13 pp on
+balance) is displayed rather than hidden. The first plumb-line measurement on a real car replaces it
+per model, and the model records which route produced the number.
 
 **D-16 — One machine-readable schema, and provenance is structural.** Dave's project, ruled
 2026-10-31 after the round-2 verifier found two normative car-model files (spec §4.2 and

@@ -1,6 +1,6 @@
 # 00 — Physics & calculator specification: overview
 
-Status: **round 2 revision** (2026-10-30). No Dart has been written against this document yet.
+Status: **round 3 revision** (2026-10-31). No Dart has been written against this document yet.
 Audience: the Flutter developer implementing `app/packages/setup_physics`, a physics-competent
 reviewer, and Dave (owner).
 
@@ -22,7 +22,7 @@ reviewer can diff against round 1 without re-reading everything.
 | 2 | **Per-wheel signed conventions.** Camber, toe, KPI and scrub radius are per-wheel quantities: positive camber = top outboard, positive toe = toe-in, and every y-difference carries the side sign `s` (+1 left, −1 right). Car-level quantities (roll-centre height, load transfer, balance) are frame-free and never signed per side. | A3 | 01 §3, 02 §3.6–3.7 |
 | 3 | **Storage is mm, g, deg on disk** (R-2), converted to SI at exactly one boundary — the `setup_physics` adapter. The `\|c\| > 3 m` guard becomes `\|c\| > 3000 mm`. 01 §5's example file and §8 are re-stated in mm. | A2 | 00 §2, 01 §5–§6 |
 | 4 | **No implicit 10⁻³ anywhere.** Every equation states its symbols' units and applies its own conversion explicitly. Fixed: (5.7), (5.8), (5.9), (6.3), (6.7)–(6.9), (9.9), (9.12). | A4 | 05 §3, 06 §3, 09 §4 |
-| 5 | **Reference-car sprung masses corrected** to 0.24375 kg front / 0.31125 kg rear per corner. Front ride frequency 10.782 Hz (was 9.560), rear 10.286 Hz (was 9.073); every damping ratio in module 7 rises 12.8%. | B1 | 05 §6, 07 §6 |
+| 5 | **Reference-car sprung masses corrected** to 0.24375 kg front / 0.31125 kg rear per corner. Front ride frequency 10.781 Hz (was 9.560), rear 10.286 Hz (was 9.073); every damping ratio in module 7 rises 12.8%. | B1 | 05 §6, 07 §6 |
 | 6 | **Anti-dive example rebuilt.** The reference car's hinge lower arm has no side-view line; the module returns `Undefined(noSideViewConstruction)` and the 316.1 % case is withdrawn. Three defensible readings give no-anti-geometry twice and 773 % once, which is the finding. | B2, B7 | 03 §3.1, §5.2 |
 | 7 | **Bump steer sign inverted** to the toe-in convention, `τ = −(ψ(bump) − ψ(0))`, and reported as a per-wheel *and* an axle-total quantity. Toe at +2 mm bump is −0.484° per wheel, not +0.484°. | B3 | 04 §3.4 |
 | 8 | **Installation-ratio sign:** `IR = −(dL_d/dθ)/(dz_w/dθ)`. Module 5 also distinguishes `IR < 0` (a real geometric inversion) from `IR = 0`. | B4 | 05 §3.1 |
@@ -32,7 +32,7 @@ reviewer can diff against round 1 without re-reading everything.
 | 12 | **Input contract completed** (C1): bar diameter, span, arm length and G, and the damper's bore, shaft, hole diameter, hole count, `F_bo`, `c_post` now exist as named fields with a declared owner, unit, range and absence policy. | C1 | 01 §4.4 |
 | 13 | **Damping ratio ships in v1 as an estimate** (owner decision D-13, 2026-10-30): module 7 keeps its orifice + blow-off model, ζ carries an explicit band and an `estimated` badge, and a "what changes ζ" table states the sign and size of the five levers a racer actually pulls. What must be trustworthy is the **direction**, not the absolute number — and one of the five (viscosity below blow-off) is a direction the geometry-only model cannot see, which is stated. | C1, C2 | 07 §0, §9 |
 | 14 | **Module 10 (chassis) added**, optional/diagnostic: material, thickness, mass, CG-height and torsional stiffness, with the correction that **material and thickness do not move the roll centre** but do move the balance (56.1 % → 52.6 % on the reference car). Ride height is an explicit input, not a hidden effect of thickness. | issue #11 | 10, 99 §11 |
-| 15 | **CG height is inferred, never measured** (owner decision D-14, 2026-10-30): a component-mass route and a two-hang plumb-line route, both in module 1 §4.5, plus the robustness split the UI must carry — balance is invariant to `h` (±0.14 pp over 24–32 mm), absolute load transfer and roll angle are not (±14 % and ±23 %). The component route gives 18.7 mm for the reference car against the 28.0 mm it assumed. | P-06, owner | 01 §4.5, 06 §6.7 |
+| 15 | **CG height is inferred, never measured** (owner decision D-14, 2026-10-30): a component-mass route and a two-hang plumb-line route, both in module 1 §4.5, plus the robustness split the UI must carry — balance is invariant to `h` (±0.13 pp over 24–32 mm), absolute load transfer and roll angle are not (±14.3 % and ±22.2 %). The component route gives 18.7 mm for the reference car against the 28.0 mm it assumed. | P-06, owner | 01 §4.5, 06 §6.7 |
 
 ### What this revision did **not** close
 
@@ -50,11 +50,67 @@ Stated here so it is not mistaken for done:
   therefore carry a ±35 % band while the balance split does not.
 - **The reference car's assumed `h = 28.0 mm` is not supported by its own component layout.** The
   revision that replaces it (and moves eight G06 cases) needs a measured car, not another guess.
-- **D-13's spring-rate clause contradicts the model.** The decision lists "a stiffer spring raises ζ for
-  the same damper" as a direction that must be trustworthy; `c_crit = 2√(k_w·m_s)` makes ζ fall as
-  1/√k_s instead (−8.7 % for +20 % spring). The spec implements the arithmetic and flags the clause for
-  amendment (07 §9). This is the one place where a ruling and the equations disagree.
+- **D-13's spring-rate clause, corrected in place.** The decision originally listed "a stiffer spring
+  raises ζ for the same damper" as a direction that must be trustworthy; `c_crit = 2√(k_w·m_s)` makes ζ
+  fall as 1/√k_s instead (−8.7 % for +20 % spring). Dave amended D-13 on 2026-10-30 and the amended
+  entry now carries the correction; 07 §9's row and the §9 note are aligned with it. Nothing is
+  outstanding here — recorded because round 2's text still described the contradiction as live.
 - **No bench validation has been done.** Every number in modules 2–7 and 10 is L0 + L1 (99 §1).
+
+---
+
+## 0.1 Changed in round 3 — the verifier's twelve, and this file's contract deltas
+
+Round 2 came back with 12 numeric discrepancies (`docs/reviews/round2/01-numeric-verification.md`,
+**D-1 … D-13**, every value independently recomputed) and a physics-side consistency list
+(`02-consistency.md`: C1, F2, F4, F5, D1 and the release-gate contradiction). This pass fixes them.
+One line each, with the branch taken where there was a choice.
+
+| # | Item | Status | What changed, and where |
+|---|---|---|---|
+| 1 | **D-1** `x_cg` = the 55 %-front value | **closed** | `x_cg = w_f·l = 115.65 mm`, not `(1 − w_f)·l = 141.35`. The 45 % split is what the corner weights, the sprung masses, both ride frequencies and the 56 % balance were all built on; the other branch (adopt `w_f = 0.55`) moves 0.31125/0.24375 kg per corner, 9.541/11.623 Hz and 58.90 % balance, i.e. rewrites modules 1, 5 and 7. Both branches are tabulated in 01 §8.1 and the trade-off stated there and in 06 §1. Re-derived downstream: h_ra 7.789, M_el 0.23892, φ 0.20854, ΔW_el 0.78876/0.59340, balance 56.15, residual −0.055, M_f/M_r 0.10493/0.13399, φ_f/φ_r 0.18836/0.23506, balance 52.61, the 10 §4.2 table, G06.3–G06.12. |
+| 2 | **D-2** ride-height label inverted | **closed** | 01 §6.2 step 1 now says `dz > 0` raises the chassis **i.e. droop of the wheel**, with the 1.44 mm consequence (10.7049 vs 9.2617) printed. 02 §6.6 and 10 §3.4/§4.3 were already right; G01.13 is the new case. |
+| 3 | **D-3 + F2** fixed ±30 % band vs a computed one | **closed on the physics side** | 07 §6.6 is new: the band is ζ re-run at each input's tolerance ends, with the tolerances stored per field (01 §4.4 gains a tolerance column, `c_post` included) and the dominant input named per speed — `C_d` at 50 mm/s, `F_bo`/`c_post` above blow-off. Every fixed ±30 %/±50 % claim is gone from 07 and 99. The residual `spec.md` §4.3.1 policy delta (`REFUSE` on `damper_blowoff_force` vs `ASSUME(4.0)`) is recorded in 01 §4.4 and §11 below. |
+| 4 | **D-4** V15's ±0.26 pp | **closed** | 99 §2.1: ±0.41 pp symmetric (−0.46 / +0.36), derived from 52.98 / 52.15 % at k_ch ±20 %. |
+| 5 | **D-5** 06 §6.7's 1.6 %/mm and 0.12 pp | **closed** | 3.57 % of the transfer per mm, 0.09 pp for a 3 mm CG error, ±14.3 % and ±22.2 % over 24–32 mm. |
+| 6 | **D-6** front frequency 10.782 Hz | **closed** | 10.781 Hz in 05 §6.2, 05 §6.5, G05.3 and 00 §5. |
+| 7 | **D-7** V2's κ noise | **closed** | 99 §2.1: ±13 % at a uniform ±0.2 mm (RSS over six coordinates), ±6.7 % on the protocol session; the pass mark moves to ±15 % because ±10 % was inside the noise. 99 §7's κ row matches. |
+| 8 | **D-8** `tie_out` y at +2 mm | **closed** | 74.0945 in 02 §6.9. |
+| 9 | **D-9** V3's floor 0.37–0.94 | **closed** | 0.37–0.93 mm in 99 §2.1. |
+| 10 | **D-10** `dTₒ/dbump` | **closed** | (0.0547, 0.9771) in 04 §6.5, with the dot product re-derived; the 57/43 split is unchanged. |
+| 11 | **D-11** `W.z` peak 73.9 mm | **closed** | 73.77 mm at θ = 0.896 rad in 02 §3.2.2. |
+| 12 | **D-12** three last-digit slips | **closed** | 01 §8.3 ê₁ = −0.139173; 04 §6.4's z_Tᵢ coefficient column re-derived at every row (−0.502 / +0.163 at the ends); τ(+4) = −1.290. |
+| 13 | **D-17** camber/toe are per-wheel signed and not negated by mirroring | **closed** | 01 §2's ruling and 01 §6.1 now separate the *stored* value (unchanged on mirror) from the *global-frame* angle (camber negates, toe does not), with `s = ±1` doing the conversion inside the solver. New cases G01.12 (symmetric car: identical stored values, zero total toe) and I13 rewritten to assert both halves. |
+| 14 | **D-11 (decision) vs 99 §8** release gate | **closed** | 99 §8 rewritten: a release ships when every property carries its evidence state; a property is promoted to `validated` only when its own V-test passes and is logged. No bench run blocks a release. V-tests, pass marks and the empty results log are kept; §2's priorities now block a *claim*, not a ship. |
+| 15 | **C1 / F4 / F5** field and tolerance mismatches | **partial — see §11** | No field was renamed here (the schema is another agent's). Every physics-side field the schema does not yet carry is listed in §11's contract-deltas table; the two that matter for the band are `tolerance_pct` on estimated values and a gauge tolerance on `damper.piston_hole_dia`. |
+| 16 | **This changelog** | **closed** | — |
+
+### Golden cases changed by this pass
+
+Stated so a reviewer can diff the suite rather than rediscover it. **Changed:** G01.1 (stored camber
+unchanged, D-17), G01.8 (total toe +1.000°, not 0), G04.4 (τ(+4) = −1.290), G04.6 (zero crossing
++0.0000), G05.3 (10.781 Hz), G06.3 (h_ra 7.789 / M_el 0.23892 / φ 0.20854), G06.4 (1.20299 / 0.93929 /
+56.15 %), G06.5 (3.5813 / 2.3783 / 120.2 % / 79.8 %, rear 87.1/112.9), G06.8 (−0.055 %), G06.9
+(0.10095° / 55.70 %), G06.10 (0.18836 / 0.23506 / 52.61 %), G06.11 (56.15 %), G07.14 (no band below the
+floor), G10.4 (0.20854 / 56.15 %), G10.5 (0.18836 / 0.23506 / 2.80 arcmin / 52.61 %), G10.9 (54.00 %).
+**Added:** G01.12 (symmetric car, D-17), G01.13 (ride-height sign, D-2), G06.12 (`x_cg = w_f·l`, D-1),
+G07.15 (the band is computed, D-3). **Withdrawn:** none.
+
+### What round 3 did **not** close
+
+- **The schema still has no tolerance field.** 07 §6.6 computes the band from per-field tolerances
+  that no field in `fields.yaml` can carry (`value_object` is `{value, source}`). Until it does, the
+  band is computable in the physics package and not storable in a file. §11 item 1.
+- **`spec.md` §4.2.1 and `fields.yaml` still derive `x_cg = wheelbase · (1 − front_mass_share)`** —
+  the D-1 slip, now in the normative schema, where 45 % front gives 141.35 mm instead of 115.65. Neither
+  file is owned by this pass; it is §11 item 2 and the single most important thing to fix next.
+- **`spec.md` §4.3.1 makes `damper_blowoff_force` `REFUSE` on absence** while 01 §4.4 assumes 4.0 N.
+  Recorded as a policy delta in 01 §4.4; one row to change in the spec.
+- **The two damper reference speeds** are still 50/200 mm/s in physics and 5/300 mm/s in the design
+  (round-2 `02-consistency.md` §D). Physics-side numbers are quoted at 50/200 throughout; the design's
+  5 mm/s readout is in the band the model says it cannot see.
+- **The reference car still has no rear hardpoints**, so `IR_r`, `k_bar,r` and `z_rc,r` remain assumed
+  inputs (unchanged from round 2).
 
 ---
 
@@ -323,7 +379,44 @@ implied, and the performance budget should be read against that number.
 
 ---
 
-## 10. Review checklist for this document
+## 11. Contract deltas — physics-side fields the schema does not yet carry
+
+The schema is owned by `docs/specs/fields.yaml` (D-16) and this pass does not rename or add anything in
+it. What follows is the list this package needs and cannot yet store, so the schema owner can pick each
+item up in one place instead of finding them scattered through nine modules. Units are the ones the
+physics documents already state; none is invented here. **Snapshot: 2026-10-31**, against
+`fields.yaml` as it stands in the working tree.
+
+The round-2 findings C1, F2 and F5 are closed on the schema side:
+`corners.<corner>.damper.c_post` (N·s/m), `body.chassis.{material, thickness, span, rail_factor,
+torsion_measured, ride_height_basis}`, `body.cg.components[]`, `body.cg.unsprung_height` and the
+per-axle `body.mass.unsprung_front/_rear` all exist in `fields.yaml`, and 01 §4.4 has been restated to
+match (§5.1 is the path map). What remains is the part no field can fix on its own:
+
+| # | Physics-side field | Unit | Where this package uses it | What the schema has today | Delta |
+|---|---|---|---|---|---|
+| 1 | **`tolerance_pct`** on every `estimated` value, and an **absolute tolerance** (in the field's own unit) on every `measured` value | — / field's unit | 07 §6.6 — the ζ band *is* the re-run at these ends; 01 §4.4's tolerance column; `spec.md` §4.8 requires the band to be "recomputed with each estimated input moved to the ends of its own `tolerance_pct`" | `value_object` is `{value, source}`; `tolerance_pct` appears only in two *notes* (f_blowoff, c_post), never as a field | **Add a third member to the value object** (or a sibling field per path). Without it the band cannot be stored or re-derived from a file, and §4.8's own test — "doubling one input's `tolerance_pct` widens the band" — has nothing to double. |
+| 2 | **`x_cg` derivation direction** | mm | 06 §6.3–6.5, 10 §4.2, G06.3–G06.12 | `body.cg.front_mass_share` (%), with the note `x_cg = wheelbase · (1 − front_mass_share)` | **Formula, not field:** with 45 % front that expression returns 141.35 mm; the correct one is `x_cg = wheelbase · front_mass_share` = 115.65 mm (D-1). One character, and every load number in the app depends on it. |
+| 3 | `corners.<corner>.damper.piston_hole_dia` **measurement tolerance** | mm | 07 §6.6 (d_h dominates the 50 mm/s band at −12/+15 %), 99 §7, F4 | the field exists; the ±0.02 mm pin-gauge figure appears only in a note | covered by item 1; listed separately because it is the *only* measured input whose tolerance materially changes the answer, and the note already promises it enters the band |
+| 4 | `axles.front.steering.rack.travel_limit` (`s_max`) | mm | 04 §3.6, 02 §3.2.2 — the mechanical guard that makes `outOfRackTravel` reachable | `rack.{x, z, y_left, y_right, travel_per_turn}`; `travel_per_turn` is display-only | **Field needed.** Without a stored limit the model returns +294° of steer at rack +20 mm (04 §3.6); `travel_per_turn` is not it. |
+
+Three policy deltas that are not fields, recorded so no one has to rediscover them:
+
+- **`damper_blowoff_force` `on_absence`.** `spec.md` §4.3.1 says `REFUSE`; 01 §4.4 assumes 4.0 N with a
+  ±50 % tolerance, because a REFUSE means ζ is refused for every file a racer can actually produce
+  from a caliper and a bottle label (C1). `spec.md` §4.8 already describes the field as
+  estimated-with-tolerance, so §4.3.1 is the row to change.
+- **`damper.piston_holes` lower bound.** Physics allows 2–8 holes (01 §4.4, 07 §5: `A_h = 0` is
+  `outOfDomain`); the schema's plausible range starts at 1. A one-hole piston is physically possible but
+  the model has nothing to say about it at the edge, so the two ranges should be reconciled in the
+  schema, not in a module.
+- **The two damping reference speeds.** `50` and `200` mm/s (07 §6.3, `analysis_inputs.damping_*`) versus
+  the design's `5` and `300`. Physics owns the band, the design owns the display; the design's low speed
+  sits in the range where the model says it cannot see (below 20 mm/s, 99 §5.3).
+
+---
+
+## 12. Review checklist for this document
 
 - [ ] Every symbol has a unit, and every equation ends with a bracketed unit on its LHS.
 - [ ] No equation depends on an implicit power of ten.
