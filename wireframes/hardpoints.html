@@ -1,0 +1,531 @@
+<!doctype html>
+<html lang="en-GB" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark light">
+<title>Hardpoints — Setup Lab wireframe</title>
+<style>
+/* ---------- tokens ---------- */
+:root{
+  color-scheme: dark;
+  --bg:#0B0C09;
+  --surface:#121410;
+  --s-low:#171A14;
+  --s-cont:#1C1F18;
+  --s-high:#24281F;
+  --s-highest:#2D3127;
+  --on-surface:#E8EADF;
+  --on-surface-var:#A8AD9C;
+  --outline:#767C69;
+  --outline-var:#3C4034;
+  --primary:#C6EF6E;
+  --on-primary:#1A2100;
+  --primary-container:#38480C;
+  --on-primary-container:#DCF9A4;
+  --secondary:#A9C9BC;
+  --tertiary:#E4B78C;
+  --error:#FFB4A2;
+  --on-error:#5C1600;
+  --warn:#E9C46A;
+  --delta-up:#C6EF6E;
+  --delta-down:#9FC8C0;
+  --grid:#2A2E24;
+  --ink-dim:#6E7462;
+  --desk:#050604;
+  --rail:#8D937F;
+  --shadow: 0 24px 60px rgba(0,0,0,.55);
+  --nav-bg:#121410E6;
+  --scrim:#0000;
+}
+[data-theme="light"]{
+  color-scheme: light;
+  --bg:#F5F5ED;
+  --surface:#FBFBF4;
+  --s-low:#FFFFFF;
+  --s-cont:#EFEFE6;
+  --s-high:#E8E9DE;
+  --s-highest:#E1E2D6;
+  --on-surface:#1A1C14;
+  --on-surface-var:#4B5041;
+  --outline:#767C68;
+  --outline-var:#C7CBBA;
+  --primary:#445E06;
+  --on-primary:#FFFFFF;
+  --primary-container:#D3F190;
+  --on-primary-container:#182200;
+  --secondary:#3D6156;
+  --tertiary:#7A5530;
+  --error:#B3261E;
+  --on-error:#FFFFFF;
+  --warn:#7A5000;
+  --delta-up:#3F5A05;
+  --delta-down:#2F5A50;
+  --grid:#D5D8C8;
+  --ink-dim:#767C68;
+  --desk:#E7E7DC;
+  --rail:#5D6353;
+  --shadow: 0 24px 60px rgba(30,32,24,.18);
+  --nav-bg:#FBFBF4E6;
+  --scrim:#0000;
+}
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:'Roboto','Inter',system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;
+  background:var(--desk);
+  color:var(--on-surface);
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+  display:flex; align-items:flex-start; justify-content:center;
+  gap:40px; padding:40px 32px 64px;
+  min-height:100%;
+  font-size:16px; line-height:1.5;
+  font-variant-numeric: tabular-nums;
+}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+:focus-visible{outline:2px solid var(--primary);outline-offset:2px;border-radius:4px}
+
+/* ---------- phone shell ---------- */
+.device{
+  width:390px;height:844px;flex:0 0 auto;
+  background:var(--surface);
+  border:1px solid var(--outline-var);
+  border-radius:44px;
+  box-shadow:var(--shadow);
+  position:relative;overflow:hidden;
+  display:flex;flex-direction:column;
+}
+.status{
+  height:46px;flex:0 0 auto;display:flex;align-items:flex-end;justify-content:space-between;
+  padding:0 26px 6px;font-size:13px;font-weight:600;letter-spacing:.2px;color:var(--on-surface);
+}
+.status .right{display:flex;align-items:center;gap:6px}
+.status svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.8}
+.batt{width:22px;height:11px;border:1.4px solid currentColor;border-radius:3px;position:relative;opacity:.9}
+.batt::after{content:"";position:absolute;left:1.5px;top:1.5px;bottom:1.5px;width:13px;background:currentColor;border-radius:1px}
+.homebar{position:absolute;bottom:7px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:var(--on-surface);opacity:.22;z-index:60}
+
+.screen{flex:1 1 auto;overflow-y:auto;overflow-x:hidden;scrollbar-width:none;padding-bottom:8px;position:relative}
+.screen::-webkit-scrollbar{display:none}
+
+/* ---------- app bar ---------- */
+.appbar{
+  position:sticky;top:0;z-index:40;
+  background:color-mix(in srgb, var(--surface) 92%, transparent);
+  backdrop-filter:blur(12px);
+  display:flex;align-items:center;gap:4px;
+  padding:4px 8px 4px 8px;min-height:56px;
+}
+.appbar .title{font-size:20px;line-height:26px;font-weight:500;letter-spacing:-.1px;flex:1;padding-left:8px}
+.appbar .sub{display:block;font-size:12px;line-height:16px;font-weight:400;color:var(--on-surface-var);letter-spacing:0}
+.iconbtn{
+  width:44px;height:44px;display:grid;place-items:center;border-radius:22px;
+  color:var(--on-surface);flex:0 0 auto;
+}
+.iconbtn:hover{background:var(--s-high)}
+.iconbtn svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+
+/* ---------- layout helpers ---------- */
+.body-pad{padding:0 16px 24px}
+.stack{display:flex;flex-direction:column}
+.gap-4{gap:4px}.gap-8{gap:8px}.gap-12{gap:12px}.gap-16{gap:16px}.gap-24{gap:24px}
+.row{display:flex;align-items:center}
+.between{justify-content:space-between}
+.muted{color:var(--on-surface-var)}
+.eyebrow{font-size:11px;line-height:14px;font-weight:500;letter-spacing:.6px;text-transform:uppercase;color:var(--on-surface-var)}
+.section-head{display:flex;align-items:baseline;justify-content:space-between;margin:24px 4px 8px}
+.section-head h2{font-size:20px;line-height:26px;font-weight:500;letter-spacing:-.1px}
+.section-head .count{font-size:12px;color:var(--on-surface-var);letter-spacing:.3px}
+.divider{height:1px;background:var(--outline-var);border:0}
+
+/* ---------- type for numbers ---------- */
+.num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1,"lnum" 1}
+.num-hero{font-size:34px;line-height:38px;font-weight:400;letter-spacing:-.6px}
+.num-lg{font-size:28px;line-height:32px;font-weight:500;letter-spacing:-.4px}
+.num-md{font-size:20px;line-height:24px;font-weight:500;letter-spacing:-.1px}
+.unit{font-size:12px;line-height:16px;font-weight:500;letter-spacing:.3px;color:var(--on-surface-var);margin-left:4px}
+
+/* ---------- cards ---------- */
+.card{
+  background:var(--s-cont);border:1px solid var(--outline-var);border-radius:16px;
+  padding:16px;position:relative;
+}
+.card.flat{background:var(--s-low);border-color:transparent}
+.card.tap:hover{background:var(--s-high)}
+.card-title{font-size:18px;line-height:24px;font-weight:500;letter-spacing:-.1px}
+.card-sub{font-size:13px;line-height:18px;color:var(--on-surface-var)}
+
+/* ---------- chips ---------- */
+.chip{
+  display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:8px;
+  border:1px solid var(--outline-var);background:transparent;
+  font-size:12px;line-height:16px;font-weight:500;letter-spacing:.3px;color:var(--on-surface-var);
+  white-space:nowrap;
+}
+.chip.solid{background:var(--s-high);border-color:transparent;color:var(--on-surface)}
+.chip.accent{background:var(--primary-container);border-color:transparent;color:var(--on-primary-container)}
+.chip.warn{border-color:color-mix(in srgb,var(--warn) 45%,transparent);color:var(--warn);background:color-mix(in srgb,var(--warn) 10%,transparent)}
+.chip.sm{height:24px;padding:0 8px;font-size:11px;letter-spacing:.4px;border-radius:6px}
+.chip svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.8}
+
+.delta{
+  display:inline-flex;align-items:center;gap:2px;height:24px;padding:0 8px;border-radius:6px;
+  background:var(--s-high);font-size:12px;line-height:16px;font-weight:500;letter-spacing:.2px;
+  font-variant-numeric:tabular-nums;color:var(--on-surface);white-space:nowrap;
+}
+.delta .arw{font-size:11px;line-height:1}
+.delta.up .arw{color:var(--delta-up)}
+.delta.down .arw{color:var(--delta-down)}
+.delta.zero{color:var(--on-surface-var)}
+.delta.none{background:transparent;border:1px dashed var(--outline-var);color:var(--on-surface-var)}
+
+/* ---------- buttons ---------- */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  min-height:48px;padding:0 20px;border-radius:12px;
+  font-size:14px;font-weight:500;letter-spacing:.1px;
+  border:1px solid transparent;background:var(--primary);color:var(--on-primary);
+}
+.btn:hover{filter:brightness(1.06)}
+.btn.outline{background:transparent;color:var(--primary);border-color:color-mix(in srgb,var(--primary) 45%,transparent)}
+.btn.tonal{background:var(--s-high);color:var(--on-surface)}
+.btn.block{display:flex;width:100%}
+.btn.sm{min-height:44px;padding:0 16px}
+.btn svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+
+/* ---------- bottom nav ---------- */
+.navbar{
+  flex:0 0 auto;height:72px;display:grid;grid-template-columns:repeat(4,1fr);
+  border-top:1px solid var(--outline-var);
+  background:var(--nav-bg);backdrop-filter:blur(14px);padding-bottom:0;
+}
+.navbar a{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:var(--on-surface-var);font-size:11px;font-weight:500;letter-spacing:.3px;position:relative}
+.navbar a svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.navbar a[aria-current="page"]{color:var(--primary)}
+.navbar a[aria-current="page"] .dot{position:absolute;top:10px;width:4px;height:4px;border-radius:2px;background:var(--primary);display:none}
+
+/* ---------- annotation rail ---------- */
+.rail{width:300px;flex:0 0 auto;padding-top:8px;color:var(--rail)}
+.rail .kicker{font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:var(--rail);opacity:.7}
+.rail h1{font-size:22px;line-height:28px;font-weight:500;color:var(--on-surface);margin:6px 0 4px;letter-spacing:-.2px}
+.rail p{font-size:13px;line-height:20px;color:var(--rail);margin-bottom:16px}
+.rail ul{list-style:none;display:flex;flex-direction:column;gap:10px;margin:0 0 20px}
+.rail li{font-size:12.5px;line-height:18px;color:var(--rail);padding-left:14px;position:relative}
+.rail li::before{content:"";position:absolute;left:0;top:7px;width:5px;height:5px;border-radius:1px;background:var(--primary);opacity:.8}
+.rail .ctrl{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}
+.tg{
+  height:34px;padding:0 12px;border-radius:8px;border:1px solid var(--outline-var);color:var(--rail);
+  font-size:12px;letter-spacing:.2px;display:inline-flex;align-items:center;gap:6px;background:transparent;
+}
+.tg[aria-pressed="true"]{background:var(--s-high);color:var(--on-surface);border-color:transparent}
+.rail .meta{font-size:11px;line-height:16px;color:var(--rail);opacity:.75;border-top:1px solid var(--outline-var);padding-top:12px;margin-top:4px}
+.rail a.link{color:var(--on-surface);border-bottom:1px solid var(--outline);font-size:12px}
+
+@media (max-width: 780px){
+  body{padding:0;display:block;background:var(--surface)}
+  .device{width:100vw;height:100dvh;border-radius:0;border:0;box-shadow:none}
+  .rail{display:none}
+  .homebar{display:none}
+}
+
+/* ---------- reduced motion ---------- */
+@media (prefers-reduced-motion: reduce){
+  *{transition-duration:.001ms !important;animation-duration:.001ms !important}
+}
+
+.screen{padding-bottom:32px;scroll-padding-top:300px}
+#hd{position:relative;background:var(--surface);backdrop-filter:none}
+.progress{padding:0 20px 12px}
+.prow{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px}
+.prow b{font-size:13px;font-weight:500;letter-spacing:.1px}
+.prow span{font-size:12px;color:var(--on-surface-var)}
+.pbar{height:6px;border-radius:3px;background:var(--outline-var);overflow:hidden}
+.pbar i{display:block;height:100%;background:var(--primary);border-radius:3px}
+
+.seg{display:flex;gap:4px;padding:4px;margin:0 16px 12px;background:var(--s-low);border-radius:12px;border:1px solid var(--outline-var)}
+.seg button{flex:1;height:40px;border-radius:9px;font-size:13px;font-weight:500;letter-spacing:.2px;color:var(--on-surface-var)}
+.seg button[aria-selected="true"]{background:var(--s-high);color:var(--on-surface)}
+
+.diagram{position:sticky;top:0;z-index:30;background:var(--surface);padding:0 16px 8px;border-bottom:1px solid var(--outline-var)}
+.dbox{background:var(--s-low);border:1px solid var(--outline-var);border-radius:14px;padding:6px 8px 4px;position:relative}
+.dbox svg{display:block;width:100%;height:132px}
+.dcap{display:flex;justify-content:space-between;align-items:center;font-size:11px;letter-spacing:.4px;color:var(--on-surface-var);padding:2px 6px 4px}
+.dcap em{font-style:normal;color:var(--primary);font-weight:500;letter-spacing:.2px}
+
+.mirror{display:flex;align-items:center;gap:12px;padding:12px 20px;border-bottom:1px solid var(--outline-var)}
+.mirror .t{flex:1}
+.mirror b{display:block;font-size:14px;font-weight:500;line-height:20px}
+.mirror span{display:block;font-size:12px;line-height:16px;color:var(--on-surface-var)}
+.sw{width:52px;height:32px;border-radius:16px;background:var(--s-highest);border:1px solid var(--outline);position:relative;flex:0 0 auto;margin:6px}
+.sw::after{content:"";position:absolute;width:24px;height:24px;border-radius:12px;background:var(--on-surface-var);top:3px;left:3px;transition:transform .2s cubic-bezier(.2,0,0,1)}
+.sw[aria-checked="true"]{background:var(--primary);border-color:transparent}
+.sw[aria-checked="true"]::after{transform:translateX(20px);background:var(--on-primary)}
+
+.grp{padding:0 16px}
+.grp h2{font-size:11px;letter-spacing:.9px;text-transform:uppercase;color:var(--on-surface-var);font-weight:500;margin:20px 4px 8px;display:flex;justify-content:space-between}
+.hp{background:var(--s-cont);border:1px solid var(--outline-var);border-radius:12px;margin-bottom:8px;overflow:hidden}
+.hp .hrow{display:flex;align-items:center;gap:12px;width:100%;min-height:60px;padding:10px 14px;text-align:left}
+.hp .dot{width:22px;height:22px;border-radius:11px;border:1.5px solid var(--outline);display:grid;place-items:center;font-size:11px;font-weight:600;color:var(--on-surface-var);flex:0 0 auto}
+.hp.sel .dot{border-color:var(--primary);background:var(--primary);color:var(--on-primary)}
+.hp .nm{flex:1;min-width:0}
+.hp .nm b{display:block;font-size:15px;line-height:20px;font-weight:500}
+.hp .nm span{display:block;font-size:12px;line-height:16px;color:var(--on-surface-var);letter-spacing:.2px;font-variant-numeric:tabular-nums}
+.hp .chev{width:18px;height:18px;stroke:var(--on-surface-var);fill:none;stroke-width:1.8;transition:transform .22s cubic-bezier(.2,0,0,1)}
+.hp.sel .chev{transform:rotate(90deg)}
+.hp .body{padding:0 14px 14px;display:none}
+.hp.sel .body{display:block}
+.fields{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.field{display:block;background:var(--s-low);border:1px solid var(--outline-var);border-radius:8px;padding:4px 8px 5px;min-height:52px}
+.field .fx{display:block;font-size:10px;letter-spacing:.8px;color:var(--on-surface-var);font-weight:600;text-transform:uppercase}
+.field input{width:100%;background:none;border:0;color:var(--on-surface);font-size:17px;line-height:22px;font-weight:500;font-variant-numeric:tabular-nums;padding:0;-webkit-appearance:none;outline:none}
+.field .fu{position:absolute;right:8px;bottom:8px;font-size:10px;color:var(--on-surface-var)}
+.field{position:relative}
+.field.miss{border-style:dashed;border-color:var(--warn)}
+.field.miss input{color:var(--warn)}
+.hint{font-size:12px;line-height:17px;color:var(--on-surface-var);margin:10px 2px 0}
+.hint b{color:var(--on-surface);font-weight:500}
+.hp .act{display:flex;gap:8px;margin-top:12px}
+.mini{min-height:44px;padding:0 12px;border-radius:8px;border:1px solid var(--outline-var);font-size:12px;font-weight:500;color:var(--primary);display:inline-flex;align-items:center;gap:6px}
+.mini svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.8}
+.footnote{margin:16px 20px 0;font-size:12px;line-height:18px;color:var(--on-surface-var)}
+.footnote b{color:var(--on-surface);font-weight:500}
+</style>
+</head>
+<body class="">
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+ <defs>
+  <symbol id="i-car" viewBox="0 0 24 24"><path d="M4 16.2v-3.4l1.8-4.4A2 2 0 0 1 7.7 7h8.6a2 2 0 0 1 1.9 1.4L20 12.8v3.4"/><path d="M4 13h16"/><circle cx="7.6" cy="17.6" r="1.7"/><circle cx="16.4" cy="17.6" r="1.7"/></symbol>
+  <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/><circle cx="9" cy="7" r="2.1"/><circle cx="15" cy="12" r="2.1"/><circle cx="8" cy="17" r="2.1"/></symbol>
+  <symbol id="i-compare" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="7" height="15" rx="1.6"/><rect x="13.5" y="4.5" width="7" height="15" rx="1.6"/><path d="M6 9h2M6 13h2M16 9h2M16 13h2"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M12 6.6C10.4 5.1 7.9 4.6 4 4.6v13.6c3.9 0 6.4.5 8 2 1.6-1.5 4.1-2 8-2V4.6c-3.9 0-6.4.5-8 2z"/><path d="M12 6.6v13.6"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5.2v13.6M5.2 12h13.6"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="M9.5 6l6 6-6 6"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M19 12H5.5M11 6l-6 6 6 6"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6.5L9.3 17.2 4 11.9"/></symbol>
+  <symbol id="i-ruler" viewBox="0 0 24 24"><path d="M3.6 15.2L15.2 3.6l5.2 5.2L8.8 20.4z"/><path d="M7.4 11l1.8 1.8M10.2 8.2l1.8 1.8M13 5.4l1.8 1.8"/></symbol>
+  <symbol id="i-cog" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.1"/><path d="M12 3.2v2.6M12 18.2v2.6M3.2 12h2.6M18.2 12h2.6M5.8 5.8l1.9 1.9M16.3 16.3l1.9 1.9M18.2 5.8l-1.9 1.9M7.7 16.3l-1.9 1.9"/></symbol>
+  <symbol id="i-more" viewBox="0 0 24 24"><circle cx="12" cy="6" r="1.1" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.1" fill="currentColor" stroke="none"/><circle cx="12" cy="18" r="1.1" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-swap" viewBox="0 0 24 24"><path d="M4.5 8.5h14l-3.2-3.2M19.5 15.5h-14l3.2 3.2"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.6"/><path d="M12 11.2v5.4M12 7.7v.2"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 4.4L20.6 19.6H3.4z"/><path d="M12 10v4.1M12 16.9v.2"/></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="M12 5v13M6.5 12.5L12 18l5.5-5.5"/></symbol>
+ </defs>
+</svg>
+
+<main class="device" id="device">
+  
+<div class="status" aria-hidden="true">
+  <span>9:41</span>
+  <span class="right">
+    <svg viewBox="0 0 24 24"><path d="M3 17h3v3H3zM9 13h3v7H9zM15 9h3v11h-3z" fill="currentColor" stroke="none"/></svg>
+    <svg viewBox="0 0 24 24"><path d="M2.5 9.2a14 14 0 0 1 19 0M6 12.4a9 9 0 0 1 12 0M9.4 15.6a4.2 4.2 0 0 1 5.2 0"/><circle cx="12" cy="18.6" r="1" fill="currentColor" stroke="none"/></svg>
+    <span class="batt"></span>
+  </span>
+</div>
+  <div class="screen" id="screen">
+  
+<header class="appbar" id="hd">
+  <button class="iconbtn" aria-label="Back to car"><svg><use href="#i-back"/></svg></button>
+  <div class="title">B7 · front corner<span class="sub">Measured geometry · mm</span></div>
+  <button class="iconbtn" aria-label="More"><svg><use href="#i-more"/></svg></button>
+</header>
+
+<div class="progress">
+  <div class="prow"><b>31 of 42 hardpoints</b><span>about 8 minutes left</span></div>
+  <div class="pbar" role="progressbar" aria-valuenow="31" aria-valuemin="0" aria-valuemax="42" aria-label="31 of 42 hardpoints measured"><i style="width:73.8%"></i></div>
+</div>
+
+<div class="seg" role="tablist">
+  <button role="tab" aria-selected="true">Front</button>
+  <button role="tab" aria-selected="false">Rear</button>
+  <button role="tab" aria-selected="false">Chassis</button>
+</div>
+
+<div class="diagram">
+  <div class="dbox">
+    
+<svg viewBox="0 0 340 132" aria-label="Front view of the front-left corner with six numbered hardpoints" role="img" id="cornerMap">
+  <g stroke="var(--grid)" stroke-width="1">
+    <path d="M0 108h340" stroke-dasharray="0"/>
+  </g>
+  <path d="M0 132h340" stroke="var(--outline)" stroke-width="1.5"/>
+  <text x="8" y="128" fill="var(--on-surface-var)" font-size="9" font-family="Roboto, system-ui" letter-spacing=".5">GROUND</text>
+  <path d="M56 34v74" stroke="var(--outline)" stroke-width="2"/>
+  <text x="52" y="30" fill="var(--on-surface-var)" font-size="9" font-family="Roboto, system-ui" text-anchor="middle">CL</text>
+  <circle cx="262" cy="96" r="32" fill="none" stroke="var(--outline)" stroke-width="1.6"/>
+  <circle cx="262" cy="96" r="17" fill="none" stroke="var(--outline-var)" stroke-width="1.2"/>
+  <path d="M262 96v36" stroke="var(--outline-var)" stroke-dasharray="3 3"/>
+  <text x="268" y="118" fill="var(--on-surface-var)" font-size="9" font-family="Roboto, system-ui">RH 5.5</text>
+  <g stroke="var(--on-surface-var)" stroke-width="2.4" stroke-linecap="round">
+    <path d="M64 92L238 90"/>
+    <path d="M64 56L240 66"/>
+    <path d="M240 66L238 90"/>
+  </g>
+  <g stroke="var(--on-surface)" stroke-width="2" stroke-linecap="round">
+    <path d="M134 44L206 88"/>
+    <path d="M134 44L142 38"/>
+  </g>
+  <g id="dots" font-family="Roboto, system-ui" font-size="9" font-weight="600" text-anchor="middle">
+    <g data-hp="a"><circle cx="64" cy="92" r="7.5" fill="var(--surface)" stroke="var(--on-surface-var)" stroke-width="1.6"/><text x="64" y="95" fill="var(--on-surface-var)">A</text></g>
+    <g data-hp="b"><circle cx="238" cy="90" r="7.5" fill="var(--surface)" stroke="var(--on-surface-var)" stroke-width="1.6"/><text x="238" y="93" fill="var(--on-surface-var)">B</text></g>
+    <g data-hp="c"><circle cx="64" cy="56" r="7.5" fill="var(--surface)" stroke="var(--on-surface-var)" stroke-width="1.6"/><text x="64" y="59" fill="var(--on-surface-var)">C</text></g>
+    <g data-hp="d"><circle cx="240" cy="66" r="7.5" fill="var(--surface)" stroke="var(--on-surface-var)" stroke-width="1.6"/><text x="240" y="69" fill="var(--on-surface-var)">D</text></g>
+    <g data-hp="e"><circle cx="206" cy="88" r="7.5" fill="var(--surface)" stroke="var(--on-surface-var)" stroke-width="1.6"/><text x="206" y="91" fill="var(--on-surface-var)">E</text></g>
+    <g data-hp="f"><circle cx="134" cy="44" r="7.5" fill="var(--surface)" stroke="var(--on-surface-var)" stroke-width="1.6"/><text x="134" y="47" fill="var(--on-surface-var)">F</text></g>
+  </g>
+</svg>
+    <div class="dcap"><span>Front left · from the front</span><em id="dsel">B · lower arm, outer</em></div>
+  </div>
+</div>
+
+<div class="mirror">
+  <div class="t"><b>Mirror to the right side</b><span>Front-right is flipped about the centreline</span></div>
+  <button class="sw" role="switch" aria-checked="true" aria-label="Mirror measurements to the right side"></button>
+</div>
+
+<div class="grp">
+  <h2><span>Front left</span><span>0 of 0 datum set</span></h2>
+
+  <div class="hp" data-hp="a">
+    <button class="hrow" aria-expanded="false">
+      <span class="dot">A</span>
+      <span class="nm"><b>Lower arm · inner</b><span>12.5 · 44.0 · 22.5</span></span>
+      <svg class="chev"><use href="#i-chev"/></svg>
+    </button>
+  </div>
+
+  <div class="hp sel" data-hp="b">
+    <button class="hrow" aria-expanded="true">
+      <span class="dot">B</span>
+      <span class="nm"><b>Lower arm · outer</b><span>12.5 · 78.0 · 20.0</span></span>
+      <svg class="chev"><use href="#i-chev"/></svg>
+    </button>
+    <div class="body">
+      <div class="fields">
+        <label class="field"><span class="fx">X · fwd</span><input value="12.5" inputmode="decimal" aria-label="X, forward from front axle, millimetres"><span class="fu">mm</span></label>
+        <label class="field"><span class="fx">Y · out</span><input value="78.0" inputmode="decimal" aria-label="Y, outboard from centreline, millimetres"><span class="fu">mm</span></label>
+        <label class="field"><span class="fx">Z · up</span><input value="20.0" inputmode="decimal" aria-label="Z, up from ground, millimetres"><span class="fu">mm</span></label>
+      </div>
+      <p class="hint">The inner hinge pin is the datum for this corner. Measure from the <b>centre of the pin</b>, not the face of the arm.</p>
+      <div class="act"><button class="mini"><svg><use href="#i-ruler"/></svg> Show me where</button></div>
+    </div>
+  </div>
+
+  <div class="hp" data-hp="c">
+    <button class="hrow" aria-expanded="false">
+      <span class="dot">C</span>
+      <span class="nm"><b>Upper arm · inner</b><span>12.5 · 40.0 · 56.0</span></span>
+      <svg class="chev"><use href="#i-chev"/></svg>
+    </button>
+  </div>
+
+  <div class="hp" data-hp="d">
+    <button class="hrow" aria-expanded="false">
+      <span class="dot">D</span>
+      <span class="nm"><b>Upper arm · outer</b><span>12.5 · 74.0 · 52.5</span></span>
+      <svg class="chev"><use href="#i-chev"/></svg>
+    </button>
+  </div>
+
+  <div class="hp" data-hp="e">
+    <button class="hrow" aria-expanded="false">
+      <span class="dot">E</span>
+      <span class="nm"><b>Damper · lower eye</b><span>18.0 · 62.0 · 21.5</span></span>
+      <svg class="chev"><use href="#i-chev"/></svg>
+    </button>
+  </div>
+
+  <div class="hp" data-hp="f">
+    <button class="hrow" aria-expanded="false">
+      <span class="dot">F</span>
+      <span class="nm"><b>Damper · top eye</b><span>18.0 · 40.0 · 58.0</span></span>
+      <svg class="chev"><use href="#i-chev"/></svg>
+    </button>
+  </div>
+
+  <p class="footnote"><b>X</b> forward from the front axle, <b>Y</b> outboard from the centreline, <b>Z</b> up from the ground. Values are stored in millimetres and converted to SI inside the physics engine.</p>
+</div>
+
+  </div>
+  <nav class="navbar" aria-label="Primary"><a href="garage.html" aria-current="page"><svg><use href="#index-car"/></svg><span>Garage</span></a><a href="setup-editor.html"><svg><use href="#i-sliders"/></svg><span>Setup</span></a><a href="compare.html"><svg><use href="#i-compare"/></svg><span>Compare</span></a><a href="learn.html"><svg><use href="#i-book"/></svg><span>Learn</span></a></nav>
+  <div class="homebar" aria-hidden="true"></div>
+</main>
+<aside class="rail">
+  <div class="kicker">Setup Lab · wireframe B</div>
+  <h1>Measured geometry</h1>
+  <p>Model once, from real measurements. This is the slowest screen in the app, so it is the one that has to feel calm, ordered and recoverable — one corner, one hardpoint at a time.</p>
+  <ul><li>A pinned front-view schematic is the map. Tapping a row lights its dot, so the field and the part are never separated.</li><li>Hardpoints are 3D, but a racer thinks in three plain directions: forward from the axle, out from the centreline, up from the floor. Those are the field labels, not X/Y/Z alone.</li><li>Measure one corner, mirror the other — a switch, not a duplication chore.</li><li>Progress is stated honestly (31 of 42) with a time estimate, because the user needs to know whether to start now or after the next heat.</li></ul>
+  <div class="ctrl">
+    <button class="tg" id="themeBtn" aria-pressed="false">☾ Dark</button>
+    
+  </div>
+  <div class="meta">Datum rule: X is measured from the front axle centreline of that end. If a car is measured from a different datum, every downstream number is wrong — so the datum is always named on screen.<br><a class="link" href="index.html">All screens →</a> &nbsp; <a class="link" href="design-notes.html">Token check →</a></div>
+</aside>
+<script>
+(function(){
+  var root=document.documentElement, btn=document.getElementById('themeBtn');
+  function setTheme(t){
+    root.setAttribute('data-theme',t);
+    if(btn){ btn.textContent = t==='dark' ? '☀ Light' : '☾ Dark';
+              btn.setAttribute('aria-pressed', t==='light' ? 'true':'false'); }
+    try{localStorage.setItem('sl-theme',t)}catch(e){}
+  }
+  var saved='dark'; try{saved=localStorage.getItem('sl-theme')||'dark'}catch(e){}
+  setTheme(saved);
+  if(btn) btn.addEventListener('click',function(){ setTheme(root.getAttribute('data-theme')==='dark'?'light':'dark'); });
+  window.addEventListener('keydown',function(e){ if(e.key==='t') setTheme(root.getAttribute('data-theme')==='dark'?'light':'dark'); });
+  window.slSetTheme=setTheme;
+})();
+
+(function(){
+  var rows=[].slice.call(document.querySelectorAll('.hp'));
+  var dsel=document.getElementById('dsel');
+  var names={a:'A · lower arm, inner',b:'B · lower arm, outer',c:'C · upper arm, inner',d:'D · upper arm, outer',e:'E · damper lower',f:'F · damper top'};
+  var dots={};
+  [].forEach.call(document.querySelectorAll('#dots g'),function(g){dots[g.dataset.hp]=g;});
+  function sel(key){
+    rows.forEach(function(r){
+      var on=r.dataset.hp===key;
+      r.classList.toggle('sel',on);
+      var b=r.querySelector('.hrow'); if(b) b.setAttribute('aria-expanded',on?'true':'false');
+      if(on && !r.querySelector('.body')){ openRow(r); }
+    });
+    Object.keys(dots).forEach(function(k){
+      var on=k===key, c=dots[k].querySelector('circle'), t=dots[k].querySelector('text');
+      c.setAttribute('stroke', on?'var(--primary)':'var(--on-surface-var)');
+      c.setAttribute('fill', on?'var(--primary)':'var(--surface)');
+      c.setAttribute('rx',7.5);
+      t.setAttribute('fill', on?'var(--on-primary)':'var(--on-surface-var)');
+    });
+    dsel.textContent=names[key]||'';
+  }
+  function openRow(r){
+    var btn=r.querySelector('.hrow');
+    var body=document.createElement('div'); body.className='body';
+    var vals=btn.querySelector('.nm span').textContent.split(' · ');
+    body.innerHTML='<div class="fields">'+
+      '<label class="field"><span class="fx">X · fwd</span><input value="'+vals[0]+'" inputmode="decimal"><span class="fu">mm</span></label>'+
+      '<label class="field"><span class="fx">Y · out</span><input value="'+vals[1]+'" inputmode="decimal"><span class="fu">mm</span></label>'+
+      '<label class="field"><span class="fx">Z · up</span><input value="'+vals[2]+'" inputmode="decimal"><span class="fu">mm</span></label>'+
+      '</div><p class="hint">Measure to the <b>centre of the pin</b>. Half a millimetre here moves the roll centre.</p>'+
+      '<div class="act"><button class="mini">Show me where</button></div>';
+    r.appendChild(body);
+  }
+  rows.forEach(function(r){
+    r.querySelector('.hrow').addEventListener('click',function(){
+      var wasSel=r.classList.contains('sel');
+      if(wasSel){ r.classList.remove('sel'); this.setAttribute('aria-expanded','false'); }
+      else { sel(r.dataset.hp); }
+    });
+  });
+  sel('b');
+})();
+
+</script>
+</body>
+</html>
