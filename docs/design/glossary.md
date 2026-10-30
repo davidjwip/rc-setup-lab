@@ -93,7 +93,14 @@ can feel but cannot see.
 | **Corner weight** | The load under one wheel with the car on scales. Gives front/rear distribution and cross-weight. |
 | **Baseline** | The setup you are judging changes against. One per car, and it can be moved. |
 | **Undefined** | All the numbers are present but the maths has no answer for this geometry — usually links that are parallel or pivots in the same place. |
-| **Approximate** | A value the app is using but does not trust: either you marked it estimated or it came from a library. Shown with a `~`. |
+| **Approximate** | A value you marked as an estimate. Shown with a `~`, plus its stored tolerance if the source recorded one — never a tolerance the app invented. |
+| **Inherited** | A value that came from another car's model, a template, or another user's sheet. Shown with a `↳` and the source named. Never presented as if you measured it. |
+| **Validated / not validated** | Whether a computed number has been checked against a bench measurement. In v1 every number reads **computed, not yet validated**; the hollow ring after the value is that state. |
+| **Inferred, not a measured quantity** | The third state: the quantity is defined by a model rather than measured on a car, so there is nothing to validate it against — damping ratio is the case in v1. Shown with a struck ring and its band. |
+| **Sheet** | A saved snapshot of a whole setup at a moment, with optional conditions and a note. What used to live on paper. |
+| **Tier** | How far the physics reaches for a claim: **Firm** (from the equations), **Inferred** (steady-state reasoning, always *all else equal*), **Speculative** (needs a model or measurement the app does not have). |
+| **Inference** | A sentence the app will say but cannot compute — balance direction, and anything about grip. No number, no badge, no ring. |
+| **Push / loose** | Words this app does not use. It says **understeer** and **oversteer**. |
 
 ---
 
@@ -114,7 +121,7 @@ model.
 | **Camber gain** | upper and lower pivot positions F/R, wheel centre, tyre diameter | **Not computable yet** — Camber gain needs the {end} upper pivot position and the tyre diameter. `Add them ›` |
 | **Bump steer** | tie rod inner and outer points, steering arm geometry | **Not computable yet** — Bump steer needs the {end} tie rod inner point. `Add it ›` |
 | **Wheel rate** | spring rate, motion ratio (shock mounts + arm pivots) | **Not computable yet** — Wheel rate needs the {end} spring rate. `Add it ›` |
-| **Damping ratio** | damping coefficient, wheel rate, sprung mass at that corner | **Not computable yet** — Damping ratio needs the {end} damper's damping coefficient, from an oil-and-piston entry or a dyno sheet. `Add it ›` |
+| **Damping ratio** (an estimate in v1) | damper model — oil, piston holes or a dyno curve — plus wheel rate and sprung mass at that corner | **Not computable yet** — Damping ratio needs the {end} damper's oil and piston holes, or a measured drop test. `Add it ›` |
 
 Where `{end}` is "front" or "rear" and `{total}`/`{g}` are filled from whatever *is* computable,
 so a partial result still teaches something instead of going blank.
@@ -138,8 +145,14 @@ Rule: the string names the *reason* in the first clause and the *check* in the s
 | Situation | String |
 |---|---|
 | Value beyond measured travel | **Outside your measured range** — The solid line is within the travel you measured; the dashed part is an extrapolation. |
-| Inputs marked approximate | **Approximate** — {n} inputs are estimated (±15%). `See which ›` |
-| Inputs from a template | **From template** — {n} values come from the {template} model and have not been measured on your car. `Review ›` |
+| Inputs marked approximate | **Approximate** — {n} inputs are estimated. `See which ›` (each row shows its own tolerance, or none) |
+| Inputs from a template or another sheet | **Inherited** — {n} values come from the {template/sheet} and were not measured on your car. `Review ›` |
+| No bench evidence for an output | **Computed, not yet validated** — every number here was computed from your model and the published equations; none has been checked against a bench measurement yet. |
+| Bench evidence exists | **Validated against a bench measurement** — {property} within {tolerance} over {n} cases, {date}. |
+| Two sheets from different conditions | **Different conditions — not like-for-like** — {fields that differ}. The firm rows still hold; the balance inference and the grip strip do not. |
+| Conditions not recorded on a sheet | **No conditions recorded** — this diff cannot say whether it is like-for-like. |
+| A claim about grip | **Inference, not a value** — the load moved; what the tyre did with it is not modelled, so no number is given. |
+| CG height, derived | **Derived, not measured** — {route}, {band}. Total transfer and roll angle move with it; the balance split does not. |
 | Setup came without mass or CG | **Results can't be recomputed** — This setup came without corner weights, so only its own inputs can be compared. |
 | Comparing different chassis | **Different chassis geometry** — The deltas are real, but they are not like-for-like. |
 | Analysis computation threw | **Something in the maths failed** — The other {n} properties are unaffected. `Copy diagnostics` |

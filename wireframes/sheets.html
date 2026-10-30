@@ -218,12 +218,12 @@ h2.sec{font-size:20px;line-height:26px;font-weight:500;letter-spacing:-.1px}
   <div class="card pickcard">
     <div class="eyebrow">Compare two sheets</div>
     <div class="pick">
-      <button class="pickbtn on"><span class="k">A</span><span><b>Sat open</b><i>9 Aug · 32R · imported</i></span></button>
+      <button class="pickbtn on"><span class="k">A</span><span><b>Sat open</b><i>9 Aug · asphalt · imported</i></span></button>
       <div class="pickmid"><svg width="14" height="14" style="stroke:currentColor;fill:none;stroke-width:1.8"><use href="#i-chev"/></svg></div>
-      <button class="pickbtn on"><span class="k">B</span><span><b>Wed club</b><i>12 Aug · 32R</i></span></button>
+      <button class="pickbtn on"><span class="k">B</span><span><b>Wed club</b><i>12 Aug · asphalt, 18 °C</i></span></button>
     </div>
     <a class="btn block" style="margin-top:12px" href="sheet-diff.html">What changed between these →</a>
-    <p class="prov">Any two sheets, not just consecutive ones. The diff reports what the physics can defend, in three labelled tiers.</p>
+    <p class="prov">Any two sheets, not just consecutive ones. Conditions are optional per sheet — and when they differ, the diff says so before it says anything else.</p>
   </div>
 
   <div class="sec"><h2>All sheets</h2><span>newest first</span></div>
@@ -233,7 +233,7 @@ h2.sec{font-size:20px;line-height:26px;font-weight:500;letter-spacing:-.1px}
     <div class="main">
       <div class="nm">Wed club <span class="chip accent" style="height:18px;padding:0 6px;font-size:9.5px">baseline</span></div>
       <div class="note">“Q2 — 1.2 bar, 400 rear oil. Free off the corner.”</div>
-      <div class="meta"><span>dry</span><span class="sep"></span><span>air 18 °C</span><span class="sep"></span><span>track 24 °C</span><span class="sep"></span><span>32R</span></div>
+      <div class="meta"><span>asphalt</span><span class="sep"></span><span>air 18 °C</span><span class="sep"></span><span>55% RH</span><span class="sep"></span><span>“32R Shotz · 13.5T blinky”</span></div>
       <div class="meta"><span>4 changes vs Sat open</span><span class="sep"></span><span>8 of 8 set</span><span class="sep"></span><span>7 of 7 computed</span></div>
     </div>
     <svg class="chev"><use href="#i-chev"/></svg>
@@ -244,7 +244,7 @@ h2.sec{font-size:20px;line-height:26px;font-weight:500;letter-spacing:-.1px}
     <div class="main">
       <div class="nm"><span class="draftdot" aria-hidden="true"></span>Softer front <span class="chip" style="height:18px;padding:0 6px;font-size:9.5px">draft</span></div>
       <div class="note">“Try 1.0 bar front — too much understeer at the hairpin.”</div>
-      <div class="meta"><span>dry</span><span class="sep"></span><span>air 18 °C</span><span class="sep"></span><span>track 24 °C</span></div>
+      <div class="meta"><span>asphalt</span><span class="sep"></span><span>air 18 °C</span><span class="sep"></span><span>55% RH</span><span class="sep"></span><span>“32R · 13.5T”</span></div>
       <div class="meta"><span>not saved yet</span><span class="sep"></span><span>3 changes</span></div>
     </div>
     <svg class="chev"><use href="#i-chev"/></svg>
@@ -255,7 +255,7 @@ h2.sec{font-size:20px;line-height:26px;font-weight:500;letter-spacing:-.1px}
     <div class="main">
       <div class="nm">Sat open <span class="pbadge inh">imported</span></div>
       <div class="note">“Wet Q1, 28R. Copied Dan's sheet, dropped the front bar.”</div>
-      <div class="meta"><span>wet</span><span class="sep"></span><span>air 16 °C</span><span class="sep"></span><span>track 19 °C</span><span class="sep"></span><span>28R</span></div>
+      <div class="meta"><span>asphalt</span><span class="sep"></span><span>air 16 °C</span><span class="sep"></span><span>92% RH</span><span class="sep"></span><span>“28R wet · 17.5T”</span></div>
       <div class="meta"><span>3 values inherited from <i style="color:var(--secondary);font-style:normal">Dan's sheet (S02)</i></span></div>
     </div>
     <svg class="chev"><use href="#i-chev"/></svg>
@@ -266,7 +266,7 @@ h2.sec{font-size:20px;line-height:26px;font-weight:500;letter-spacing:-.1px}
     <div class="main">
       <div class="nm">Box stock</div>
       <div class="note">“Kit setup, first run on this car.”</div>
-      <div class="meta"><span>dry</span><span class="sep"></span><span>air 21 °C</span><span class="sep"></span><span>32R</span></div>
+      <div class="meta"><span style="color:var(--warn)">no conditions recorded</span><span class="sep"></span><span>diff will say so</span></div>
       <div class="meta"><span>8 changes vs First run</span><span class="sep"></span><span>7 of 7 computed</span></div>
     </div>
     <svg class="chev"><use href="#i-chev"/></svg>
@@ -283,7 +283,7 @@ h2.sec{font-size:20px;line-height:26px;font-weight:500;letter-spacing:-.1px}
       <path d="M30 14l10-8h56l14 8" stroke="var(--outline-var)"/>
     </svg>
     <h2>No sheets yet</h2>
-    <p>A sheet is a snapshot of what you ran: the values, the conditions, and a note you will still understand next season.</p>
+    <p>A sheet is a snapshot of what you ran: the values, an optional note on surface, temperature, humidity, tyres and motor, and words you will still understand next season. Nothing here is required except the name.</p>
     <a class="btn block" href="setup-editor.html"><svg><use href="#i-plus"/></svg> New sheet</a>
     <a class="btn tonal block" style="margin-top:8px" href="setup-editor.html">Copy from another car's sheet…</a>
     <p class="prov" style="text-align:center;margin-top:12px">A copy is explicit, never a default: every copied value is marked <i>inherited</i> and names the sheet it came from.</p>

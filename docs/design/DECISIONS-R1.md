@@ -5,7 +5,10 @@ architecture. Their documents contradict each other in eight places. This file r
 conflict, the decision taken, the reason, and what it costs to reverse. Anything marked
 **OWNER** is Dave's call and is escalated rather than decided.
 
-Status: decisions below are provisional until the review round lands and Dave signs the spec.
+Status: D-01 to D-04, D-11 and D-12 are **applied** in the round-1 revision (30 Oct 2026). D-06 and
+the Apple/Mac questions remain open. The three owner decisions of 30 Oct 2026 are canonical in
+`docs/decisions.md` as **D-13 to D-15**; this file records where each one landed in the design, and
+what the design still disagrees with.
 
 ---
 
@@ -96,3 +99,85 @@ wireframe is marked illustrative and no number from it goes into a store listing
    marketing.
 4. **v1 depth.** Geometry + balance + static damping ratio, with the motor dyno deferred — the
    requirements spec recommends it; confirmation needed because it is a public-scope decision.
+
+---
+
+## Applied in the round-1 revision (30 Oct 2026)
+
+| Decision | How it landed |
+|---|---|
+| D-01 three destinations | Every wireframe now draws **Garage · Compare · Learn**; setup, analysis, chassis, sheets and export are pushes inside Garage. `design-system.md` §10.2, `flows.md` §2.1, and the architecture's four-branch sketch read as three branches plus `/car/:carId/*`. |
+| D-02 maths inline | Unchanged, and now also carries the validation footer (every expanded card ends with *Computed, not yet validated*). |
+| D-03 consequences first | `compare.html` reordered: the "what this does" block sits under the slot cards, "what you changed" is a collapsed list one tap below. |
+| D-04 one chip per value | Held everywhere, including the new sheet-diff rows. |
+| D-11 validation state | A second mark on every number (§10.14): hollow ring = `computed, not yet validated`, filled = `validated · bench`. v1 ships entirely hollow; the words appear once per surface and on every export. |
+| D-12 v1 contents | Damping ratio is designed as an estimate with a band and a direction-led card, and degrades to `missing` with no damper data. Geometry and balance are unaffected by that choice. |
+
+## D-13 to D-15 — owner decisions, 30 Oct 2026
+
+Canonical text: `docs/decisions.md`. This is where each one landed in the design.
+
+**D-13 — damping ratio is an estimate, and the trend is the product.** The card leads with the
+**direction** of change between sheets ("heavier oil → more damping at the wheel", "shock laid down →
+less"), shows `~ζ ± band` with the `estimated` badge and the damper model's own range, and carries a
+*What changes this* panel (oil, piston holes, spring rate, shock angle). No damper data → `missing`,
+panel retained, nothing manufactured from a spring rate. Applied in `analysis.html`,
+`design-system.md` §10.18, `screens.md` §14, `sheet-diff.html` (the rear-oil row is a direction
+claim, not a magnitude).
+
+**D-14 — CG height is inferred, never measured.** Two routes, both first-class: a **component-mass
+estimate** and a **two-hang plumb-line** procedure. The route is the headline, the badge follows the
+route (`estimated` either way; `inherited` if it came from another car), and CG height **never**
+carries `computed`. The card states what is robust to h (the front/rear balance split) against what
+is not (absolute load transfer, roll angle). Applied in `hardpoints.html` (Mass & CG card),
+`analysis.html` (load-transfer caveat), `design-system.md` §10.19, `screens.md` §26, `flows.md`
+§3.1 and §15.
+
+**D-15 — interpreter vocabulary and inputs.** Understeer / oversteer, phases entry / mid / exit; sheets
+record optional conditions (surface carpet / asphalt / other, temperature, humidity, free text for
+tyres and motor) and a diff spanning different conditions says so loudly, before any claim; **grip is
+inference**, never measured or computed, with its own tier treatment and no numeral. Applied in
+`sheet-diff.html`, `sheets.html`, `design-system.md` §10.17, `screens.md` §27–28, `flows.md` §11.
+
+## Round-1 design findings — closed
+
+| Finding | Closed by |
+|---|---|
+| **E1** template defaults on a new setup | A new sheet starts empty: `setup-editor.html`'s "New sheet (empty)" state, `screens.md` §12–13, `flows.md` §7. Every frame that shows numbers is labelled *Example data* inside the frame. |
+| **E2** blanket ±15% tolerance | Deleted. A tolerance prints only when the source record stores one; otherwise `~` alone. `design-system.md` §9, `screens.md` §0.2, `flows.md` §6.4, `glossary.md`. |
+| **E3** library values rendered as solid numerals | Fifth badge `inherited`, with the source named on the row; demonstrated on the hardpoint (C), the setup row (rear bar), the compare row (motion ratio) and the analysis roll-centre card. |
+| **P-02** no validation state on screen | The ring plus the per-surface words, on analysis cards, property detail, compare rows, maths panels, sheet diff and the exported sheet. |
+| **#10** sheet library + diff | New wireframes `sheets.html`, `sheet-diff.html`; screens §27–28; the tiered interpreter panel with the three tiers and the *all else equal* rule. |
+| **#11** chassis card | New chassis card on the car-model screen (Chassis tab) plus a Mass & CG card; screens §25–26. |
+
+## Where the design and the (revised) requirements still disagree
+
+1. **ζ is per corner × two shaft speeds (E3.6a), the card is front/rear (D-04).** The design shows
+   front and rear at 5 mm/s with a speed segmented control, and lists all four corners at both speeds
+   in the card's detail. A mirrored car then reads four equal values, which is honest but redundant;
+   a genuinely asymmetric car needs the table. If the acceptance criterion checks "four corners
+   displayed", the card has to grow a four-column variant — a layout change, not a data change.
+2. **Eight source types, five badges.** `spec.md` §4.1.4 stores `measured`, `estimated`,
+   `manufacturer`, `third_party`, `library`, `derived`, `inferred`, `unattributed`. The design renders
+   five badges and maps them in `screens.md` §0.4, with `inferred` becoming `estimated` + a mandatory
+   route chip. The mapping is design-side only; no requirement references it, so nothing stops a
+   developer inventing a sixth badge. It needs to be cited from `spec.md` or it will drift.
+3. **`not_validatable` is a third validity state the requirements do not name.** D-11 and E3.6c
+   together imply it (ζ is inferred and may never be validated), but no AC mentions a state meaning
+   "cannot be validated". As written, a literal implementation marks ζ "computed, not yet validated",
+   which is worse than saying nothing — it promises a validation that will never come.
+4. **`sheet` vs `setup`.** Issue #10 and the interface say *sheet*; `spec.md` §4.3 and every route say
+   *setup*. The design keeps `setup` in routes and schema and `sheet` on screen; one of them should be
+   renamed before implementation, or the mapping written down in the spec.
+5. **The interpreter has no rule table yet.** `docs/specs/interpreter.md` is still missing;
+   `interpreter-owner-answers.md` fixes the vocabulary, the conditions rule and the grip rule, but not
+   the per-rule tier assignments. The panel is designed to a shape that table has to fill — until it
+   exists, "Firm" is a promise rather than a list.
+6. **"No conditions recorded" is designed as its own state; E4.9 only defines a warning when
+   conditions *differ*.** If absent conditions fall through as "no warning", a diff between two
+   unlabelled sheets will read as comparable, which contradicts D-15's "say so loudly". Either E4.9
+   gains the third state or the design's third banner is unsupported.
+7. **CG's two routes exist in the spec; the UI needs the derived *band* per route.** `spec.md` §4.2.1
+   now carries `inferred` with `method: two_hang_plumb_line` and a computed band, which matches the
+   card. What is still unspecified is the component-mass route's default part list — the card prints
+   a band (±8 mm in the example) that must come from somewhere normative.

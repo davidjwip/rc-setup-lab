@@ -110,7 +110,10 @@ coefficient. Module 6 stops at load transfer, which is a mechanics result and is
 
 | Statement | Basis | Allowed? |
 |---|---|---|
-| "This moves 3.2% more load transfer to the front" | module 6 | yes |
+| "This moves 3.2 % more load transfer to the front" | module 6 | yes |
+| "This plate moves the balance two points rearward but not the roll centre" | module 10 | yes — it is a roll-stiffness statement, not a grip one |
+| "ζ is 0.26 here, band 0.18–0.33, estimated" | module 7 | yes, with the band and the badge |
+| "Thicker oil will raise your damping ratio" | module 7 §9 | yes — a direction, and the model is monotone in it |
 | "Higher front share of load transfer usually means more understeer, all else equal" | textbook | yes, as teaching copy, clearly conditional |
 | "Your outer front wheel loses 0.84° of camber per degree of roll" | module 2 | yes |
 | "Your camber gain is 0.11°/mm, so at 5 mm of bump you gain 0.5°" | module 2 | yes |

@@ -318,7 +318,7 @@ Rules:
 - Deltas use the same precision as the value, always signed (`+0.15`, `−0.05`), and show `—` when the change is below half the last decimal.
 - A value with no answer renders one of the five variants in §10.13 — never `--`, `n/a`, `0` or an empty string.
 - **A tolerance is data, never a default.** If the source record carries `tolerance_pct` or `tolerance_abs`, an estimated value prints it in the value's own unit (`~2.8 lb/in ±0.2`). If it carries neither, the value prints the `~` and nothing else. There is no blanket ±15%, no ±10%, no "approx." — the UI adds no number the document did not store. Where the tolerance is a band the physics derives from a published material range (a chassis torsion estimate), the band is shown as `~` plus the range in the provenance line, not as a ± on the numeral.
-- **Every number carries a validation state**, independent of its badge (§10.16). Badge = where it came from; ring = whether anyone has checked the answer. Neither substitutes for the other.
+- **Every number carries a validation state**, independent of its badge (§10.13). Badge = where it came from; ring = whether anyone has checked the answer. Neither substitutes for the other.
 
 ---
 
@@ -413,7 +413,7 @@ Centred, max 270 px of text, one drawn diagram at 180 × 130, headline `headline
 
 ### 10.13 Value badges: computed, estimated, inherited, missing, undefined
 
-One component renders every number in the app, in **five** variants. The badge answers *where did this number come from*; it does not answer *has anyone checked it* — that is §10.16, and the two marks are always set together. These names and strings are the contract with `docs/design/screens.md` §0.2.
+One component renders every number in the app, in **five** variants. The badge answers *where did this number come from*; it does not answer *has anyone checked it* — that is §10.14, and the two marks are always set together. These names and strings are the contract with `docs/design/screens.md` §0.2.
 
 | Variant | Looks like | Used when | Tap goes to |
 |---|---|---|---|
@@ -426,6 +426,7 @@ One component renders every number in the app, in **five** variants. The badge a
 Rules:
 
 - **Precedence when several apply:** `missing` / `undefined` (no numeral at all) → `estimated` → `inherited` → `computed`. The most cautious provenance wins the badge; the provenance line beneath names every contributing source, so nothing is hidden by the ranking.
+- **Five badges, eight source types.** `spec.md` §4.1.4 stores `measured`, `estimated`, `manufacturer`, `third_party`, `library`, `derived`, `inferred` and `unattributed`; the component renders five badges via the mapping in `screens.md` §0.4. `derived` inherits the worst contributing badge, and `inferred` renders as `estimated` **plus a mandatory route chip** naming the method — an inferred value must never read like a user's guess.
 - **Inherited is not computed.** A library or template value is another car's measurement and is never rendered as a solid numeral — that was the whole point of the fifth variant. It carries the source name on a second line: `Inherited · Mugen MTC2 template v2` or `Inherited · Dan's sheet (S02)`. The line is part of the component, not a footnote elsewhere on the screen.
 - **Estimated shows the stored tolerance or nothing.** `~2.8 lb/in ±0.2` when the source record has one; `~2.8 lb/in` when it does not. See §9. The tolerance is never a system-wide default.
 - **Both marks, one value:** an inherited estimate reads `↳~22 mm` with a provenance line naming both ("estimated from the MTC2 template, ±0.3 mm"). The glyph order is fixed: `↳` then `~`.
@@ -446,12 +447,14 @@ The second, independent mark on every number (owner decision D-11). **v1 ships e
 |---|---|---|---|
 | `unvalidated` | hollow 7 px ring, 1.2 px `warning` at 85%, baseline-aligned immediately after the unit | `computed, not yet validated` | **Computed, not yet validated.** Every number here was computed from your model and the published equations; none has been checked against a bench measurement yet. |
 | `validated` | filled 7 px ring, `outline` | `validated · bench` | **Validated against a bench measurement** — roll centre within 0.4 mm over five heights, 12 Mar 2026. |
+| `not_validatable` | ring with a 1 px diagonal through it, `outline` | `inferred · not a measured quantity` | **This is an inference, so there is nothing to validate against.** It moves with the model's assumptions (procedure, part masses, damper model); the band shows how much, and the route is named. |
 
 Rules:
 
 - **The ring is on every number, always.** A numeral with no ring is a bug, including numbers quoted inside prose ("your 22 mm"), in a comparison cell, in a maths panel and on an exported page.
 - **The words appear once per surface**, in this order of preference: the maths panel footer, the property-detail block, the export foot, the screen strip. Repeating "not yet validated" after seven values is noise; the ring is the per-value carrier.
 - **Degradation is a data change, not a layout change.** When an output's evidence record exists, the same slot swaps: the marker fills, the chip reads `validated · bench`, and the full sentence gains the evidence. Nothing moves, so a sheet exported last month stays comparable with today's.
+- **`not_validatable` is not a loophole.** It applies only where the *quantity itself* is defined by a model rather than measured on a car: damping ratio under `orifice_single_piston_v1` (E3.6c: "never marked validated"), and any grip sentence (which carries no value at all). Anything with a measured benchmark — roll centre, camber gain, bump steer, wheel rate — is `unvalidated` until the bench case exists, never `not_validatable`.
 - **Evidence is per output, per model version.** A validated output returns to `unvalidated` when the model version changes, because the bench case proved the old arithmetic. Copy: **Not yet re-validated for model 0.2** — same ring, same position.
 - **What does not count as validation:** a golden test comparing two copies of the same equation, a second implementation agreeing, a user saying it "feels right", a textbook value. Only a bench or on-car measurement with a stated tolerance.
 - **Where each surface states it:**
@@ -521,8 +524,9 @@ The "what this did" panel on the sheet diff (GitHub #10). **Three tiers, and the
 
 ζ is an **estimate in v1** (owner decision; `CONSOLIDATED` §3, option 2). The card leads with direction, not magnitude, because the direction is robust and the absolute value is not.
 
-- **Leading line is the direction of change**: `Heavier oil → more damping at the wheel`, `Shock laid down → less wheel damping`, `More holes in the piston → less low-speed damping`. It is a sentence with an arrow, in `onSurface`, above the number. Between two sheets the direction sentence names the change that caused it.
-- **The value is secondary and hedged**: `~0.42 ±0.06` with the `estimated` badge and a dotted underline. The band comes from the damper model's own stated range — never a blanket percentage (§9).
+- **Leading line is the direction of change, with its magnitude**: `▲ Rear oil 350 → 400 cSt: more damping at the wheel, ζ +0.04 (estimate)`, `▼ Shock laid down: less wheel damping`. A sentence with an arrow, in `onSurface`, above the absolute values — the trustworthy part first (E3.6e).
+- **The value is secondary and hedged**: `~0.42 ±0.06` with the `estimated` badge, a dotted underline and the `not_validatable` ring. The band comes from the damper model's own range, computed by re-running ζ with each estimated input at the ends of its own tolerance — never a blanket percentage (§9). The band is displayed **wherever ζ is** (E3.6b): the card, the compare view, the property detail and every export.
+- **Two shaft speeds, per corner (E3.6a).** The card front/rear columns show the *low-speed* value; a `5 / 300 mm/s` segmented control inside the card switches both columns, and the detail lists all four corners at both speeds so a mirrored car reads as four equal values rather than an assumption. Both speeds' numbers are always reachable in one tap; a single averaged ζ is never shown.
 - **What changes this panel**, inside the card, collapsed by default: four levers with the direction and the relative size of their effect — oil viscosity (heavier → more), piston holes (more → less low-speed), spring rate (stiffer → lower ζ at the same damper), motion ratio / shock angle (laying the shock down → less wheel damping). Each row is a sentence, not a slider.
 - **Absent gracefully.** No damper data → the card is `missing` (no numeral), the direction line is replaced by *Not computable yet*, and the "what changes this" panel still opens — teaching without pretending. No estimate is manufactured from a spring rate alone.
 - **Validation ring is always present**; in v1 the card is unvalidated like every other.

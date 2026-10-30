@@ -76,13 +76,19 @@ voltage were different". Never fit a curve when a table exists.
 gear ratio    G   = N_spur/N_pinion                                        (9.8)
 rollout       R_o = (N_pinion/N_spur)·π·D_tyre      mm per motor revolution (9.9)
 wheel speed   ω_w = ω_motor/G                                              (9.10)
-vehicle speed v   = ω_w·r_tyre = ω_motor·R_o/(2π·1000)   m/s               (9.11)
-tractive force F  = T·G/r_tyre                                             (9.12)
+vehicle speed v   = ω_w·r_tyre[m] = ω_motor·R_o[m]/(2π)   m/s              (9.11)
+tractive force F  = T·G/r_tyre[m]   [N]                                    (9.12)
 ```
 
+**Units on (9.9)–(9.12).** `D_tyre` and `r_tyre` are stored in **mm** (R-2) and are converted to metres
+inside these equations, explicitly: (9.9) produces millimetres per revolution by construction, and
+(9.11)/(9.12) divide by 1000 before use. Round 1 wrote (9.12) as `T·G/r_tyre` with no unit note in a
+document where `r_tyre` is in mm, which gives a force 1000× too large — the same defect as module 5's
+(5.7). G09.6 asserts the unit path.
+
 Note the direction of (9.8) and (9.9): a **bigger pinion** means a *smaller* gear ratio, a *longer*
-rollout and more speed for the same motor rpm. Getting this inverted is the classic error, so the
-app should compute rollout and show it next to the tooth counts.
+rollout and more speed for the same motor rpm. Getting this inverted is the classic error, so the app
+computes rollout and shows it next to the tooth counts.
 
 ### Worked example (hand-checkable)
 
@@ -106,8 +112,12 @@ F = 0.150 × 4.20/0.032 = 19.69 N
 a = F/m = 19.69/1.350 = 14.6 m/s²  ≈ 1.5 g
 ```
 
-A 1.5 g acceleration at 57 km/h top speed is in the right box for a modified touring car, which is
-the whole feasibility argument: the numbers come out physical without any fudge factors.
+A 0.150 N·m motor torque at low speed gives 1.5 g; the same motor at 20 000 rpm gives 57 km/h. The two
+numbers are **not simultaneous** — round 1 quoted them as if they were, and at 20 000 rpm a 0.150 N·m
+torque would be 314 W at the shaft and 19.7 N of thrust at 16 m/s, i.e. 1.5 g *and* top speed at once,
+which no motor does. Stated separately, the feasibility argument is stronger: a 1.5 g launch and a
+57 km/h top speed are both in the right box for a modified touring car, and nothing here needs a fudge
+factor.
 
 ---
 
@@ -168,10 +178,13 @@ Only the gearing arithmetic is specified now; the torque model waits for phase 3
 | G09.2 | 20 000 rpm, same gearing | v = 15.957 m/s = 57.4 km/h | hand calc §4 |
 | G09.3 | T = 0.150 N·m, same gearing, m = 1.350 kg | F = 19.69 N, a = 14.6 m/s² | hand calc §4 |
 | G09.4 | kV = 3200 rpm/V | k_e = 2.9842 × 10⁻³ V·s/rad | hand calc (9.7): 60/(2π×3200) |
-| G09.5 | 20T → 22T pinion, same spur | rollout 52.66 mm/rev, +10% speed, −9.1% force | hand calc (9.9)/(9.12) |
+| G09.5 | 20T → 22T pinion, same spur | rollout 52.66 mm/rev, +10 % speed, −9.1 % force | hand calc (9.9)/(9.12) |
+| **G09.6** | **unit path**: `T = 0.150 N·m`, `G = 4.20`, `r_tyre` fed as **32 mm** | F = 19.69 N (not 19 688 N); the same with `r_tyre = 0.032 m` gives the identical answer | (9.12) — catches a millimetre/metre slip |
 
 G09.5 is the sanity check that catches an inverted tooth ratio: a bigger pinion must make the car
 faster and weaker, and the numbers must move by `22/20 = 1.10` and `20/22 = 0.909` respectively.
+G09.6 is the unit-safety case; without it a millimetre radius passes every magnitude test in this
+module.
 
 ---
 

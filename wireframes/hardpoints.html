@@ -497,6 +497,9 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
   </div>
 
   
+<p class="footnote"><b>X</b> forward from the front axle, <b>Y</b> outboard from the centreline, <b>Z</b> up from the ground. Values are stored in millimetres and converted to SI inside the physics engine.</p>
+</div>
+
 <div class="grp" id="grp-chassis" hidden>
   <h2><span>Chassis</span><span>plate, not hardpoints</span></h2>
 
@@ -542,10 +545,34 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
     <div style="margin-top:12px"><span class="vtag"><svg><use href="#i-alert"/></svg>computed, not yet validated</span></div>
     <p class="prov">All five rows follow from the plate and the hardpoints. None has been checked against a bench measurement of this car, so each carries the ring; the sheet you export carries the same words.</p>
   </div>
+
+  <div class="xcard" style="margin-top:8px">
+    <h3>Mass &amp; centre of gravity</h3>
+    <p class="cap">Corner scales weigh the car and cannot locate its centre of gravity. There is no “import from scales” for this number anywhere in the app — the route is the honest part.</p>
+
+    <div class="chips" role="group" aria-label="How the CG height was derived">
+      <button class="ch" aria-pressed="false">Plumb-line</button>
+      <button class="ch" aria-pressed="true">Component estimate</button>
+      <button class="ch" aria-pressed="false">Another car</button>
+    </div>
+
+    <div class="krow">
+      <span class="lab">CG height<i>derived from massed parts and their heights</i></span>
+      <b>~26 <span class="unit">mm</span></b>
+      <span class="ring" title="Not yet validated"></span>
+      <span class="pbadge est">estimated</span>
+    </div>
+    <p class="prov">Derived, not measured: sum of component masses × heights, band ±8 mm from the part-mass assumptions. A plumb-line test (four corner weights at two ride heights) would replace this with a measurement — same badge, narrower band, and the words change to <i>measured by plumb-line</i>.</p>
+
+    <div class="xh">What this makes uncertain — and what it leaves alone</div>
+    <div class="krow"><span class="lab">Total load transfer<i>scales with CG height above the roll axis</i></span><b>±14.5%</b></div>
+    <div class="krow"><span class="lab">Roll angle<i>same dependency, through roll stiffness</i></span><b>moves with h</b></div>
+    <div class="krow"><span class="lab">Front/rear balance split<i>robust: ±0.13 across h = 24–32 mm</i></span><b>±0.13</b></div>
+    <p class="prov">So an absolute transfer figure carries this uncertainty and the balance split does not. The Analysis screen prints the same two columns next to the load-transfer card, because that is where the number gets used.</p>
+    <div style="margin-top:10px"><span class="vtag"><svg><use href="#i-alert"/></svg>inferred — never computed</span></div>
+  </div>
 </div>
 
-<p class="footnote"><b>X</b> forward from the front axle, <b>Y</b> outboard from the centreline, <b>Z</b> up from the ground. Values are stored in millimetres and converted to SI inside the physics engine.</p>
-</div>
 
   </div>
   <nav class="navbar" aria-label="Primary"><a href="garage.html" aria-current="page"><svg><use href="#index-car"/></svg><span>Garage</span></a><a href="compare.html"><svg><use href="#i-compare"/></svg><span>Compare</span></a><a href="learn.html"><svg><use href="#i-book"/></svg><span>Learn</span></a></nav>
@@ -558,6 +585,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
   <ul><li>A pinned front-view schematic is the map. Tapping a row lights its dot, so the field and the part are never separated.</li><li>Hardpoints are 3D, but a racer thinks in three plain directions: forward from the axle, out from the centreline, up from the floor. Those are the field labels, not X/Y/Z alone.</li><li>Measure one corner, mirror the other — a switch, not a duplication chore.</li><li>Progress is stated honestly (31 of 42) with a time estimate, because the user needs to know whether to start now or after the next heat.</li></ul>
   <div class="ctrl">
     <button class="tg" id="themeBtn" aria-pressed="false">☾ Dark</button>
+    <button class="tg" id="chassisBtn" aria-pressed="false">Chassis card</button>
     
   </div>
   <div class="meta">Datum rule: X is measured from the front axle centreline of that end. If a car is measured from a different datum, every downstream number is wrong — so the datum is always named on screen.<br><a class="link" href="index.html">All screens →</a> &nbsp; <a class="link" href="design-notes.html">Token check →</a></div>
@@ -617,7 +645,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
   function openRow(r){
     var btn=r.querySelector('.hrow');
     var body=document.createElement('div'); body.className='body';
-    var vals=btn.querySelector('.nm span').textContent.split(' · ');
+    var vals=btn.querySelector('.nm > span').textContent.replace(/^[↳~]+/,'').split(' · ');
     body.innerHTML='<div class="fields">'+
       '<label class="field"><span class="fx">X · fwd</span><input value="'+vals[0]+'" inputmode="decimal"><span class="fu">mm</span></label>'+
       '<label class="field"><span class="fx">Y · out</span><input value="'+vals[1]+'" inputmode="decimal"><span class="fu">mm</span></label>'+
@@ -634,6 +662,15 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
     });
   });
   sel('b');
+})();
+
+(function(){
+  var b=document.getElementById('chassisBtn');
+  var tab=document.querySelectorAll('#viewtabs button')[2];
+  if(b&&tab) b.addEventListener('click',function(){
+    tab.click();
+    b.setAttribute('aria-pressed', tab.getAttribute('aria-selected')==='true'?'true':'false');
+  });
 })();
 
 </script>

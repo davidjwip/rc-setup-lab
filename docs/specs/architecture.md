@@ -1,11 +1,16 @@
 # Architecture — Setup Lab
 
 Status: revised after round 1. Decisions applied: **D-09** (one gate command), **D-10** (Android v1,
-iOS deferred), **D-11** (honest validity chip), **D-12** (v1 = geometry + balance; damping ratio
-contested, §8), **D-01** (three navigation destinations), **R-1** (ISO 8855 frame), **R-2** (mm/g/deg
-on disk, one conversion site).
-Companions: `docs/intent.md`, `docs/specs/spec.md`, `docs/specs/physics/00`–`99`,
-`docs/design/flows.md`. Toolchain: Flutter 3.47.9 / Dart 3.13.7 (Oct 2026).
+iOS deferred), **D-11** (honest validity chip), **D-12** (v1 = geometry + balance, with the owner's
+2026-10-30 amendment), **D-01** (three navigation destinations), **R-1** (ISO 8855 frame), **R-2**
+(mm/g/deg on disk, one conversion site). **Owner decisions, 2026-10-30:** every value carries
+provenance *and* a tier; the physics API returns an estimated value together with its band and an
+inferred claim together with its basis (so the UI can print "all else equal"); damping ratio ships as
+an estimate with a computed band; CG height is inferred, never a measured input; the release path is
+unchanged — Android only. Those land in requirements §4.4.1 (eight states), §4.11 (three tiers) and
+§4.8 (the band), and this document defers to those names rather than coining a second set. Companions: `docs/intent.md`, `docs/specs/spec.md` (v0.2),
+`docs/specs/physics/00`–`99`, `docs/design/flows.md`. Toolchain: Flutter 3.47.9 / Dart 3.13.7
+(Oct 2026).
 
 ## Precedence, stated once
 
@@ -14,7 +19,7 @@ frame that every physics equation contradicts (B1). Precedence is therefore per 
 
 | Subject | Authority | Why |
 |---|---|---|
-| Frame, sign conventions, the result type, the reason vocabulary, tolerances | `physics/01` §2, `physics/00` §4 | eleven equations in modules 2–6 were derived in that frame and against that vocabulary; re-deriving them to satisfy a prose sentence is the expensive direction |
+| Frame, sign conventions, the result type, the tier/reason/flag vocabularies, tolerances | `physics/01` §2, `physics/00` §4 (to be extended with the tier enum), owner decisions of 2026-10-30 | eleven equations in modules 2–6 were derived in that frame and against that vocabulary; re-deriving them to satisfy a prose sentence is the expensive direction |
 | Document model — kinds, field semantics, units on disk, provenance, hash | `spec.md` §4 with R-1/R-2 | it is the public file interface, and it is what a reviewer tests |
 | Package layout, gate, presentation boundary, release path | this document | nobody else specifies them |
 
@@ -74,7 +79,7 @@ compatibility shims; data must be Flutter-free because its migration tests churn
 **The dependency points one way: app → `setup_data` → `setup_physics`.** `setup_data` depends on
 physics because the adapter's output *is* a physics input struct. The consequence is load-bearing:
 the physics package cannot name a document field, so a missing-input report travels as a physics
-`FieldRef` and `setup_data` owns the ref → document-path table the UI renders (§4.4). The reverse
+`FieldRef` and `setup_data` owns the ref → document-path table the UI renders (§4.2). The reverse
 edge would put document ids and schema versions inside the solver.
 
 **One resolution.** All three are pub workspace members: one lockfile, one `pub get`. `dart analyze`
@@ -130,16 +135,19 @@ place. The wireframes' four-item bar is redrawn to three; that is a design task,
 | Route | Branch | Screen |
 |---|---|---|
 | `/garage`, `/garage/new`, `/garage/import` | Garage | car list, new model, import |
-| `/garage/car/:carId` (+ `/edit`, `/geometry`, `/geometry/wizard/:groupId`) | Garage | car detail, geometry editor, measurement wizard |
-| `/garage/car/:carId/setups`, `…/setup/:setupId` | Garage | setup list, setup sheet |
+| `/car/:carId` (+ `/edit`, `/geometry`, `/geometry/wizard/:groupId`) | Garage | car detail, geometry editor, measurement wizard |
+| `/car/:carId/setups`, `/car/:carId/setup/:setupId` | Garage | setup list, setup sheet |
 | `…/setup/:setupId/analysis`, `…/analysis/:propertyId` | Garage | analysis, per-property detail |
 | `/compare?a=&b=`, `/compare/pick/:slot` | Compare | side-by-side, slot picker |
 | `/learn/path`, `/learn/:conceptId` | Learn | learning path, concept |
 | `/welcome`, `/settings/**` | above the shell | no bottom bar |
 
-**The car routes moved under their branch** (`/car/…` → `/garage/car/…`). A deep link should name
-the branch it lands in, or the router has to infer one. Cost: every link changes once, before v1
-ships, which is free; after v1 it is a broken-link migration with an install history behind it.
+The paths are `docs/design/flows.md` §2.3's, unchanged; the branch column is this document's
+contribution, and it is the thing D-01 decided. `/car/…` sits *inside* the Garage branch rather than at
+the root, so a deep link resolves to a branch and a stack position without the router guessing — the
+path prefix (`/car` vs `/garage/car`) was considered and rejected as churn: it would change every
+shared link for a routing intuition nobody sees. *Cost:* the route tree must be read with the branch
+structure beside it, which is why the table above has the column.
 
 `indexedStack` keeps each branch's stack alive, so switching tabs mid-edit returns you where you
 were. **Android back** pops within the branch; at a branch root it returns to Garage; at Garage's
@@ -150,8 +158,8 @@ retrofitting a save model behind a navigation guard is a rewrite of every edit p
 
 ### 3.1 Deep-link contract
 
-- `/garage/car/:carId/setup/:setupId/analysis` and `/learn/:conceptId?car=&setup=&from=` are the
-  shareable strings; a future URI scheme reuses them unchanged.
+- `/car/:carId/setup/:setupId/analysis` and `/learn/:conceptId?car=&setup=&from=` are the shareable
+  strings; a future URI scheme reuses them unchanged.
 - **`?from=` is origin only.** Values: `analysis`, `compare`, `garage`. It selects the post-back
   treatment (highlight the originating card for 1.5 s) and never changes what is loaded. An unknown
   `from` is ignored, not guessed at; because the ids travel beside it, an origin that no longer
@@ -192,6 +200,15 @@ scanning the directory. `quarantine/` exists because a corrupt file must not tak
 it: at launch an unreadable document is moved there, named once with its path, and the rest opens
 normally (E8.15).
 
+**A setup can arrive without its model** — that is the normal consequence of sharing a setup file
+without the car, and the format forbids embedding the model. So `(model_id, content_hash)` has a third
+outcome besides "found" and "not found": found-but-different-revision (E2.7's remap prompt) and
+missing-entirely. Missing is a *document state*, not an error: the setup opens read-only, every output
+is `REFUSED(model_missing)`, and the three recovery actions — import the model, map to a local model,
+delete — are the whole screen (requirements §4.6, E6.9). Storing that state costs one nullable
+`mapped_at`/`model_ref.state` field; *guessing* it by silently rebinding to the nearest local model
+costs the user's trust in every number, which is why the binder never runs without an explicit tap.
+
 `getApplicationSupportDirectory()` is app-private on every target (`files/` on Android, Application
 Support on iOS): not Downloads, not external storage — the files are app-managed, invisible to the
 media scanner, and removed with the app unless the user exports them. Export is therefore the
@@ -209,9 +226,9 @@ contribution from a readable diff into a binary. Models are data and must outliv
 library died inside a proprietary engine.
 
 *Cost:* listing means parsing files. A startup-built in-memory index covers it, and deliberately no
-index *file* — a second source of truth is a consistency bug. *Revisit:* P-05 (open a model, ≤300 ms)
-or P-06 (200 models scrolling at 60 fps) missed on the reference device, or full-text search over
-setup notes.
+index *file* — a second source of truth is a consistency bug. *Revisit:* E8.5's ≤300 ms to open a
+stored model missed on the reference device, 200 models failing to scroll at 60 fps, or full-text
+search over setup notes.
 
 ### 4.1 The on-disk shape
 
@@ -219,7 +236,8 @@ setup notes.
 { "schema_version": "1.0.0", "kind": "car_model", "id": "mdl_8f2c41",
   "frame": { "standard": "ISO 8855", "axes": "x forward, y left, z up",
              "origin": "ground plane, rear axle centre, vehicle centreline" },
-  "units": { "length": "mm", "angle": "deg", "mass": "g", "spring_rate": "N/mm" },
+  "units": { "length": "mm", "angle": "deg", "mass": "g", "spring_rate": "N/mm",
+             "damper_force": "N", "damper_speed": "m/s" },
   "sources": { "s1": { "type": "measured", "method": "digital caliper", "by": "DW" } },
   "axles": { "front": { "corners": { "left": { "lower_arm":
       { "outboard": { "v": [0.0, 80.0, 10.5], "s": "s1" } } } } } } }
@@ -228,7 +246,7 @@ setup notes.
 - **`frame` and `units` are declared and checked on load** (§5). A file that declares a different
   frame or unit system is refused with the mismatch named, never rescaled or reinterpreted.
 - **Every value is `{"v": number, "s": sourceId}`**, resolving into the document's `sources` map; a
-  whole caliper session is one source (§4.1.2). `x_`-prefixed keys we do not understand are preserved
+  whole caliper session is one source (spec §4.1.2). `x_`-prefixed keys we do not understand are preserved
   and written back. A greater `schema_version` **major** is refused with a plain message, never parsed
   best-effort — silent degradation is how the 0.2 mm bug happened.
 - **Export** via `share_plus` 13.x shares the file itself (email, Drive, Files). **Import** via
@@ -271,15 +289,23 @@ every schema change carries a fixture pair forever, and a fixture is never delet
 Canonicalisation** rather than a private set of rules: keys sorted by UTF-16 code unit, no
 insignificant whitespace, ES6 number formatting (which normalises `-0.0` and refuses `NaN`/`Infinity`
 by construction), `meta` excluded, `x_` keys included. The spec pins the reference and publishes
-fixtures (§4.5), which is what makes two installs agree. D3 is why it has one owner: divergent hashes
+fixtures (spec §4.5), which is what makes two installs agree. D3 is why it has one owner: divergent hashes
 break E1.7, E2.1, E2.7 and E7.1 at once and the failure is invisible until two users exchange files.
 *Cost:* RFC 8785's number formatting is stricter than Dart's `toString()` for some doubles, so the
 formatter is hand-written and fixture-tested; including `x_` means a foreign tool that adds an
 extension key creates a new revision, which is the honest outcome — the meaning may have changed — and
 the UI names the new revision.
 
-**No file access in the pure packages.** `setup_data` validates, migrates and hashes strings and
-maps; the app owns bytes. That is what lets the same migration code serve a web build later with no
+**Two hashes, one owner.** The base `content_hash` is not the only one: a setup may carry the closed set
+of geometry adjustments of requirements §4.3.2 (upper-link shims, wheel offset), and the derived
+geometry has its own `geometry_hash` (§4.5.3). Both hashing functions live in `hash/`, and the
+*composition* — base model plus adjustments, in the signed order the schema fixes — lives in the
+adapter, so the solver receives one compiled geometry and never learns that a shim exists. That is the
+same boundary that keeps mm out of physics: the pipeline is arithmetic on document values, so it
+belongs with the only code allowed to do arithmetic on document values.
+
+**No file access in the pure packages.** `setup_data` validates, migrates, hashes and composes strings
+and maps; the app owns bytes. That is what lets the same migration code serve a web build later with no
 platform channel, and it is why `dart:io` is a build error rather than a convention.
 
 ## 5. Frame, units and the single conversion site
@@ -302,9 +328,9 @@ Four consequences, each of which the old draft left open:
   on the corner that matters (B3).
 - **Quantities that belong to the car are frame-free and never signed per side**: roll-centre height,
   load transfer, balance, roll stiffness.
-- **The requirements' §4.2 example flips sign in y.** With y-left the left corner is +y; every y in
-  that block of `spec.md` has the opposite sign from what R-1 requires (reported as a disagreement
-  for R2-B, not silently corrected here).
+- **Contact patches are derived, never stored** — `(0, ±track/2, 0)` and `(wheelbase, ±track/2, 0)` —
+  and the loader asserts the stored `wheelbase` against the front wheel centres to ±3 mm, so the
+  origin and the wheelbase cannot drift apart in a hand-edited file (requirements §4.2).
 
 *Why this frame and not the requirements'* (y right, mid-wheelbase origin): eleven equations in
 modules 2, 3, 4 and 6 were derived in it and the published references use it, so adopting the other
@@ -322,7 +348,7 @@ frame and equality per-wheel.
 | Length | mm | m | mm, 1 dp |
 | Mass | g | kg | g |
 | Spring rate | N/mm | N/m | N/mm |
-| Damper force / shaft speed | N, mm/s | N, m/s | N, mm/s |
+| Damper force / shaft speed | N, m/s | N, m/s | N, mm/s |
 | Angle (camber, toe, KPI, caster, roll) | deg | rad | deg |
 | Dimensionless (IR, ζ, balance) | – | – | – |
 | Roll stiffness (derived) | N·m/deg | N·m/rad | N·m/deg |
@@ -339,7 +365,9 @@ being re-derived from the corrected roll-centre sensitivity (M8). One precision 
    `camber_rad` — because a signature is the only place a unit can be checked by reading.
 3. **Divide by an exact power of ten where the quantity shrinks; multiply by an integer where it
    grows.** `mm / 1000` round-trips 4,994 of 5,001 values on a 0.1 mm grid (worst 2.8e-14 mm);
-   `mm * 1e-3` fails 644. Same rule for `mm/s → m/s`; `N/mm → N/m` is `* 1000`.
+   `mm * 1e-3` fails 644. `N/mm → N/m` is `* 1000`. Shaft speed arrives in m/s already (requirements
+   §4.1 rule 1 — a damper curve is published that way), so speed needs no conversion at the adapter and
+   only the *display* converts it to mm/s, which is the unit a racer reads.
 4. **No computed value is ever written back into a document.** Display rounding is one-way, so files
    only ever contain numbers a human or a caliper produced.
 5. **No unit literal in a feature widget**: a test greps `lib/src/features/` for `'mm'`, `' g'`,
@@ -351,7 +379,10 @@ being re-derived from the corrected roll-centre sensitivity (M8). One precision 
    to test, and one easy confusion — a display conversion mistaken for the storage conversion. The
    test that catches it is the document-level round trip, not the format test.
 7. **A document declaring different units is refused, not rescaled** (§5.1's sibling rule): "this
-   build reads mm/g/deg; this file says m/kg/rad".
+   build reads mm/g/deg; this file says m/kg/rad". The adapter also rejects any coordinate whose
+   magnitude exceeds 3000 mm as a suspected metre value (requirements §4.1 rule 1) — the guard is a
+   *validation* rule in the schema layer, not a heuristic in the solver, and E3.8's property test runs
+   it with both unit systems.
 
 Round-trip tests at three levels: converter (`mm → m → mm`, 1e-9 relative, plus the 0.1 mm grid
 sweep), string (`format(parse(s)) == s` for every string the UI can produce, in both unit sets),
@@ -370,11 +401,14 @@ level is the one that would have caught 0.2 mm per save; the grid sweep is the o
 pure presenter under `features/analysis/presenters/`, tested headlessly; every geometry view consumes
 a `GeometryScene` computed by `setup_physics`. A painter that calls `atan2` is a review failure.
 
-**A chart exists only for a computable property.** The presenter returns a `PropertyView` for the
-value (§8) and a `Series` only when that view is `ComputedValue`; a `NotMeasuredValue` or
-`UndefinedValue` produces no series at all, so there is no chart to draw and no `fl_chart` call to
-make. And no chart is written for a property outside the v1 set: the damper curve chart appears if and
-only if damping ratio is in the build (§11), so `fl_chart` gains no speculative usage.
+**A chart exists only for a valued property.** The presenter returns a `PropertyView` for the value
+(§8) and a `Series` only when that view is `Valued`; `Missing` and `NoAnswer` produce no series at all,
+so there is no chart to draw and no `fl_chart` call to make. A banded series (roll-centre migration from
+an estimated input, for instance) draws its band as a shaded envelope rather than a second line, and
+the caption carries the tier — a chart that hides a band is a chart that lies. And no chart is written
+for a quantity the build does not compute: damping ratio ships as an estimated *reading* with its band,
+not as a damper curve, because a curve needs a damper document that v1 does not have (§8.6, requirements
+§4.8) — so `fl_chart` gains no speculative usage.
 
 At most three files import `fl_chart`, all under `lib/src/widgets/charts/`: single-maintainer package,
 history of breaking majors, and a line chart in `CustomPainter` is two days if it dies. It has no log
@@ -385,16 +419,16 @@ axis and damper curves want one — transform to `log10` in the presenter. Chart
 
 **Pick: one sealed type, `Solved<T>`, defined in `setup_physics`, specified in `physics/00` §4, carrying
 value, band, tier and provenance. Three transport states, one reason enum, one flag enum, one
-six-value tier enum. A query returns a struct of `Solved` fields — never a `Solved` of a struct.**
+two-value tier. A query returns a struct of `Solved` fields — never a `Solved` of a struct.**
 
 ```dart
 // setup_physics/lib/src/result/solved.dart — shape only; 00 §4 is the specification.
-sealed class Solved<T> { const Solved(); Tier get tier; }
+sealed class Solved<T> { const Solved(); }   // tier lives on Defined: a missing number has no worth to grade
 
 final class Defined<T> extends Solved<T> {
   final T value;                  // SI
-  final Tier tier;                // computed | estimated | inherited | inferred
-  final Band? band;               // required when tier is estimated, null otherwise
+  final Tier tier;                // firm | inferred (§4.11); derived, never declared
+  final Band? band;               // required when tier is inferred, computed by re-running (§4.8)
   final Basis? basis;             // required when tier is inferred: what the claim rests on
   final Set<Ref> provenance;      // opaque tags for every input consumed (source ids)
   final Set<Flag> flags;          // conditioning, assumed inputs, out-of-domain
@@ -415,29 +449,32 @@ a 10⁵ disagreement (1e-2 / 1e-4 against 1e-9) about when the same geometry is 
 
 What architecture does own:
 
-- **Six tiers, three states.** The state says *whether* there is a number; the tier says *what kind of
-  claim* the number is. `missing` and `undefined` are the two states with no number; `computed`,
-  `estimated`, `inherited` and `inferred` are four kinds of number. The display states of requirements
-  §4.4.1 / E3.16 are the product of this tier with the evidence axis (§8) — not a third vocabulary
-  invented on the way to the screen.
-- **Tier is derived, never declared.** A function does not choose `computed`; it reports its inputs'
-  tiers and the package takes the weakest of `computed < estimated < inherited < inferred`, with
-  `missing` and `undefined` dominating as terminal states. An output built on a borrowed measurement
-  must not read as measured, and a hand-declared tier goes stale the moment an input's provenance
-  changes. *Cost:* the adapter propagates a tier per input, so `PhysicsInput` fields carry one; the
-  order between `inherited` and `inferred` is a judgement call, fixed here so it is argued once rather
-  than per module.
-- **`band` is carried, not reconstructed at the UI.** An estimated value returns its half-width
-  (relative unless an absolute unit is stated) and the screen prints it. The package computes it
-  first-order from the input bands where it has the sensitivities and falls back to the widest input
-  band, floored at the model's own band — the damper's ±30% on force is the first case. It is an
-  estimate of an estimate, not a confidence interval, and the help text says so: that difference is
-  exactly where a measurement tool over-claims.
-- **`basis` is an id plus its inputs, never English.** An inferred claim — CG height, which no
-  corner-scale session can measure — returns `Basis(id: 'inferred.cgFromCornerWeights', inputs: {…})`,
-  and the app's string table renders the sentence and appends "all else equal". The physics package is
-  Flutter-free, locale-free and copy-free; a sentence inside it would be a translatable string in the
-  one package that cannot load the bundle.
+- **Tier and state answer different questions, and neither vocabulary is invented here.** The
+  requirements' tier (`firm` / `inferred` / `speculative`, §4.11) says what a number is worth; the
+  requirements' state (eight values, precedence-ordered, §4.4.1) says whether it exists and what is
+  missing. The package carries the *inputs* to both — value, band, basis, provenance, quality flags —
+  and **`setup_data` derives the state**, because only it knows each consumed field's `on_absence`
+  policy and its `plausible` bounds. The app formats. That split is what keeps the state vocabulary in
+  one place while keeping the solver JSON-free.
+- **Tier is derived, never declared.** The envelope's tier is `firm` when every consumed value carries
+  a `measured` source and the equation is used inside its stated domain, and `inferred` otherwise — a
+  function does not choose it. `speculative` never appears on a computed value: §4.11 gives it to
+  suggested changes (the setup-sheet interpreter), which are advice, not outputs, so the package's enum
+  is `firm | inferred` and the app adds `speculative` for advice items only. *Cost:* the adapter must
+  carry a source type per input, so `PhysicsInput` fields are wrapped rather than bare doubles.
+- **`band` is computed by re-running, not by propagating errors.** Per §4.8 the band is the [min, max]
+  of the output recomputed with each `estimated` input at the ends of its own `tolerance_pct`, one input
+  at a time — so it moves when the tolerances move, and E3.6(d) makes a constant band a test failure.
+  The package therefore needs a banded query (`damperRatioAt(corner, speed, {endpoints})`), not a
+  variance formula. *Cost:* N+1 solves per banded output, where N is the number of estimated inputs —
+  affordable for one output on demand, not for the whole analysis on every frame, so bands are computed
+  when a card is opened and cached with the solve.
+- **`basis` is a procedure id plus its inputs, never English.** CG height is `ESTIMATE(two_hang_plumb_line)`
+  in the schema (§4.2.1) — never asked for as a measurement, because corner scales cannot locate a CG —
+  so the envelope carries `Basis(procedure: 'two_hang_plumb_line', inputs: {…})` and the app's string
+  table renders the sentence and appends "all else equal". The physics package is Flutter-free,
+  locale-free and copy-free; a sentence inside it would be a translatable string in the one package that
+  cannot load the bundle.
 - **`provenance` is opaque to physics.** Values arrive wrapped in a tag the adapter assigns from the
   document's `s` ids; the package never interprets it and returns the set it consumed. That keeps the
   dependency direction of §1 intact — physics still cannot name a document field — while letting the
@@ -449,98 +486,175 @@ What architecture does own:
   destructure more, and a widget that wants "the roll centre" must pick a field and handle its state —
   which is the point.
 - **Not re-declared anywhere.** The app imports the type from `setup_physics`; `setup_data` never wraps
-  it; there is no `ResultDto`. Tier, reason and flag names persist and travel as *strings*
-  (`parallelLinks`, `estimated`), never as enum ordinals, so renaming a Dart case cannot change an
-  export or a golden fixture. Within a document major the vocabularies are additive only.
-- **Conditioning is a flag.** Whether a defined number is trustworthy is a matter of degree; a seventh
+  it; there is no `ResultDto`. State, tier, reason and flag names persist and travel as *strings*
+  (`parallelLinks`, `inferred`), never as enum ordinals, so renaming a Dart case cannot change an export
+  or a golden fixture. Within a document major the vocabularies are additive only — which is also what
+  lets §4.4.1 gain a ninth state without touching a saved file.
+- **Conditioning is a flag.** Whether a defined number is trustworthy is a matter of degree; a third
   tier would imply a categorical boundary the physics does not have. One threshold, defined and
   exported by the physics package; the app's "nearly parallel" copy reads that flag and compares
   against nothing of its own. The 1e-2 / 1e-4 numbers this document used to propose are withdrawn.
 - **No nullable darts, and the envelope is never partially filled.** No public function returns
   `double?`, `null` or `NaN`. A property test over 10k seeded geometries asserts every `Defined.value`
-  is finite, every `estimated` carries a band, every `inferred` carries a basis, every `Undefined`
-  names an enum reason, and every `NotMeasured` names at least one field. An estimate without a band
-  is the same failure as a number without a unit.
+  is finite, every envelope with tier `inferred` carries both a band and a procedure, every `Undefined`
+  names an enum reason, and every `NotMeasured` names at least one field. A banded claim without its
+  band is the same failure as a number without a unit — and worse, because it looks more honest than
+  it is.
 
 ## 8. The "computed, not yet validated" state
 
-**Decision (D-11): every computed property carries an evidence level; in v1 every level is L0 + L1,
-and the app says "computed, not yet validated" in the number's own detail panel. Nothing in v1 is
-presented as validated.**
+**Decision (D-11 + owner decision, 2026-10-30): every value carries a state, a tier, a band where it is
+estimated and a basis where it is inferred, and no surface shows a bare number. Three axes, each owned
+by exactly one document:**
 
-**1. Carried through the API.** `EvidenceLevel` (`L0` arithmetic, `L1` identity, `L2` bench, `L3`
-correlated — defined in `physics/99` §1) is a constant per property in
-`setup_physics/lib/src/evidence/evidence_table.dart`, reachable from the property descriptor a solve
-returns. It is not an argument, not a field on `Solved`, and not derived at runtime: a number is not
-computed "at L2" — a *property* is at a level, and the level changes only when the build changes.
+| Axis | Values | Authority | Where it is decided |
+|---|---|---|---|
+| **State** — does the number exist, and what is missing | `UNDEFINED(reason)`, `REFUSED(field)`, `OUT_OF_DOMAIN(bound)`, `COMPUTED_INCOMPLETE(fields)`, `COMPUTED_ASSUMED(fields)`, `INFERRED(procedure, band)`, `ESTIMATED_INPUTS(n)`, `COMPUTED` — in that precedence, highest wins | requirements §4.4.1 | `setup_data`, from `on_absence`, `plausible` and the result envelope |
+| **Tier** — how much the number is worth | `firm`, `inferred`, `speculative` | requirements §4.11 | `setup_physics` for the first two (§7); the app adds `speculative` for advice only |
+| **Evidence** — how far it has been checked | `validated`, `not_yet_validated` | E3.16 | the app's presenter, from the build's golden inventory **and** the model's recorded measurement check |
 
-**2. Not stored.** Evidence level is never written into a document, and computed values are never
-stored at all (§5 rule 4). The level describes how far the physics has been checked, which is a
-property of the build, not of the user's car. Persisting it would let a setup exported in October
-still claim L2 in March after a regression moved the number, and would make every export a stale
-claim. *Cost:* an exported setup sheet carries the level as text at export time, stamped with the app
-version — so an old PDF is a historical document, which is the honest reading of it anyway.
+Two of these are new since round 1 and both exist because of the owner's 2026-10-30 decision: a number
+can be a *claim* rather than a result, and the API has to say which. The reason the state is not
+computed in the package is that every one of the eight states except `UNDEFINED` depends on a schema
+fact — which field is missing, under which `on_absence` policy, inside which `plausible` bound — and
+the package is not allowed to know the schema (§1). This is the same rule that keeps the frame and the
+units out of it.
 
-**3. Displayed, through a type that cannot be a bare number.** The presenter maps
-`Solved` + provenance + evidence to one of three values, and that is the only thing a card may
-receive:
+**1. Carried through the API.** The envelope (§7) carries value, band, basis, provenance and tier;
+the *state* is derived downstream. Evidence does not travel with the value at all, because it is not a
+property of the arithmetic:
+
+- `setup_physics/lib/src/evidence/evidence_table.dart` records, per output id, which golden cases
+  exist (E3.11) and their `source_kind`. That is a property of the build.
+- the *model's* recorded measurement check (E3.13's measured-vs-computed, with date and car) is a
+  property of the user's car, and is stored in the model document. E3.16 makes `validated` conditional
+  on it existing for *that model*, and it cannot be inferred from the build.
+
+So the state is a function of (result envelope, the schema's `on_absence`/`plausible` facts) and is
+derived in exactly one place — `setup_data`'s adapter — while the display value adds the evidence axis
+and is assembled in exactly one other, the presenter. Neither is ever assembled ad hoc on a screen, and
+neither package recomputes the other's half.
+
+**2. What is stored, and what is not.** Computed values are never stored (§5 rule 4), so no state is
+stored per value either — every one of the eight is reproducible from three things that *are* stored:
+the value's `source` (provenance), the **omitted fields** (absence, which the field's `on_absence`
+policy turns into `REFUSED`, `COMPUTED_ASSUMED`, `COMPUTED_INCOMPLETE` or `INFERRED`), and the model's
+validation record for the evidence axis.
+
+Two consequences, both deliberate:
+
+- **E1.6's "outside the expected range" flag is recomputed, not stored.** The field's `plausible`
+  interval lives in `fields.yaml` (E1.6 iterates it), so the flag is a comparison at load time. It
+  therefore survives save and reload without a schema field, and it cannot go stale when a range is
+  corrected in a later build — whereas a stored boolean would keep asserting a judgement the current
+  schema no longer makes. *Cost:* the range check runs on every load, which is microseconds for a few
+  hundred values, and a file edited by hand to sit inside the range loses the flag, which is correct.
+- **No state is written into a document.** A setup exported in October must not still claim `validated`
+  in March after a regression moved the number. The export carries the states as text at export time,
+  stamped with the app version, so an old PDF is a historical document — the honest reading of it.
+
+**3. Displayed, through a type that cannot be a bare number.** The presenter maps the envelope, the
+build inventory and the model's validation record into one value, and that is the only thing a card
+may receive:
 
 ```dart
-sealed class PropertyView {}
-final class ComputedValue  extends PropertyView {
-  final String formatted;        // already rounded, with its unit
-  final Set<Mark> marks;         // assumedInput, estimatedInput, lowConfidence,
-                                 // outOfRange, approximate, notYetValidated
-  final EvidenceLevel evidence;
+sealed class PropertyView {
+  final Claims state;             // one of the eight §4.4.1 states, with its payload
+  final Tier tier;                // firm | inferred | speculative (§4.11)
+  final Evidence evidence;        // validated | not_yet_validated (E3.16)
 }
-final class NotMeasuredValue extends PropertyView { final List<String> fields; }   // document paths
-final class UndefinedValue   extends PropertyView { final String reason, message; }
+final class Valued extends PropertyView {
+  final String formatted;         // already rounded, with its unit
+  final Band? band;               // printed next to the number; required by INFERRED/ESTIMATED_INPUTS
+  final String? basisSentence;    // procedure sentence; ends with "all else equal" when behavioural
+}
+final class Refused  extends PropertyView { final List<String> fields; }   // document paths, no unit
+final class NoAnswer extends PropertyView { final String reason, message; } // UNDEFINED
 ```
 
+- **A banded value is never rendered without its band.** The band comes from the result envelope (§7),
+  so a screen cannot drop it: the presenter asserts `band != null` whenever the state is `INFERRED` or
+  `ESTIMATED_INPUTS` and the tier is `inferred`, rather than trusting each card to remember.
+- **An inferred claim is never rendered without its basis.** `basisSentence` is generated from the
+  package's `Basis.procedure` id and the app's string table, and ends with the words "all else equal"
+  whenever the claim is about car behaviour (§4.11 makes those words mandatory for inferred
+  behaviour claims). CG height is the case that forced it: the field is `ESTIMATE(two_hang_plumb_line)`
+  in the schema, so the sentence names the two-hang procedure and the band that came out of it.
+  *Cost:* the string table carries one sentence per inference procedure, and each is a claim someone
+  must review as copy rather than as maths.
 - A widget that renders a computed number accepts `PropertyView` and nothing else. `lib/src/units/` is
   the only place a `double` becomes a `String`; `presenters/` is the only place a `Solved` becomes a
   `PropertyView`. A grep test bans `toStringAsFixed`, `NumberFormat(` and `$`-interpolation of a double
-  under `lib/src/features/`. Why a test and not a review rule: D9's finding is that no acceptance
-  criterion required a per-output validation state, so an unvalidated model rendered `9.97` with a
-  unit and no caveat. A type plus a grep is what makes E1.2, E1.8, E2.11 and E3.8 true by
-  construction instead of by vigilance. *Cost:* every card needs a wrapper, and a quick debug print
-  needs a formatter call.
-- Marks that come from the *document* — `estimatedInput`, `assumedInput`, `outOfRange` — are computed
-  from each value's `source` type and its plausibility flag, not from the physics result, so they
-  follow the data through compare, export and reload.
+  under `lib/src/features/`, extending E8.9a's no-assembly lint to numbers. Why a test and not a review
+  rule: D9's finding is that no acceptance criterion required a per-output state, so an unvalidated
+  model rendered `9.97` with a unit and no caveat. *Cost:* every card needs a wrapper, and a quick
+  debug print needs a formatter call.
+- Marks that come from the *document* — assumed inputs, out-of-range values — are derived from each
+  value's `source` and from the field's `plausible` range in `fields.yaml` (recomputed at load, §8.2),
+  not from the physics result, so they follow the data through compare, export and reload.
 - The chip text and the detail-panel caveat are the two strings `physics/99` §1 mandates; the app does
   not paraphrase them.
-- **Compare refuses a delta against an absent value.** Two `ComputedValue`s render a delta; anything
-  against `NotMeasuredValue` or `UndefinedValue` renders both states and no delta. A delta against an
-  absent value is the easiest way to fabricate a number in this app, and it is banned in the presenter
-  rather than in review.
+- **The design's five badges are not the state vocabulary.** `docs/design/screens.md` §0.2 defines
+  *computed / estimated / inherited / missing / undefined*, which is the owner's 2026-10-30 wording.
+  The requirements then split that into eight states (§4.4.1) and three tiers (§4.11), and the two
+  cannot both be the chip's vocabulary: `INFERRED`, `OUT_OF_DOMAIN`, `COMPUTED_INCOMPLETE` and
+  `ESTIMATED_INPUTS` have no badge in the current set. Architecture's position is that the **chip
+  renders the state** (eight values) and the **tier rides alongside as a word** (`firm` / `inferred` /
+  `speculative`), because the state is the thing that decides whether a number is shown at all. The
+  badge component therefore needs a state map, not five more hand-drawn variants; that is a design task
+  with an architectural constraint attached, and it is listed in the disagreements.
+- **Compare refuses a delta unless both sides carry a number, and labels the two tiers.** Two `Valued`s
+  render a delta; anything against `Refused` or `NoAnswer` renders both states and no delta; and a
+  delta between an `inferred` and a `firm` value is labelled with both tiers, because "wheel rate up 4%"
+  against a banded estimate is a different claim from two firm numbers. For ζ the compare view goes
+  further, as §4.8 and E3.6(e) require: the signed direction and magnitude of the change is rendered
+  *above* the absolute values, because the change is the trustworthy part.
 
-**4. How a level is raised.** One property at a time: a row in `physics/99` §9's results log (date,
-car, measured vs computed), then the constant in `evidence_table.dart`, then the chip disappears
-everywhere it showed. The check is a review rule, not a test — a machine check would have to parse a
-prose table, which is precisely the circular gate D6 identified. *Cost:* a level could be raised in
-code with no log row and no test would fail. The mitigation is that the table's doc comment names the
-log as its only evidence, and a level change is a one-line diff a reviewer sees.
+**4. How evidence moves.** One output at a time: a row in `physics/99` §9's results log, then the
+inventory in `evidence_table.dart`, then the chip changes everywhere it showed. The check is a review
+rule, not a test — a machine check would have to parse a prose table, which is the circular gate D6
+identified. *Cost:* a level could be raised in code with no log row and no test would fail. Mitigation:
+the table's doc comment names the log as its only evidence, and a level change is a one-line diff.
 
 **5. Degradation, which is the v1 default path rather than an edge case.**
 
-| Situation | State | What the user sees |
+| Situation | State (§4.4.1) | What the user sees |
 |---|---|---|
-| An input is absent | `NotMeasured(fields)` | "not measured: rear lower arm, outboard" — the row stays in place (E1.2 requires the row), and the field is one tap from the geometry editor |
-| Inputs present, geometry degenerate | `Undefined(reason)` | "undefined for this geometry: parallel links", plus the hardpoints responsible |
-| Inputs valid, model outside its stated domain | `Defined` + `outOfRange` | the number *with* the domain caveat (E3.9): a flagged number beats a refusal the user cannot reason about |
-| Inputs absent but an assumption is declared (`on_absence: ASSUME`) | `Defined` + `assumedInput` | the value, with the assumption named and its value shown (E1.8, E2.4) |
-| Property not in this build | no card | the analysis screen's "what this build computes" note names the gap; a greyed-out card would be an empty promise |
+| Inputs present, geometry degenerate | `UNDEFINED(reason)` | "undefined for this geometry: parallel links", plus the hardpoints responsible |
+| A consumed field is absent with `on_absence: REFUSE`, or the setup's model is missing | `REFUSED(field \| model_missing)` | the field named, no number, no unit, no dash; for a missing model, the badge plus the three actions of §4.6 |
+| The value is outside `roll_centre_validity` or another declared bound | `OUT_OF_DOMAIN(bound)` | the number *plus* the bound exceeded — a flagged number beats a refusal the user cannot reason about |
+| A consumed field is absent with `on_absence: OMIT` | `COMPUTED_INCOMPLETE(fields)` | the number, plus "does not include <field>" |
+| A consumed field is absent with `on_absence: ASSUME(v)` | `COMPUTED_ASSUMED(fields)` | the number, plus the field and the assumed value (E1.8, E2.4) |
+| A consumed field is absent with `on_absence: ESTIMATE(procedure)`, or the output is itself an inference | `INFERRED(procedure, band)` | the number, its band, the procedure name, and "all else equal" where the claim is about behaviour |
+| A consumed value has an `estimated` source | `ESTIMATED_INPUTS(n)` | the number, the count, and each basis one tap away (E2.11) |
+| None of the above; a setup's model revision is absent | `COMPUTED` / `REFUSED(model_missing)` | the number; and for the model-missing case, no numbers at all until remapped (§4.6) |
+| Output not in this build | no card | the analysis screen's "what this build computes" note names the gap |
 
-**v1 scope is geometry + balance**: motion ratio, wheel rate, ride frequency, roll stiffness,
-load-transfer split, roll-centre height and migration, camber gain and camber at roll, bump steer,
-Ackermann, corner weights. **Damping ratio is contested** — D-12 as written puts static ζ in v1,
-CONSOLIDATED §3 shows the inputs for it do not exist in the document model (no bar diameter, no
-piston area, no hole diameter, no damper curve kind), and the recommended resolution is option 1,
-damping out of v1. The architecture is built so either answer is a card that appears or does not: the
-property's presence in `evidence_table.dart` is what makes the card, the chart and the help text exist.
-*Cost of the wrong call:* ship ζ without its inputs and the app displays a ±30%-wrong number under an
-honest chip; cut it and the release loses one headline property and one chart.
+Precedence is the requirements' order, highest first, and it is asserted by a test rather than
+restated in prose twice: a value that is both out of domain and built on an estimate is
+`OUT_OF_DOMAIN`, because the bound is the harder fact.
+
+**6. v1 scope: eleven outputs, three of them not measurements.** Geometry + balance as the requirement
+cuts it (requirements §2.1) — motion ratio, wheel rate, ride frequency, roll stiffness, load-transfer
+split, roll-centre height and migration, camber gain, camber at roll, bump steer, plus damping ratio as
+an estimate — and three quantities the app labels rather than measures:
+
+- **Damping ratio is `INFERRED` in v1**, from the orifice model with a *computed* band (each estimated
+  input at the ends of its own `tolerance_pct`, one at a time — E3.6(b), §4.8). Not a fixed ±30%: a
+  constant band is a test failure (E3.6(d)). It is never `validated`, never a headline, and the compare
+  view leads with the signed change between two sheets, because that is the trustworthy part. This
+  reverses round 1's "ζ is out of v1" and it is only implementable because the state and tier axes
+  exist: without them, ζ would be a bare number pretending to be a measurement.
+- **CG height is `ESTIMATE(two_hang_plumb_line)`**, never requested as a measurement, with a computed
+  band; every output that consumes it — the load-transfer split — is `INFERRED` and carries the words
+  "all else equal".
+- **Grip is not an output at any tier.** No grip value, no composite score, nothing to compute: the
+  only permitted sentence is the qualitative `inferred` claim §4.11 allows.
+
+*Cost of being wrong:* a banded ζ is still a claim about damping, and if users read a band as a
+tolerance for judging a setup change the chip must get louder (Risk 6). *Revisit:* the day a damper
+document exists (§4.8's option 3, the drop test), ζ moves to `firm` for users who run it — the state
+machinery is what makes that a data change rather than a rewrite.
 
 ## 9. Testing strategy
 
@@ -548,27 +662,28 @@ honest chip; cut it and the release loses one headline property and one chart.
 |---|---|---|
 | Physics unit (`dart test`) | each formula against a cited hand calc in `docs/specs/physics/` | ≥1 per public function |
 | Golden numeric (JSON: input → expected → tolerance → `source`) | no regressions; every expected value traceable | per module + one full vehicle |
-| Result type and validity (`dart test`) | every reason code reachable from a fixture; per-field independence (G02.7); `NotMeasured` names ≥1 field; no `null`/`NaN` at any boundary | one fixture per reason code |
-| Property/fuzz (seeded) | no `NaN`/`Inf` escapes; every `Undefined` carries an enum reason | 10k cases, <2 s |
-| Adapter (`dart test`) | mm/g/deg → SI and back; the 0.1 mm grid sweep; one conversion site | every stored quantity × both directions |
-| Document/migration (`dart test`) | assets validate; load→save identity; v(n)→v(n+1) byte fixtures; hash stability under key reordering | all assets, all fixtures |
-| Presentation (`dart test`, headless) | `Solved` → `PropertyView` for all three states; marks derived from provenance; no delta against an absent value | per property |
+| Result type (`dart test`) | every reason code reachable from a fixture; per-field independence (G02.7); `NotMeasured` names ≥1 field; every `inferred` envelope carries a band and a procedure; no `null`/`NaN` at any boundary | one fixture per reason code and per tier |
+| State derivation (`dart test`, `setup_data`) | one fixture per §4.4.1 state, and the precedence order: a value that is both out of domain and estimated reads `OUT_OF_DOMAIN`; a missing field under each of the four `on_absence` policies produces its own state | 8 states × 4 policies |
+| Property/fuzz (seeded) | no `NaN`/`Inf` escapes; every `Undefined` carries an enum reason; tier propagation never improves an output above its weakest input | 10k cases, <2 s |
+| Adapter (`dart test`) | mm/g/deg → SI and back; the 0.1 mm grid sweep; one conversion site; provenance tags survive the round trip | every stored quantity × both directions |
+| Document/migration (`dart test`) | assets validate; load→save identity; v(n)→v(n+1) byte fixtures; RFC 8785 hash fixtures; kill between temp write and rename (E8.12) | all assets, all fixtures |
+| Presentation (`dart test`, headless) | envelope + schema → `PropertyView` for every state; band present whenever `INFERRED`/`ESTIMATED_INPUTS`; basis sentence ends "all else equal" for behaviour claims; marks derived from provenance and `plausible`; no delta against an absent value; ζ never marked `validated` | per output |
+| Gate stages (`tool/gate.dart`'s own tests) | each stage fails on its seeded failure, naming the defect: `@SpecTest` deleted / unknown / LATER-annotated (E9.9); one `on_absence` deleted, unknown `consumed_by`, altered Markdown cell, version without fixture (E9.10); `INTERNET` added to the manifest (E8.1); an analytics package added (E8.13) | one seeded test per stage |
 | Gate hygiene (static) | no unit literal in `packages/setup_physics/lib` or `lib/src/features`; no Flutter import in physics; no formatting outside `lib/src/units`; every golden ID has a test | one test each |
-| Widget, semantics guidelines, golden image | slider updates the number; equation expands; tap targets hold; painters do not drift | thin, per screen |
-| Performance | P-01 ≤16 ms and P-03 ≤2 ms on the reference device, gated at 2× the target so a real regression trips it and a noisy runner does not | 3 models |
+| Widget, semantics guidelines, golden image | slider updates the number; equation expands; tap targets hold; painters do not drift; at 2.0 text scale every value's full string is in the semantics tree (E8.7b) | thin, per screen |
+| Performance | E3.12: p50 ≤ 16 ms, p99 ≤ 25 ms over 1,000 recomputes; drag: ≥ 95% of 600 frames within 16.7 ms and none over 32 ms. CI emulator proxy p50 ≤ 40 ms / p99 ≤ 80 ms, gated at 2× the target so a real regression trips it and a noisy runner does not | 3 models |
 
 Tolerances live in the fixture, not the test body: 1e-9 relative for closed-form algebra, 1e-6 for
 iterative work *with the iteration count and bracket fixed by the spec* (M13 — a tolerance on a
 finite-difference or a bisection is meaningless without the step), and absolute only where a value
-legitimately approaches zero, with the fixture saying why. The requirements' blanket 1e-9 across
-devices is not achievable downstream of a bisection and is not what this harness asserts.
+legitimately approaches zero, with the fixture saying why. A blanket 1e-9 across devices is not
+achievable downstream of a bisection and is not what this harness asserts.
 
 `--update-goldens` is forbidden for numeric fixtures (fine for images): a reviewer must be able to
 reject a changed expected number whose `source` did not change.
 
-**CI must gate:** zero analyse issues; every layer above; the physics-has-no-Flutter pubspec test; the
-no-unit-literal and no-formatting greps; asset and fixture schema validity; the golden-ID trace.
-**Must not gate:** coverage percentage or warning counts. **No retries:** a retried test hides a race.
+**CI must gate:** zero analyse issues; every layer above. **Must not gate:** coverage percentage or
+warning counts. **No retries:** a retried test hides a race.
 
 ## 10. GitHub Actions and the gate
 
@@ -577,24 +692,30 @@ because the convention's rule is that a gate is one exact command and the worksp
 packages — two of which the app-scoped commands cannot see reliably (`flutter test` in `app/` does not
 walk `packages/*/test/`, and `flutter analyze`'s coverage of workspace members is version-dependent).
 
-`gate.dart` runs, per package, exactly:
+E9.8 fixes the stage list, and the gate must match it exactly in both directions — a stage in
+`gate.dart` with no AC fails the spec audit, and a stage named in E9.8 but missing from `gate.dart`
+fails the gate:
 
-| Package | Commands |
-|---|---|
-| `app` | `flutter analyze`, `flutter test` |
-| `packages/setup_physics` | `dart analyze`, `dart test` |
-| `packages/setup_data` | `dart analyze`, `dart test` |
+| Stage | What it does | AC |
+|---|---|---|
+| `analyse` | `flutter analyze` in `app`, `dart analyze` per package; zero issues | E9.8 |
+| `test` | `flutter test` in `app`, `dart test` per package — including the schema, migration, adapter, tier, presentation and grep tests above | E9.8 |
+| `spec-audit` | every MUST id in the requirements has a `@SpecTest('<id>')`, every annotation names a real id with the same tag and release marker, no LATER id is annotated | E9.9 |
+| `schema` | `fields.yaml` ↔ Markdown tables ↔ generated Dart table ↔ fixtures: every field once with `on_absence ∈ {ASSUME, REFUSE, OMIT}`, every `consumed_by` id exists, one fixture per written `schema_version`, generator output current | E9.10 |
+| `ip` | no predecessor names, no `.sdf`/database asset, no 8-word overlap the corpus check rejects | E9.4, E5.4 |
+| `manifest` | the merged Android manifest has no `INTERNET` permission and `minSdkVersion ≥ 26` | E8.1 |
+| `dependencies` | no analytics, advertising or crash-reporting package in the resolved set; Privacy screen text equals `docs/release/privacy.txt` | E8.13 |
+| `strings` | no user-facing string assembled by concatenation; every string resolves from the bundle; no forbidden claim word (grip score, faster, lap time…) | E5.6, E8.9a |
 
-and nothing else. The schema, migration, adapter, golden-ID and grep checks are **tests inside the
-packages**, so `dart test` cannot skip them and there is no second tool to forget to wire in. That is
-also the answer to D6: the release gate no longer depends on a `spec_audit` binary that no acceptance
-criterion requires — the golden-ID trace is `setup_physics/test/spec_trace_test.dart`, which reads
-`docs/specs/physics/*.md` at test time (the `dart:io` ban covers `lib/`; tests may read the spec).
+Eight stages, each with its own seeded-failure test: that combination is the answer to D6. The old
+draft's single `spec_audit` tool that no AC required is gone — every stage is now named by a criterion,
+and the criteria require the stage to fail when the defect is injected.
 
-`gate.dart` runs every step even after a failure, prints each command and its exit code, and exits
+`gate.dart` runs every stage even after a failure, prints each command and its exit code, and exits
 non-zero if any failed: a gate that stops at the first failure costs one round trip per fix. *Cost of
 the indirection:* a contributor who runs `flutter test` locally gets a green that is not the gate —
-mitigated by `gate.dart` printing what it runs, and by the PR template asking for its output.
+mitigated by `gate.dart` printing what it runs, and by the PR template asking for its output (E9.8
+requires the output in the PR).
 
 ```yaml
 name: gates
@@ -621,7 +742,8 @@ jobs:
 
 **Two jobs, not three.** The iOS job is gone with D-10: no macOS runner, no `flutter build ios`, and
 no signing secrets in CI at all. Release artefacts (`.aab`) are built and signed locally by Dave
-(§11); CI proves the code analyses, tests and builds.
+(§11); CI proves the code analyses, tests and builds. A size-diff job (E8.11, warn above 1 MB) joins
+when that criterion lands — it is R2, so it is not in v1's workflow.
 
 Golden images compare only against the same pinned Linux image and Flutter version — that pairing is
 what makes them stable. Dependabot covers pub and Actions; a monthly PR against `.flutter-version`
@@ -637,7 +759,7 @@ packages and the tests carry over unchanged. What does not exist is an iOS relea
 |---|---|---|
 | Identifier | `io.github.<owner>.setuplab` as `applicationId` | the same string as `bundleId` |
 | Version | `1.2.3+45`, tag `v1.2.3` | same |
-| Minimum OS | minSdk 26 (Android 8.0; spec D8, E8.6) | iOS 15.0 — deferred |
+| Minimum OS | minSdk 26 (Android 8.0), asserted by the gate's manifest stage (E8.1) | iOS 15.0 — deferred |
 | Target | compile/target 36 (Play's required target rises each August) | iOS 26 SDK — deferred |
 | Account | Play Console, US$25 once | Apple Developer Program, US$99/yr |
 | Signing | upload key + Play App Signing | certificates and provisioning — deferred |
@@ -658,11 +780,18 @@ packages and the tests carry over unchanged. What does not exist is an iOS relea
    Play-side reset process if it is lost.
 4. **A privacy policy URL** (Play requires one even when nothing is collected) and the **Data safety**
    form: "no data collected, no data shared" — consistent with the manifest having no `INTERNET`
-   permission, which a reviewer can check.
+   permission, which a reviewer can check. The submitted declaration's public URL is recorded in
+   `docs/release/checklist.md` (E8.13c), and the in-app Privacy screen's text is
+   `docs/release/privacy.txt` exactly, asserted by the gate's dependency stage.
 5. **The content rating questionnaire** (IARC) and the listing assets: icon, feature graphic,
-   screenshots, description.
+   screenshots, description. The store listing's numbers may not use any figure D-08 marks
+   illustrative, and no listing text may carry a claim the string audit rejects (E5.6).
 6. **A trademark check on the name** before the listing exists. A listing renamed later loses its
    reviews and its install history.
+7. **A release checklist per version** — `docs/release/checklist-<version>.md`, every item of the
+   requirements' release checklist present with a reviewer name, a date and an evidence path (E9.3).
+   It is the only artefact that records measurements the CI cannot take, including the reference-device
+   timings (E3.12) and the AAB download size (E8.11's ≤ 25 MB, R2).
 
 ### 11.2 What is deferred, and what it costs later
 
@@ -686,7 +815,8 @@ packages and the tests carry over unchanged. What does not exist is an iOS relea
   outside `lib/src/io/`.
 - **Audience and discoverability.** Halving the addressable users is the honest price. The public
   claim does not change — "free to use, no account, no server, no ads" — it is simply heard by fewer
-  people. *Revisit trigger:* the first property reaching L2, or the first request from an iOS user,
+  people. *Revisit trigger:* the first output reaching evidence `validated`, or the first request from
+  an iOS user,
   whichever comes first.
 
 **App version and document `schema_version` are unrelated.** Conflate them and a bug fix cannot ship
@@ -739,39 +869,50 @@ the UI. Mitigation: reason codes are exported with their wire strings, and the a
 an exhaustive `switch` with no default, so a new code fails to compile rather than rendering blank.
 *Cost:* adding a reason touches two files instead of one, which is the price of the compile-time check.
 
-**3. Repeated solves.** A full two-axle analysis is P-01's ≤16 ms budget, and one axle is a fraction
-of it; the 60 Hz reference frame is 16.7 ms (8.3 ms on a 120 Hz panel), so the risk is not the maths
-but rebuilding widgets and charts around it. In order: derived provider (one solve per frame),
+**3. Repeated solves.** A full two-axle analysis is E3.12's p50 ≤ 16 ms budget, and one axle is a
+fraction of it; the 60 Hz reference frame is 16.7 ms (8.3 ms on a 120 Hz panel), so the risk is not the
+maths but rebuilding widgets and charts around it. In order: derived provider (one solve per frame),
 `select` on leaves, `RepaintBoundary` on charts, and only then `Isolate.run` with latest-value-wins —
 an isolate hop (~0.2–1 ms plus serialisation) can cost more than the work it offloads. A per-field
-result struct makes the payload larger; `select` is what keeps that from reaching a repaint.
+result struct carrying a band, a basis and a provenance set makes the payload larger; `select` is what
+keeps that from reaching a repaint, and it is why the envelope is built once per solve rather than
+per read.
 
 **4. Accessibility** — three specific failures rather than an aspiration: (a) the results table at
 200% text scale, designed against `TextScaler` and tested at 2.0, not 1.0; (b) the painter as sole
 carrier of information, so every visual has a table equivalent and a `Semantics` label; (c) sliders as
 the only input, so every slider has a text-field fallback that also fixes precise entry. Plus 48 dp
-targets, 4.5:1 contrast, colour never the only encoding, and a reduce-motion path. A validity chip is
-part of this: state must be readable as text, not only as a colour or a tilde.
+targets, 4.5:1 contrast, colour never the only encoding, and a reduce-motion path. The tier and the
+band are part of this: state must be readable as text, not only as a colour, a tilde or a chip, which
+is why E8.8's semantics assertion names the validation state explicitly.
 
-**5. Two lists checked by people, not by tests.** The schema manifest against the requirements field
-table, and the evidence table against the validation log. Both are deliberate: a parser over the
-requirements prose would recreate the circular gate D6 named. Mitigation: both lists are small, both
-are touched in the same PR as the thing they describe, and the fixture tests fail if the manifest and
-the code disagree. Residual risk stated plainly: a field added to the requirements without a manifest
-entry is caught at review, not by CI.
+**5. Two lists checked by people, not by tests.** The generated schema table against the requirements'
+Markdown, and the evidence inventory against `99-validation`'s log. The first is partly mechanised
+(E9.10 regenerates the Markdown and fails on a hand edit); the second is deliberately not, because a
+parser over prose is the circular gate D6 named. Residual risk stated plainly: an evidence level can be
+raised in code with no log row, and only a reviewer stops it.
+
+**6. A band is not a tolerance.** Once the app prints a band next to a damping ratio, a user can read
+it as "this number is good to this much" — which is true — or as "a change this large is real" — which
+is not, because two banded estimates do not have a banded difference of the same width. The mitigation
+is one sentence in the band's help text and a compare row that shows both bands rather than one delta;
+E3.6(e)'s rule that the compare view leads with the signed change is the same mitigation, seen from the
+other end. The cost of getting it wrong is a user tuning to noise with the app's blessing.
 
 ## Open questions
 
 1. **Where community chassis models live**: `app/assets/models/` in this repo (reviewable, but model
    PRs inflate app history) or a separate models repo bundled at build time. v1 assumes in-repo.
-2. **Publish measurement uncertainty per result** in v1? Risk 1 makes it nearly free, and no RC tool
-   has offered it — but it is scope, and it is a *different* honesty mechanism from the evidence chip:
-   a band is a claim about the number, the chip is a claim about the model, and shipping both at once
-   may read as more confidence, not less.
-3. **Does `on_absence` live in the schema manifest or only in the requirements table?** If the
-   manifest, the import UI, the assumption marks and the three result states all derive from one
-   column. If not, the mapping is a hand-written switch, and D1's three contradictory absence policies
-   come back one field at a time.
+2. **Are `speculative` advice items the same type as outputs?** §4.11 gives `speculative` to a
+   suggested change from the setup-sheet interpreter (E2.13), which is advice rather than a result. Two
+   options: reuse `PropertyView` with `tier: speculative` (one type, one renderer, but an advice item
+   can then be mistaken for an output by any code that filters on "is a PropertyView"), or a separate
+   `AdviceView` that *contains* one (a second type at the boundary, and the export needs both). Not
+   decided here because the interpreter is R2; the cost of deciding late is a migration of every
+   advice surface, not of the documents.
+3. **Does `on_absence` live in `fields.yaml` or only in the requirements tables?** E9.10 now makes the
+   YAML normative, so the manifest reading is the default; the open part is whether the *assumption
+   marks* and the `missing`/`estimated` mapping are generated from it too or hand-written per field.
 4. **iOS enrolment type, when D-10 is revisited**: individual (immediate, personal name on the
    listing) or organisation (D-U-N-S, weeks, not retrofittable). Recorded so it is not re-decided from
    scratch.

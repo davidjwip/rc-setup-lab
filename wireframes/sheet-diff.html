@@ -158,11 +158,32 @@ h2.sec{font-size:20px;line-height:26px;font-weight:500;letter-spacing:-.1px}
 .cnote.warn{border-color:color-mix(in srgb,var(--warn) 45%,transparent);background:color-mix(in srgb,var(--warn) 8%,transparent)}
 .cnote.warn svg{stroke:var(--warn)}
 .cnote.warn b{color:var(--warn)}
-.cnote.warn{display:none}
-.device.st-cond .cnote.ok{display:none}
-.device.st-cond .cnote.warn{display:flex}
-.device.st-cond .tier.inf{opacity:.5}
-.device.st-cond .tier.inf::after{content:"Conditions differ — this inference is no longer like-for-like";display:block;margin-top:10px;padding-top:8px;border-top:1px dashed var(--outline-var);font-size:10.5px;line-height:15px;color:var(--warn)}
+.cnote.warn{display:flex}
+.cnote.ok{display:none}
+.device.st-match .cnote.warn{display:none}
+.device.st-match .cnote.ok{display:flex}
+.device.st-match .tier.inf{opacity:1}
+.device.st-match .tier.inf::after{display:none}
+
+/* conditions, recorded optionally per sheet */
+.conds{margin:0 16px 10px;border:1px solid var(--outline-var);border-radius:12px;overflow:hidden}
+.conds .ch{display:flex;justify-content:space-between;align-items:baseline;padding:8px 12px;background:var(--s-low);font-size:11px;letter-spacing:.6px;text-transform:uppercase;color:var(--on-surface-var);font-weight:600}
+.conds .ch span{text-transform:none;letter-spacing:0;font-weight:400;font-size:10.5px}
+.crow{display:grid;grid-template-columns:58px 1fr 1fr 52px;gap:6px;align-items:baseline;padding:7px 12px;border-top:1px solid var(--outline-var);font-size:11px;line-height:15px}
+.crow .f{color:var(--on-surface-var)}
+.crow .a,.crow .b{color:var(--on-surface);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.crow .s{font-size:9px;letter-spacing:.5px;text-transform:uppercase;font-weight:600;text-align:right;color:var(--on-surface-var)}
+.crow .s.diff{color:var(--warn)}
+.crow .s.match{color:var(--secondary)}
+
+/* grip: inference only, never a computed number */
+.grip{margin-top:12px;padding:10px 12px;border:1px solid var(--outline);border-radius:10px;
+  background:repeating-linear-gradient(135deg,color-mix(in srgb,var(--s-high) 55%,transparent) 0 6px,transparent 6px 12px)}
+.grip .gk{display:inline-flex;align-items:center;gap:5px;font-size:9px;letter-spacing:1px;text-transform:uppercase;font-weight:700;color:var(--on-surface)}
+.grip .gk::before{content:"";width:7px;height:7px;border-radius:50%;border:1.2px solid var(--outline);display:inline-block}
+.grip p{font-size:12px;line-height:18px;color:var(--on-surface);margin-top:6px}
+.grip p b{font-weight:600}
+.grip .gl{font-size:10px;line-height:14px;color:var(--on-surface-var);margin-top:6px}
 
 .tier{margin:0 16px 12px;border:1px solid var(--outline-var);border-radius:14px;padding:12px 14px;background:var(--s-cont)}
 .tier .th{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
@@ -231,13 +252,21 @@ h2.sec{font-size:20px;line-height:26px;font-weight:500;letter-spacing:-.1px}
 </div>
 
 <div class="cmpbar">
-  <div class="slot"><span class="k">A</span><b>Sat open</b><span class="m">9 Aug · wet · 32R</span><span class="pbadge inh">2 inherited</span></div>
+  <div class="slot"><span class="k">A</span><b>Sat open</b><span class="m">9 Aug · asphalt, 16 °C, 28R</span><span class="pbadge inh">2 inherited</span></div>
   <svg class="arrow"><use href="#i-chev"/></svg>
-  <div class="slot"><span class="k">B</span><b>Wed club</b><span class="m">12 Aug · dry · 32R</span></div>
+  <div class="slot"><span class="k">B</span><b>Wed club</b><span class="m">12 Aug · asphalt, 18 °C, 32R</span></div>
 </div>
 
-<div class="cnote ok"><svg><use href="#i-check"/></svg><div><b>Comparable</b><span>Same track, same tyre, air within 1 °C. The diff below reads as a setup change, not weather.</span></div></div>
-<div class="cnote warn"><svg><use href="#i-alert"/></svg><div><b>Different day — not like-for-like</b><span>Wet 16 °C against dry 18 °C. The firm rows still hold; the balance inference below does not, because the tyre changed underneath it.</span></div></div>
+<div class="conds">
+  <div class="ch"><span>Conditions</span><span>optional per sheet</span></div>
+  <div class="crow"><span class="f">Surface</span><span class="a">asphalt</span><span class="b">asphalt</span><span class="s match">match</span></div>
+  <div class="crow"><span class="f">Air</span><span class="a">16 °C</span><span class="b">18 °C</span><span class="s diff">differs</span></div>
+  <div class="crow"><span class="f">Humidity</span><span class="a">92%</span><span class="b">55%</span><span class="s diff">differs</span></div>
+  <div class="crow"><span class="f">Tyres · motor</span><span class="a">“28R wet · 17.5T”</span><span class="b">“32R Shotz · 13.5T”</span><span class="s diff">differs</span></div>
+</div>
+
+<div class="cnote warn"><svg><use href="#i-alert"/></svg><div><b>Different conditions — not like-for-like</b><span>Humidity 92% → 55% and a wet tyre to a dry one. The firm rows still hold; the balance inference and the grip strip below do not, because the tyre changed underneath them.</span></div></div>
+<div class="cnote ok"><svg><use href="#i-check"/></svg><div><b>Comparable</b><span>Surface, temperature, humidity and tyre all match. The diff below reads as a setup change.</span></div></div>
 
 <div class="sec"><h2>What this did</h2><span>three tiers, labelled</span></div>
 
@@ -258,6 +287,10 @@ h2.sec{font-size:20px;line-height:26px;font-weight:500;letter-spacing:-.1px}
     <div class="rv">−0.3°<span class="ring"></span></div>
   </div>
   <div class="rule">
+    <div class="rl"><b>Rear oil <span class="num">350 → 400</span> cSt</b><span>damping ratio at the wheel · direction is firm, magnitude is an estimate (~0.38 ±0.05)</span></div>
+    <div class="rv">▲ more<span class="ring"></span></div>
+  </div>
+  <div class="rule">
     <div class="rl"><b>Front share of roll stiffness <span class="num">52.4 → 53.1</span>%</b><span>derived · springs, bars and chassis in series</span></div>
     <div class="rv">+0.7 pt<span class="ring"></span></div>
   </div>
@@ -271,6 +304,12 @@ h2.sec{font-size:20px;line-height:26px;font-weight:500;letter-spacing:-.1px}
   <div class="th"><span class="tb">Inferred</span><span class="ts">steady-state reasoning from the firm rows above</span></div>
   <p class="claim">More front roll-stiffness share means more front lateral load transfer, so the front axle carries proportionally more load and the car understeers more mid-corner, <b>all else equal</b>.</p>
   <p class="claim" style="margin-top:8px">The extra 0.2° of front camber holds the front tyre flatter at that load, which pulls the other way — also mid-corner, also <b>all else equal</b>. Which one wins is not something this model can say.</p>
+
+  <div class="grip">
+    <span class="gk">inference · grip</span>
+    <p>With more load on the front pair at the same slip angle, the front is the axle more likely to run out of grip first, mid-corner — <b>all else equal</b>. The rear is asked for correspondingly less.</p>
+    <p class="gl">Not measured, not computed, no number and no badge: grip is a tyre property this build does not model. Turning this into a claim needs tyre data or a measured test — neither is in v1.</p>
+  </div>
 
   <div class="cond"><span class="eyebrow">Reverses if</span>
     <p>The front tyres are already past peak slip at this load, or the rear gains more camber than the front through the same roll angle. Both are tyre and geometry facts the app does not hold.</p>
@@ -335,8 +374,8 @@ h2.sec{font-size:20px;line-height:26px;font-weight:500;letter-spacing:-.1px}
   <div class="kicker">Setup Lab · wireframe H</div>
   <h1>Sheet diff + interpreter</h1>
   <p>Two sheets, grouped by area, then a reading in three labelled tiers. The tier is the honesty mechanism: it says how far the physics actually reaches, per claim.</p>
-  <ul><li><b>Firm</b> — geometry, rates and their arithmetic. The app stands behind direction and magnitude.</li><li><b>Inferred</b> — steady-state balance direction, and every such sentence carries <b>all else equal</b> on screen, because the inference depends on the tyre staying out of it.</li><li><b>Speculative</b> — entry, exit, rates of response. Named, not answered, and never dressed as an estimate.</li><li>A rule with no tier does not ship, so the panel has no unlabelled sentence.</li><li>Conditions travel with the sheet: the comparability note sits above the tiers, not below them.</li></ul>
-  <div class="ctrl"><button class="tg" id="themeBtn" aria-pressed="false">☾ Dark</button><button class="tg" data-state="cond" aria-pressed="false">Conditions differ</button></div>
+  <ul><li><b>Firm</b> — geometry, rates and their arithmetic. The app stands behind direction and magnitude.</li><li><b>Inferred</b> — steady-state balance direction, and every such sentence carries <b>all else equal</b> on screen, because the inference depends on the tyre staying out of it.</li><li><b>Speculative</b> — entry, exit, rates of response. Named, not answered, and never dressed as an estimate.</li><li>A rule with no tier does not ship, so the panel has no unlabelled sentence.</li><li>Conditions are optional per sheet — surface, temperature, humidity, free text for tyres and motor — and the comparability banner sits above the tiers, never below them.</li></ul>
+  <div class="ctrl"><button class="tg" id="themeBtn" aria-pressed="false">☾ Dark</button><button class="tg" data-state="match" aria-pressed="false">Conditions match</button></div>
   <div class="meta">Three tiers, not four: a confidence percentage would pretend the inference has a measurable width, and a fourth band would only repeat <b>Speculative</b> under a different name. The phase axis (entry / mid / exit) is a tag on each rule, not a tier.<br><a class="link" href="index.html">All screens →</a> &nbsp; <a class="link" href="design-notes.html">Token check →</a></div>
 </aside>
 
@@ -354,7 +393,7 @@ h2.sec{font-size:20px;line-height:26px;font-weight:500;letter-spacing:-.1px}
 
 (function(){
   var dev=document.getElementById('device'), b=document.querySelector('[data-state]');
-  if(b) b.addEventListener('click',function(){ var on=dev.classList.toggle('st-cond'); b.setAttribute('aria-pressed', on?'true':'false'); });
+  if(b) b.addEventListener('click',function(){ var on=dev.classList.toggle('st-match'); b.setAttribute('aria-pressed', on?'true':'false'); });
 })();
 
 </script>

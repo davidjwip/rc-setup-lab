@@ -30,8 +30,9 @@ reviewer can diff against round 1 without re-reading everything.
 | 10 | **Rack displacement applies with the same sign to both ends** — a rack is one bar. The `±` in (4.4) is deleted; a literal implementation turned a 127 % Ackermann car into a 0 % car. | B6 | 04 §3.2 |
 | 11 | **Roll-centre sensitivity table and every consequence of it** recomputed: `Lₒ.z +0.1 mm → −0.187 mm` of roll-centre height (**−1.87 mm/mm**, not +0.165), and κ moves −2.60 % per 0.1 mm. V3's pass mark, the display precision and the "not hypersensitive" conclusion are all re-derived; roll-centre height can honestly claim ±1 mm. | M14/P-01 | 02 §9, 99 §7 |
 | 12 | **Input contract completed** (C1): bar diameter, span, arm length and G, and the damper's bore, shaft, hole diameter, hole count, `F_bo`, `c_post` now exist as named fields with a declared owner, unit, range and absence policy. | C1 | 01 §4.4 |
-| 13 | **Damping ratio leaves v1.** The model, its arithmetic and its golden cases stay (so v1.1 is a switch-on, not a redesign), but ζ is not a v1 output: two of its dominant parameters are dyno-only and unmodelled stiction exceeds the modelled force below 20 mm/s. | C1, C2, M13 | 07 §0 |
-| 14 | **Module 10 (chassis) added**, optional/diagnostic: material, thickness, mass, CG-height and torsional stiffness, with the correction that **material and thickness do not move the roll centre** but do move the balance (56.1 % → 52.6 % on the reference car). | issue #11 | 10, 99 §11 |
+| 13 | **Damping ratio ships in v1 as an estimate** (owner decision D-13, 2026-10-30): module 7 keeps its orifice + blow-off model, ζ carries an explicit band and an `estimated` badge, and a "what changes ζ" table states the sign and size of the five levers a racer actually pulls. What must be trustworthy is the **direction**, not the absolute number — and one of the five (viscosity below blow-off) is a direction the geometry-only model cannot see, which is stated. | C1, C2 | 07 §0, §9 |
+| 14 | **Module 10 (chassis) added**, optional/diagnostic: material, thickness, mass, CG-height and torsional stiffness, with the correction that **material and thickness do not move the roll centre** but do move the balance (56.1 % → 52.6 % on the reference car). Ride height is an explicit input, not a hidden effect of thickness. | issue #11 | 10, 99 §11 |
+| 15 | **CG height is inferred, never measured** (owner decision D-14, 2026-10-30): a component-mass route and a two-hang plumb-line route, both in module 1 §4.5, plus the robustness split the UI must carry — balance is invariant to `h` (±0.14 pp over 24–32 mm), absolute load transfer and roll angle are not (±14 % and ±23 %). The component route gives 18.7 mm for the reference car against the 28.0 mm it assumed. | P-06, owner | 01 §4.5, 06 §6.7 |
 
 ### What this revision did **not** close
 
@@ -44,8 +45,15 @@ Stated here so it is not mistaken for done:
   42 % (17.00 mm against 11.95 mm at tie-rod height). Golden cases G04.1–G04.5 are pinned to that
   choice and are labelled as such; switching to the working-height axis changes every steer angle
   and the Ackermann percentage and needs an owner decision, not an edit (04 §5.1).
-- **CG height has no measurement procedure** in the app; module 6's `h` is `assumed` and every load
-  number scales with it.
+- **CG height has no measurement procedure** in the app; module 6's `h` is inferred (01 §4.5), and
+  the component route disagrees with the value the golden cases assume by 9.3 mm. Load *magnitudes*
+  therefore carry a ±35 % band while the balance split does not.
+- **The reference car's assumed `h = 28.0 mm` is not supported by its own component layout.** The
+  revision that replaces it (and moves eight G06 cases) needs a measured car, not another guess.
+- **D-13's spring-rate clause contradicts the model.** The decision lists "a stiffer spring raises ζ for
+  the same damper" as a direction that must be trustworthy; `c_crit = 2√(k_w·m_s)` makes ζ fall as
+  1/√k_s instead (−8.7 % for +20 % spring). The spec implements the arithmetic and flags the clause for
+  amendment (07 §9). This is the one place where a ruling and the equations disagree.
 - **No bench validation has been done.** Every number in modules 2–7 and 10 is L0 + L1 (99 §1).
 
 ---
@@ -65,7 +73,7 @@ does not pick a setup for you.
 | 4 | `04-steering.md` | Steering angles, Ackermann, bump steer, toe curve | in |
 | 5 | `05-rates.md` | Installation ratio, wheel rate, ARB rate, roll stiffness, ride frequency | in |
 | 6 | `06-load-transfer.md` | Corner weights, total lateral load transfer, front/rear balance, geometric vs elastic split, roll angle | in |
-| 7 | `07-damping.md` | Critical damping, damper curve | **v1.1** — no ζ output in v1 (§0.13) |
+| 7 | `07-damping.md` | Critical damping, damper curve, ζ with its band and the direction-of-change table | in, **estimate** |
 | 8 | `08-tyre-interface.md` | Nothing in v1. Defines what a grip model would need | out, deliberately |
 | 9 | `09-motor-dyno.md` | Outline of the phase-3 motor/ESC model | out (phase 3) |
 | 10 | `10-chassis.md` | Chassis mass, CG-height delta, torsional stiffness, and its effect on the roll-stiffness split | in, **optional/diagnostic** |
@@ -259,7 +267,7 @@ invented citations. What survives is the only part that constrains us:
 | Plan-view model | vertical steering axis through the axis's ground point, rigid knuckle | the standard hand construction; the 42 % ρ bias it carries is stated in 04 §5.1 |
 | Anti-dive/anti-squat | computed for arms with side-view extent, flagged `diagnosticOnly`, never used in advice, `noSideViewConstruction` for hinge arms | module 3 |
 | Tyre model | none | module 8 |
-| Damper model | orifice + linear blow-off, per direction — **v1.1** | 07 §0 |
+| Damper model | orifice + linear blow-off, per direction; ζ is an **estimate** with a band, and the direction of change is the deliverable | 07 §0, §9 |
 | Chassis | optional module; mass, CG height and torsional stiffness; balance effect only | module 10, issue #11 |
 | Motor dyno | outline only | phase 3 |
 

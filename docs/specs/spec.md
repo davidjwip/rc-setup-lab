@@ -27,7 +27,15 @@ circular release gate is gone. Every AC now carries a release marker and v1 is
 capped (§2, §8.2). The 25 untestable criteria named in
 `docs/reviews/round1/03-spec-critique.md` §5 are rewritten or removed, and each
 removal is recorded in §8.3. Every computed value now carries a visible
-validation state (E3.16, D-11).
+validation state (E3.16, D-11) and a tier (§4.11).
+
+**Five owner decisions landed during this revision and are applied throughout:**
+setup sheets carry optional conditions with a sheet-diff warning (E4.9); damping
+ratio ships in v1 as an estimate with a computed band (E3.6, §4.8); CG height is
+inferred, never a must-measure field (§4.2.1); grip is inference-only (§4.11,
+E5.6); and the setup-sheet interpreter uses understeer/oversteer at entry/mid/exit
+with firm/inferred/speculative tiers and "all else equal" on every inferred claim
+(E2.13).
 
 ---
 
@@ -43,9 +51,9 @@ is kept for as long as they keep the app: no installer, no database engine, no
 account, no server, no subscription. From that model and a setup, the app
 computes the properties that connect a setup change to a handling change —
 motion ratio, wheel rate, ride frequency, roll stiffness, lateral load-transfer
-split, roll-centre height and migration, camber gain, bump steer, and (from v1.1,
-§4.8) damping ratio — displays each as a value with its units, its equation, its
-inputs and its validity state, lets the racer put two setups side by side and see
+split, roll-centre height and migration, camber gain, bump steer, and damping
+ratio as an estimate with its band (§4.8) — displays each as a value with its
+units, its equation, its inputs, its validity state and its tier, lets the racer put two setups side by side and see
 which quantities moved and by how much, and explains the concept at the point
 where it is being used rather than in a manual nobody opens. It is a clean-room
 successor to RC Crew Chief: the workflow (measure → model → compare) is kept
@@ -114,10 +122,10 @@ E2.11 is the requirement that keeps it honest.
 ## 2. Scope of v1, and the slice that proves it
 
 **The cut line, in one sentence: v1 (R1) is the Android release that measures a
-car, keeps it forever as a file, computes the nine geometry-and-balance outputs
-with an honest state on each, compares two setups, and shares files with their
-attribution intact — every other criterion in §3 is R2 and does not block that
-ship.**
+car, keeps it forever as a file, computes the eleven outputs of §4.4 that are not
+R2 — including a banded damping estimate — with an honest state and tier on each,
+compares two setups, and shares files with their attribution intact; every other
+criterion in §3 is R2 and does not block that ship.**
 
 Every acceptance criterion in §3 carries a **Release** marker. The markers are
 mutually exclusive and mean exactly this:
@@ -125,7 +133,7 @@ mutually exclusive and mean exactly this:
 | Marker | Meaning | Blocks |
 |---|---|---|
 | **R0** | Slice 0 (§2.3): one screen, a complete example model, three live outputs, an input the user can move, the equation behind each. | The first usable artefact. R0 is a subset of v1. |
-| **R1** | The rest of v1: the first Android store submission. **35 MUSTs**, which with R0's 8 makes 43 MUSTs in v1. | The v1 release. |
+| **R1** | The rest of v1: the first Android store submission. **38 MUSTs**, which with R0's 8 makes 46 MUSTs in v1. | The v1 release. |
 | **R2** | v1.1 and later: everything not cut into v1. MUSTs here are commitments to a named later release, not to v1. | Nothing in v1. |
 
 ### 2.1 In v1
@@ -133,17 +141,28 @@ mutually exclusive and mean exactly this:
 Suspension **geometry and balance**: every property that follows from hardpoint
 positions, masses, spring rates and bar rates. Concretely: motion ratio, wheel
 rate, ride frequency, roll stiffness, load-transfer split, roll-centre height and
-migration, camber gain, camber at roll, bump steer, and the static toe readout.
-Plus the model library, setup versioning, comparison, explanations, import and
-export with attribution, and the measurement guidance that makes the model
+migration, camber gain, camber at roll, bump steer, toe at roll, and **damping
+ratio as an estimate** (§4.8). Plus the model library, setup versioning,
+comparison — including the conditions warning (E4.9) — explanations, import and
+export with attribution intact, and the measurement guidance that makes the model
 possible.
 
-**Static damping ratio is not in v1.** D-12 named it, but
-`CONSOLIDATED.md` §3 (findings C1/C2) shows the data model has no damper curve and
-the physics needs dyno-only constants. E3.6 is therefore an **R2 MUST** and §4.8
-records the three options for the owner. This is the one place where this
-revision does not do what D-12 says, and it is flagged in §7.2 rather than
-decided here.
+Three quantities are deliberately **not measurements** in v1, and the app says so
+wherever they appear (§4.11):
+
+- **CG height is inferred, never asked for as a measurement.** Corner scales
+  cannot locate a CG; the field is `on_absence: ESTIMATE` (§4.2.1), derived by the
+  two-hang plumb-line procedure or a component-mass estimate, with a computed
+  band, and every output that consumes it (the load-transfer split) is `inferred`.
+- **Damping ratio is inferred**, computed from the orifice model with a
+  dynamically computed band, carrying `inferred` tier and `estimated` provenance.
+  The trustworthy output is the **direction and size of change between two
+  sheets**, which the compare view leads with; the absolute value is never a
+  headline and is never `validated` (E3.6).
+- **Grip is not a number at all.** It is never measured, never computed and never
+  presented as either; any statement about it carries the `inferred` tier and the
+  words "all else equal", and no composite grip or handling score exists at any
+  tier (E5.6, §4.11).
 
 ### 2.2 Not in v1, not in v1.1
 
@@ -177,8 +196,9 @@ Recorded here so they are not re-litigated later; each one costs something.
 | Free forever | No paid tier, no telemetry-funded tier, no ad SDK — which removes a whole class of "how do we see usage" features and replaces them with the instrumented usability test (E9.5, R2) and the dependency check (E8.13). |
 | Clean-room | Explanation text is written by us and mechanically checked against the research corpus (E5.4, E9.4). This is a build-time gate, not a promise. |
 | ISO 8855 frame (R-1) | x forward, y **left**, z up, origin on the ground plane at the rear axle centre. Per-wheel quantities are per-wheel signed and negated on mirroring; car-level quantities are never signed per side. Every hardpoint in every document is re-derived once. |
-| mm/g/deg on disk (R-2) | The file is what a caliper and a setup sheet produce; the physics adapter converts to SI at exactly one site and a `|coordinate| > 3000 mm` guard catches a metre value (E3.8's property test covers the guard). |
+| mm/g/deg on disk (R-2) | The file is what a caliper and a setup sheet produce; the physics adapter converts to SI at exactly one site and a `\|coordinate\| > 3000 mm` guard catches a metre value (E3.8's property test covers the guard). |
 | Validity state on every number (D-11) | A computed value is never shown bare. Every surface, including every export, carries the state from §4.4.1 (E3.16). |
+| Owner decisions, 2026-10-30 | Setups carry **optional** conditions — surface (`carpet`/`asphalt`/`other`), ambient temperature, humidity, free-text tyre and motor — all `on_absence: OMIT` in the maths; a sheet diff warns when they differ (E4.9). Damping ratio ships as an **estimate with a band**, not deferred and not measured (E3.6, §4.8). CG height is **inferred** and never a MUST-measure field (§4.2.1). Grip is inference-only (§4.11, E5.6). The setup-sheet interpreter uses understeer/oversteer at entry/mid/exit with firm/inferred/speculative tiers and "all else equal" on every inferred claim (E2.13). |
 | One gate command (D-09) | `cd app && dart run tool/gate.dart` is the only entry point CI runs, and every stage it runs has its own AC here (E9.8). No gate may depend on a tool that no AC requires. |
 
 ---
@@ -230,9 +250,10 @@ list fails (b); a rendered `0` or `— mm` fails (b). **MUST** · **R1**
 once per field that appears in §4.2.1 with `req: yes` and at least one consumer,
 deleting that field from the fixture, *then* the dependent output states equal
 what the `on_absence` column prescribes: `ASSUME` → the output carries
-`COMPUTED_ASSUMED`, names the field and shows the assumed value; `REFUSE` → the
-output carries `REFUSED`, names the field and shows no number; `OMIT` → the
-output carries `COMPUTED_INCOMPLETE` and names the field. The test is generated
+`COMPUTED_ASSUMED`, naming the field and showing the assumed value; `ESTIMATE` →
+`INFERRED`, naming the procedure and showing a band; `REFUSE` → `REFUSED`, naming
+the field and showing no number; `OMIT` → `COMPUTED_INCOMPLETE`, naming the
+field. The test is generated
 by iterating the table, so a field with no `on_absence` value, or one whose
 observed state differs from the prescribed state, fails it and names the field.
 **MUST** · **R1**
@@ -341,7 +362,9 @@ hash. **MUST** · **R1**
 saved setup is unchanged and the change lives in a working copy; *when* the user
 saves, *then* a new revision is created with `parent_id` set to the previous
 revision's id, and the previous revision remains selectable and is never
-overwritten. **MUST** · **R1**
+overwritten; *when* the user deletes a revision, *then* deletion is confirmed and,
+for a model revision, the confirmation names every setup that references it by
+label before anything is removed. **MUST** · **R1**
 
 **E2.3** — *Given* any numeric field, *when* it is displayed, *then* its unit is
 shown adjacent to the value; *when* the user switches a display-unit family,
@@ -355,10 +378,11 @@ family) plus one rendered-string test per family. **SHOULD** · **R2**
 **E2.4** — *Given* a setup field the user has not set, *when* analysis runs,
 *then* the field is absent from the file (never defaulted to a number), and the
 dependent output carries exactly the state §4.3.1's `on_absence` column
-prescribes — `ASSUME` with the assumed value shown, `REFUSE` with the field
-named, or `OMIT` with the field named as not included. The test is generated from
-that column; the phrase "assumes …" and the phrase "not computable" are distinct
-strings and a test asserts they never appear for the same state. **MUST** · **R1**
+prescribes — `ASSUME` with the assumed value shown, `ESTIMATE` with the procedure
+and band shown, `REFUSE` with the field named, or `OMIT` with the field named as
+not included. The test is generated from that column; "assumes …", "inferred
+from …" and "not computable" are three distinct strings and a test asserts no
+state ever displays another state's string. **MUST** · **R1**
 
 **E2.5** — *Given* the setup screen, *when* the user inspects any field, *then*
 the field shows either the output names in its `consumed_by` list from
@@ -403,6 +427,22 @@ measured, *then* the state drops to `COMPUTED` for every output that consumed it
 and the count decreases by one. A model containing an `estimated` value whose
 `basis` is empty fails at save (E1.3). **MUST** · **R1**
 
+**E2.13** — *Given* a driver's written report of how the car behaved (free text in
+the setup's `notes`, in any wording), *when* the user asks the app to interpret
+it, *then* (a) every extracted claim is stated in the vocabulary **understeer** /
+**oversteer** only — "push" and "loose" are accepted as input and normalised in
+the output, and are never displayed as the app's own term; (b) every claim carries
+exactly one phase from `entry`, `mid`, `exit`, and a claim whose phase cannot be
+determined is labelled `unphased` rather than guessed into one of the three; (c)
+every claim carries exactly one tier from `firm`, `inferred`, `speculative`
+(§4.11); (d) every `inferred` claim displays the words "all else equal" in the
+same view as the claim; (e) a claim the interpreter cannot place in the
+understeer/oversteer axis is dropped and counted, never reworded into one. The
+test runs the fixture set in `docs/specs/eval/driver-reports/` (each file with its
+expected per-claim classification, phase and tier) and additionally asserts that a
+report written with "push"/"loose" classifies identically to the same report
+written with "understeer"/"oversteer". **MUST** · **R2**
+
 ---
 
 ### Epic E3 — Computation and analysis
@@ -428,7 +468,9 @@ degree) per axle, and the lateral load-transfer split (percent carried by the
 front axle) are reported with units and the lateral g used displayed next to
 them; *given* any field in one of those closures is absent with `on_absence:
 REFUSE`, *then* that output alone is `REFUSED` naming the field and the other two
-still compute. **MUST** · **R1**
+still compute; *and given* any consumed value is `inferred` (CG height is the
+normal case, §4.2.1), *then* the load-transfer split is shown with tier
+`inferred`, its computed band, and the words "all else equal". **MUST** · **R1**
 
 **E3.3** — *Given* a complete front and rear geometry, *when* analysis runs, *then*
 static roll-centre height (mm above the ground plane) is reported per axle to
@@ -453,14 +495,19 @@ range used is displayed, and the rack fields used are named in the "how" view
 steer carries `REFUSED(rack geometry not recorded)`, no number is displayed, and
 the screen offers the measurement procedure entry from E5.2. **MUST** · **R1**
 
-**E3.6** — *Given* a model, a setup and a damper document (§4.8, **not part of
-v1**), *when* analysis runs, *then* damping ratio is reported per corner at the
-stated low and high shaft speeds, with both speeds displayed and the damper
-document's provenance named; *given* no damper document, *then* damping ratio is
-absent from the output list rather than shown as a number, an assumption or a
-dash. This criterion is written against an option the current data model does not
-yet support; §4.8 names the three candidate options and §7.2 asks the owner to
-pick one. **MUST** · **R2**
+**E3.6** — *Given* a model and setup carrying the six damper inputs of §4.8,
+*when* analysis runs, *then* (a) ζ is reported per corner at the two stated shaft
+speeds, with both speeds displayed; (b) it carries `INFERRED`, tier `inferred`
+(§4.11), the procedure id `orifice_single_piston_v1` and a **computed band**
+computed as §4.8 defines — recomputing ζ with each `estimated` input at the ends
+of its own `tolerance_pct`, one at a time — and the band is displayed wherever ζ
+is displayed, including every export and the compare view; (c) ζ is never marked
+`validated`; (d) a test that doubles one input's `tolerance_pct` sees the band
+widen, so the band cannot be a constant; (e) when two sheets are compared, the
+signed **direction and magnitude of the ζ change** is rendered above the absolute
+values, because that is the trustworthy part; (f) *given* any of the six inputs is
+absent, ζ is `REFUSED` naming that field and no band, number or dash is shown.
+**MUST** · **R1**
 
 **E3.7** — *Given* any displayed output, *when* the user asks "how", *then* the app
 shows, from a registry keyed by output id: the equation in symbols, the same
@@ -603,6 +650,14 @@ by A-04's test. **SHOULD** · **R2**
 them together, *then* one view ranks them per output and shows each difference
 against a chosen reference. **LATER** · **R2**
 
+**E4.9** — *Given* two sheets being compared, *when* their conditions differ in
+`surface`, `air_temp`, `humidity` or `tyre.compound`, *then* the comparison shows,
+above the first delta, a warning that names each differing condition with both
+values and reads exactly "conditions differ — the changes below are not
+attributable to the setup alone"; *given* the conditions are equal, or absent on
+both sides, no warning is shown. The test asserts presence and exact text on the
+differing fixture pair and absence on the control pair. **MUST** · **R1**
+
 ---
 
 ### Epic E5 — Learn and explain
@@ -624,7 +679,9 @@ E3.7 registry. **MUST** · **R0**
 mistake and a worked example with numbers, and the worked example's inputs are the
 example model's own values; the test asserts an entry exists for every field with
 a consumer in `docs/specs/fields.yaml` and that the worked example's numbers equal
-the example model's stored values. **MUST** · **R1**
+the example model's stored values. For the one field with `on_absence: ESTIMATE`
+— CG height — the entry states that corner scales cannot locate a CG and offers
+the two-hang plumb-line procedure instead of a measurement. **MUST** · **R1**
 
 **E5.3** — *Given* `docs/specs/terms.txt` (one term per line) and the localisation
 bundle, *when* the term check runs inside the gate, *then* for every term that
@@ -655,8 +712,12 @@ localisation bundle and the widget tree of every screen, *then* no user-facing
 string matches
 `(?i)\b(grip score|handling score|balance verdict|best setup|faster|lap time)\b`,
 every directional string on the analysis, compare and concept screens resolves
-from the `<output_id>.direction.<rising|falling>` templates, and adding one
-free-text handling claim fails the audit naming the string key. **MUST** · **R1**
+from the `<output_id>.direction.<rising|falling>` templates; (b) every statement
+about grip carries the `inferred` tier and the words "all else equal", no grip
+value is presented as measured or computed anywhere, and adding a grip number — a
+ratio, a coefficient, a percentage — fails the audit naming the key; (c) adding
+one free-text handling claim fails the audit naming the string key.
+**MUST** · **R1**
 
 **E5.7** — *Given* a first launch, *when* the user follows the guided path, *then*
 the sequence model → measure → first setup → first delta is presented as discrete
@@ -948,8 +1009,8 @@ semantics tree and every interactive element is reachable and operable (A-07).
 times per second in either setting (A-09). **MUST** · **R2**
 
 *E8.4 (deleted, duplicate of E8.1) and E8.10 (deleted, duplicate of E8.7c) — see
-§8.3. The former E8.7, E8.9 and E8.16 are split into a/b/c/d as the critic
-proposed.*
+§8.3. The former E8.7 and E8.9 are split into a/b/c and a/b, and A-07/A-08/A-09
+gain ACs of their own as E8.16a–c.*
 
 ---
 
@@ -1005,9 +1066,11 @@ runs on every pull request and its output is pasted in the PR (AGENTS.md).
 **MUST** · **R1**
 
 **E9.9** — *Given* the repository, *when* the gate's spec-audit stage runs, *then*
-it exits 0 only if every MUST id in §3 appears in at least one
-`@SpecTest('<id>')` annotation in a test file, every `@SpecTest` id exists in §3
-with the same tag and release marker, and no LATER-tagged AC has a test; deleting
+it exits 0 only if every MUST id in §3 whose release marker is R0 or R1 appears
+in at least one `@SpecTest('<id>')` annotation in a test file (R2 MUSTs may be
+annotated early but are not required to be, so the gate cannot block v1 on a
+release that has not started), every `@SpecTest` id exists in §3 with the same
+tag and release marker, and no LATER-tagged AC has a test; deleting
 one `@SpecTest('E3.3')` annotation, adding an unknown id, and annotating a LATER
 id each make the stage exit non-zero naming the id, and each is a separate
 seeded-failure test in the gate's own suite. **MUST** · **R1**
@@ -1015,13 +1078,15 @@ seeded-failure test in the gate's own suite. **MUST** · **R1**
 **E9.10** — *Given* `docs/specs/fields.yaml`, the JSON schema and the fixture
 directory, *when* the gate's schema stage runs, *then* it fails unless: (a) every
 field of §4.2.1 and §4.3.1 appears in the YAML exactly once with `type`, `unit`,
-`req`, `on_absence` ∈ {`ASSUME`, `REFUSE`, `OMIT`}, an `assume` value where the
-policy is `ASSUME`, `plausible`, and `consumed_by`; (b) every `consumed_by` id
+`req`, `on_absence` ∈ {`ASSUME`, `ESTIMATE`, `REFUSE`, `OMIT`}, an `assume` value where
+the policy is `ASSUME`, an `estimate` procedure id where the policy is
+`ESTIMATE`, `plausible`, and `consumed_by`; (b) every `consumed_by` id
 exists in §4.4; (c) the Markdown tables in §4.2.1 and §4.3.1 are identical to what
 the YAML generates; (d) there is one fixture per `schema_version` the app writes,
 and each fixture either loads or is refused with a named reason. Seeded failures
-are four separate tests: delete one `on_absence`, point a `consumed_by` at an
-unknown output, change one Markdown cell, and add a schema version with no
+are five separate tests: delete one `on_absence`, set an `on_absence` to `ASSUME`
+on a field whose YAML declares an `estimate` procedure, point a `consumed_by` at
+an unknown output, change one Markdown cell, and add a schema version with no
 fixture — each must exit non-zero naming the defect. **MUST** · **R1**
 
 *E9.2 was folded into E9.10 in round 2 — see §8.3.*
@@ -1030,9 +1095,9 @@ fixture — each must exit non-zero naming the defect. **MUST** · **R1**
 
 ### 3.5 Release checklist (not acceptance criteria)
 
-These are editorial and observational. They are not ACs because they cannot fail
-in a test; they are enforced by E9.3, which asserts the checklist file exists and
-is complete.
+These are editorial and observational: no behavioural test can decide them, so
+they are not ACs. What *is* asserted is that the evidence exists — E9.3 parses the
+checklist and fails on a missing, unsigned or unevidenced item.
 
 | # | Item | Evidence |
 |---|---|---|
@@ -1041,15 +1106,16 @@ is complete.
 | C-03 | Continuous 30-minute session on the reference device: no thermal frame-rate drop, ≤ 5% battery (P-10) | the session log |
 | C-04 | Reference-device performance numbers for E3.12 pasted from the harness | harness CSV |
 | C-05 | The three-user usability session (E9.5, R2) — each participant's run file linked | `docs/specs/eval/run-<date>.md` |
-| C-06 | Play data-safety declaration submitted, its public URL recorded (E8.13c) | the Play console confirmation |
+| C-06 | Play data-safety declaration submitted, its public URL recorded (E8.13 clause (c)) | the Play console confirmation |
 | C-07 | Every MUST id in the release marker R1 has a green test in the gate output pasted in the release PR | the PR body |
 
 ---
 
 ## 4. Data model
 
-Two document kinds in v1 — car model and setup — plus a third described but not
-shipped (§4.8). All are plain JSON, all carry `schema_version`. They are the
+Two document kinds in v1 — car model and setup — plus a third, the `damper_curve`
+document, described but not shipped (§4.8). All are plain JSON, all carry
+`schema_version`. They are the
 app's public interface: a setup or a model that leaves the device must be
 readable, validatable and re-importable by a future version of the app and by a
 person with a text editor.
@@ -1082,23 +1148,28 @@ defers to this section and keeps only derived quantities and validation rules.
 3. **Absence has exactly one policy per field, and never a silent default.** A
    field that is not measured is **omitted**. It is never written as `0`, `null`
    or a sentinel. Every field in §4.2.1 and §4.3.1 carries a mandatory
-   `on_absence` attribute with one of three legal values, and the loader and the
+   `on_absence` attribute with one of four legal values, and the loader and the
    analysis obey that value and nothing else:
 
    | `on_absence` | Meaning | What the user sees |
    |---|---|---|
-   | `ASSUME(value)` | The output is computed with the stated value. | The output carries `COMPUTED_ASSUMED`, names the field and shows the value; the value appears in the assumptions block (E5.5) and in every export. |
-   | `REFUSE` | The output is not computable. For a document-envelope field, the document itself is refused (E6.5). | The output carries `REFUSED`, names the field and shows **no number, no dash, no unit**. |
-   | `OMIT` | The output is computed without the field, and the maths does not require it. | The output carries `COMPUTED_INCOMPLETE` and names the field as not included. |
+   | `ASSUME(value)` | The output is computed with the stated value. | `COMPUTED_ASSUMED`, naming the field and showing the value; the value appears in the assumptions block (E5.5) and in every export. |
+   | `ESTIMATE(procedure)` | The field is not asked for as a measurement: the app infers it by the named procedure in `docs/specs/procedures/`, records it with `inferred` provenance, and computes a band. | `INFERRED`, naming the procedure and showing the band; tier `inferred` (§4.11); the value appears in the assumptions block with its band and may not be edited as if it were a measurement. |
+   | `REFUSE` | The output is not computable. For a document-envelope field, the document itself is refused (E6.5). | `REFUSED`, naming the field and showing **no number, no dash, no unit**. |
+   | `OMIT` | The output is computed without the field, and the maths does not require it. | `COMPUTED_INCOMPLETE`, naming the field as not included. |
 
-   The three rules that make these agree, and that a test can check (E1.2,
-   E2.4, E9.10): (i) every field has exactly one policy and a field with none
-   fails the schema stage; (ii) `ASSUME` requires an `assume` value, and that
-   value is the only number the app may invent anywhere in the product; (iii)
-   `OMIT` is legal only where the field refines a value the maths can produce
-   without it, so a consumer that changes the result decisively must declare
-   `REFUSE`. "Not measured" and "assumed" are different states with different
-   strings (asserted in E2.4).
+   The four rules that make these agree, and that a test can check (E1.2, E2.4,
+   E9.10): (i) every field has exactly one policy and a field with none fails the
+   schema stage; (ii) `ASSUME` requires an `assume` value and `ESTIMATE` requires
+   an `estimate` procedure — those two are the only places the app may produce a
+   number the user did not enter, and both are named on screen, in the
+   assumptions block and in every export; (iii) `ESTIMATE` is the policy for a
+   quantity a racer cannot measure at the bench (CG height is the archetype:
+   corner scales cannot locate a CG), so choosing `ASSUME` for such a field is a
+   schema error; (iv) `OMIT` is legal only where the field refines a value the
+   maths can produce without it, so a consumer that changes the result decisively
+   must declare `REFUSE`. "Not measured", "assumed" and "inferred" are three
+   different states with three different strings (asserted in E2.4).
 4. **A source entry must resolve, and must say what kind of evidence it is:**
 
    | `type` | Meaning | Required extra fields |
@@ -1109,6 +1180,7 @@ defers to this section and keeps only derived quantities and validation rules.
    | `third_party` | Another person's measurement or a contributed model | `by`, `ref` (may be a handle) |
    | `library` | Copied from another model in the library | `ref` (`<model id>#<field path>`), `by` |
    | `derived` | Computed from other values in the file | `from` (list of field paths), and for `derived_by_mirror`, the mirrored field path |
+   | `inferred` | Derived by the app or the user from an estimate, a procedure or a model, rather than from a measurement of this car | `method` (the procedure id), `basis`, `tolerance_pct`, and the band it produces; tier `inferred` (§4.11) |
    | `unattributed` | Present in a file with no recorded origin — a **file defect** | *(none — the completeness count treats it as unmeasured)* |
 
    `unknown` is **not** a source type: it is the user-facing state meaning "the
@@ -1184,14 +1256,16 @@ frame-free and are **never** signed per side.
     "s3": { "type": "measured", "method": "corner scales", "datum": "four pads, ride height 5.0 mm",
             "by": "D. W.", "date": "2026-10-12" },
     "s4": { "type": "derived", "from": ["body.mass.total", "body.mass.unsprung_front", "body.mass.unsprung_rear"],
-            "note": "corner weights minus unsprung" }
+            "note": "corner weights minus unsprung" },
+    "s5": { "type": "inferred", "method": "two_hang_plumb_line", "basis": "chassis hung from two heights, plumb line recorded",
+            "tolerance_pct": 15.0, "by": "D. W.", "date": "2026-10-12" }
   },
 
   "body": {
     "reference_ride_height": { "v": 5.0, "s": "s1" },
     "wheelbase":             { "v": 257.0, "s": "s1" },
     "cg": {
-      "height":              { "v": 38.0, "s": "s3" },
+      "height":              { "v": 38.0, "s": "s5" },
       "longitudinal_front":  { "v": 50.5, "s": "s4" }
     },
     "mass": {
@@ -1313,7 +1387,7 @@ YAML disagree.
 | `sources` | object | — | yes | `REFUSE` | Map of source id → source record (§4.1 rule 4); every `s` must resolve |
 | `body.reference_ride_height` | value | mm | yes | `REFUSE` | Datum for all vertical geometry (E1.9) |
 | `body.wheelbase` | value | mm | yes | `REFUSE` | Validated against the front wheel centres (±3 mm) |
-| `body.cg.height` | value | mm | yes | `REFUSE` | Above the ground plane; load-transfer split only |
+| `body.cg.height` | value | mm | no | `ESTIMATE(two_hang_plumb_line)` | **Never asked as a measurement** — corner scales cannot locate a CG. Inferred by the two-hang plumb-line procedure or a component-mass estimate, with a computed band and `inferred` provenance (§4.11); every output consuming it is `inferred` |
 | `body.cg.longitudinal_front` | value | % | no | `REFUSE` | Front share of total mass; normally `derived` from corner weights |
 | `body.mass.total` | value | g | yes | `REFUSE` | |
 | `body.mass.sprung_front` / `.sprung_rear` | value | g | no | `REFUSE` | Ride frequency and roll stiffness need these; absence refuses those outputs only (M1) |
@@ -1384,12 +1458,17 @@ hand-edited or older file can never carry a stale one.
             "by": "D. W.", "date": "2026-10-12" },
     "m2": { "type": "measured", "method": "ride-height gauge", "datum": "flat plate",
             "by": "D. W.", "date": "2026-10-12" },
-    "m3": { "type": "third_party", "by": "setup sheet, P. Smith", "ref": "printed sheet, 2026-09" }
+    "m3": { "type": "third_party", "by": "setup sheet, P. Smith", "ref": "printed sheet, 2026-09" },
+    "m4": { "type": "estimated", "basis": "same shock family as the kit manual part, blow-off not measured",
+            "by": "D. W.", "tolerance_pct": 30.0 }
   },
 
   "conditions": {
-    "surface": "carpet", "air_temp": { "v": 22.0, "s": "m1" },
+    "surface": "carpet",
+    "air_temp": { "v": 22.0, "s": "m1" },
+    "humidity": { "v": 55.0, "s": "m1" },
     "tyre": { "compound": "handout", "diameter": { "v": 62.0, "s": "m1" } },
+    "motor": "13.5T stock, 5.5 FDR",
     "notes": "club night, fresh surface"
   },
 
@@ -1400,6 +1479,10 @@ hand-edited or older file can never carry a stale one.
             "spring_preload": { "v": 0.5, "s": "m2" },
             "damper_oil_viscosity": { "v": 300.0, "s": "m3" },
             "damper_piston_holes": { "v": 3, "s": "m3" },
+            "damper_piston_bore": { "v": 8.0, "s": "m3" },
+            "damper_shaft_dia": { "v": 3.0, "s": "m3" },
+            "damper_hole_dia": { "v": 0.8, "s": "m3" },
+            "damper_blowoff_force": { "v": 12.0, "s": "m4" },
             "tyre_pressure": { "v": 240.0, "s": "m2" } }
   },
 
@@ -1439,9 +1522,10 @@ canonical case (§4.3.2).
 | `created`, `meta.app_version` | string | — | yes | `REFUSE` | Carried in exports (E7.1a) |
 | `sources` | object | — | yes | `REFUSE` | As §4.1 |
 | `derived_from_models[]` | array | — | no | `OMIT` | `[{id, content_hash, attribution_text}]` — attribution for a copied sheet (§4.9) |
-| `conditions.surface` | enum | — | no | `OMIT` | Reference only |
-| `conditions.air_temp` | value | °C | no | `OMIT` | Reference only |
-| `conditions.tyre.compound` / `.diameter` | value | mm | no | `OMIT` | Diameter → contact-patch height; absent → the model's `tyre_radius` is used and named |
+| `conditions.surface` | enum | — | no | `OMIT` | `carpet`, `asphalt`, `other`. Reference only in the maths; a sheet diff warns when two sheets differ (E4.9) |
+| `conditions.air_temp` | value | °C | no | `OMIT` | Reference only in the maths; used by the damping-ratio band (§4.8) and warned on in a sheet diff (E4.9) |
+| `conditions.humidity` | value | % | no | `OMIT` | Reference only; warned on in a sheet diff (E4.9) |
+| `conditions.tyre.compound` / `.diameter` / `.motor` | value / string | mm / — | no | `OMIT` | Diameter → contact-patch height (absent → the model's `tyre_radius` is used and named); `compound` and `motor` are free text, reference only |
 | `corners.<c>.camber` | value | deg | no | `REFUSE` | Camber at roll; camber gain's baseline |
 | `corners.<c>.toe` | value | deg | no | `REFUSE` | Toe at roll; Ackermann readout |
 | `corners.<c>.caster` | value | deg | no | `OMIT` | Reference only in v1; shown as such (E2.5) |
@@ -1449,16 +1533,16 @@ canonical case (§4.3.2).
 | `corners.<c>.droop` | value | mm | no | `OMIT` | Static limits check only |
 | `corners.<c>.spring_rate` | value | N/mm | no | `OMIT` | Wheel rate, ride frequency, roll stiffness; absent → the model's `spring.rate` is used and named in the "how" view |
 | `corners.<c>.spring_preload` | value | mm | no | `OMIT` | Static ride height / load |
-| `corners.<c>.damper_oil_viscosity` / `.damper_piston_holes` | value | cSt / count | no | `OMIT` | Damping ratio only (§4.8, R2); nothing in v1 consumes them |
-| `corners.<c>.upper_link_inner_shims` / `.upper_link_outer_shims` | value | mm | no | `OMIT` | Geometry adjustment, §4.3.2 |
-| `corners.<c>.wheel_offset` | value | mm | no | `OMIT` | Geometry adjustment, §4.3.2 |
+| `corners.<c>.damper_oil_viscosity` / `.damper_piston_holes` / `.damper_piston_bore` / `.damper_shaft_dia` / `.damper_hole_dia` / `.damper_blowoff_force` | value | cSt / count / mm / mm / mm / N | no | `REFUSE` | Damping ratio (§4.8). Absent → ζ is `REFUSED` naming the missing field, never guessed. `damper_blowoff_force` is normally `estimated` with a `tolerance_pct` |
+| `corners.<c>.upper_link_inner_shims` / `.upper_link_outer_shims` | adjustment | mm | no | `OMIT` | A geometry adjustment: stored as `{field, v, s}` inside `geometry.adjustments[]`, never as a key at this path (§4.3.2) |
+| `corners.<c>.wheel_offset` | adjustment | mm | no | `OMIT` | A geometry adjustment, stored in `geometry.adjustments[]` like the shims (§4.3.2) |
 | `corners.<c>.tyre_pressure` | value | kPa | no | `OMIT` | Reference only |
 | `axles.<a>.arb_setting` | value | ratio 0–1 | no | `OMIT` | Roll stiffness; a **linear fraction of the link rate** (§4.3.3) |
 | `transmission.diff_front_oil_viscosity` / `diff_rear_oil_viscosity` | value | cSt | no | `OMIT` | Reference only in v1 |
 | `transmission.diff_height` | value | mm | no | `OMIT` | Reference only; named in the limits block as not modelled |
 | `analysis_inputs.lateral_g` | value | ratio | yes | `REFUSE` | Load-transfer split |
 | `analysis_inputs.roll_sweep` | value | deg | yes | `REFUSE` | Roll-centre migration table, camber at roll |
-| `analysis_inputs.damping_low_speed` / `.damping_high_speed` | value | m/s | no | `OMIT` | Damping ratio only (§4.8, R2) |
+| `analysis_inputs.damping_low_speed` / `.damping_high_speed` | value | m/s | no | `OMIT` | The two shaft speeds ζ is reported at (§4.8); absent → the app's two stated defaults are used and shown, never hidden |
 | `notes.track` / `.setup` / `.tyres` | string | — | no | `OMIT` | Exported and searchable (E2.8) |
 | `x_*` | any | — | no | `OMIT` | Preserved verbatim |
 
@@ -1471,7 +1555,11 @@ preserved in the file so the app can say "no shim recorded" rather than
 #### 4.3.2 Geometry transform pipeline
 
 Each adjustment is a delta applied to named base points along one named axis, in
-one direction, in millimetres, in the order listed. The transform is total and
+one direction, in millimetres, applied in the order the entries appear in
+`geometry.adjustments[]`. Each field appears at most once in that list — a
+duplicate entry is a schema error, so "apply it twice" is not expressible and
+order cannot change the result, which is why the transform is described as total
+and deterministic below. The transform is total and
 deterministic: it always produces exactly one geometry, and the derived geometry
 is what all outputs are computed from.
 
@@ -1533,12 +1621,13 @@ they are labelled as derived and carry the state from §4.4.1.
 | Camber gain | deg/deg | upper and lower link geometry, upright, `geometry.adjustments[]` | E3.4 | R0 |
 | Camber at roll | deg | camber gain, `corners.<c>.camber` | E3.4 | R0 |
 | Bump steer | deg/mm | tie-rod inner and outer points, lower arm, `steering.rack` | E3.5 | R1 |
-| Damping ratio (low/high speed) | – | damper document (§4.8), sprung mass at the corner, wheel rate, motion ratio | E3.6 | R2 |
+| Damping ratio (low/high speed) | – | damper orifice inputs (§4.8), sprung mass at the corner, wheel rate, motion ratio | E3.6 | R1 |
 | Ackermann / toe at roll | deg | tie-rod geometry, `steering.rack`, `corners.<c>.toe` | E3.18 | R2 |
 
 Every output has an AC: the audit in E9.9 fails an output id here with no AC, so
 the two orphan outputs the round-1 review found (Ackermann, dynamic toe) cannot
-reappear.
+reappear. **Grip is not in this table and never will be**: it is not measurable,
+not computable from these inputs, and not an output (§4.11, E5.6).
 
 #### 4.4.1 Validation and absence states
 
@@ -1553,8 +1642,13 @@ and the precedence when more than one applies — highest wins:
 | 3 | `OUT_OF_DOMAIN(bound)` | the value is outside `roll_centre_validity` or another declared bound (E3.9) | the number, plus the bound exceeded |
 | 4 | `COMPUTED_INCOMPLETE(fields[])` | a consumed field is absent with `on_absence: OMIT` | the number, plus "does not include <field>" |
 | 5 | `COMPUTED_ASSUMED(fields[])` | a consumed field is absent with `on_absence: ASSUME` | the number, plus the field and the assumed value |
-| 6 | `ESTIMATED_INPUTS(n)` | at least one consumed value has an `estimated` source | the number, plus the count and the basis one tap away |
-| 7 | `COMPUTED` | nothing above applies | the number |
+| 6 | `INFERRED(procedure, band)` | a consumed field is absent with `on_absence: ESTIMATE`, or the output is itself inferred | the number, its **band**, the procedure name, tier `inferred` |
+| 7 | `ESTIMATED_INPUTS(n)` | at least one consumed value has an `estimated` source | the number, plus the count and the basis one tap away |
+| 8 | `COMPUTED` | nothing above applies | the number |
+
+Every value also carries a **tier** — `firm`, `inferred` or `speculative` — per
+§4.11, and the tier is shown wherever the state is shown: the state says whether
+the number exists, the tier says how much it is worth.
 
 `not_yet_validated` is the initial state of every value this build produces: a
 `COMPUTED` value becomes `validated` for an output only when a golden case exists
@@ -1563,3 +1657,891 @@ for it (E3.11) **and** a recorded measurement check has passed for that model
 value's chip, and every export carries the same word. This is E3.16, and it is
 the requirement that stops an unvalidated model rendering `9.97 mm` with a unit
 and no caveat.
+
+### 4.5 Canonical form and `content_hash`
+
+Two implementations, or the same implementation across a serialiser rewrite, must
+produce the same hash for the same document. This section is exhaustive; where it
+names an external standard it adopts it **whole**, with no local variations.
+
+#### 4.5.1 Scope — what is hashed
+
+The hash covers the **document body**: the top-level JSON object with exactly two
+members removed — `meta` and `content_hash`. Everything else is in scope and is
+therefore content:
+
+- `schema_version`, `kind`, `id`, `name`, `class`, `units`, `frame`, `symmetry`;
+- `license`, `contributors`, `attribution_text` (§4.9);
+- `sources` in full, including `by`, `date` and `basis` — a change to who measured
+  something is a change to the document;
+- every numeric value object and every array, at every depth, including
+  `geometry.adjustments[]` and `x_*` keys (§4.1 rule 7).
+
+`meta` is excluded because it holds `app_version`, `created`, `revises` and
+`mapped_at`: re-saving the same content through a newer app must not change the
+identity of the revision. `content_hash` is excluded because it cannot contain
+itself. Nothing else is excluded, so **an exported file re-imported and
+re-exported has the same hash** (E1.7), and a file whose unknown keys were
+dropped on export does not.
+
+#### 4.5.2 Algorithm
+
+1. Take the body of §4.5.1 as a JSON value.
+2. Serialise it with **RFC 8785 JSON Canonicalization Scheme (JCS)**, which pins
+   every remaining degree of freedom:
+   - **Member ordering**: recursively sorted by **UTF-16 code unit** value,
+     ascending (JCS §3.2.3). Where UTF-16 order and UTF-8 byte order differ (only
+     for names above the BMP), the RFC's rule wins — this specification adds no
+     tie-breaker of its own.
+   - **Number formatting**: ECMAScript `Number.prototype.toString()`
+     (ES2020 §7.1.12.1), i.e. the shortest decimal string that round-trips to the
+     same IEEE-754 double. Integral values are written **without** a fractional
+     part (`5`, not `5.0`); `-0` is written **`0`**; exponential form appears only
+     below `1e-6` or at or above `1e21` (`1e-7`, `1e+21`). `NaN`, `Infinity` and
+     `-Infinity` are not representable and the writer **refuses to write a
+     document containing one** (which E3.8 makes unreachable anyway).
+   - **Strings**: UTF-8, no BOM, minimal escaping per RFC 8785 §3.2.2.2; no
+     Unicode normalisation is applied — a string is hashed as written, so `é`
+     composed and `é` decomposed hash differently and that is intended.
+   - **No insignificant whitespace.**
+3. Hash the resulting bytes with **SHA-256**; write the result as the string
+   `"sha256:"` followed by 64 lowercase hexadecimal characters.
+
+Worked consequences, so two implementers can check themselves before they write
+code: `{"b": 1, "a": -0.0}` canonicalises to `{"a":0,"b":1}`; `3.0` and `3`
+are the same value and both canonicalise to `3`; `1e-7` stays `1e-7`; a document
+containing `"v": 0.1 + 0.2` stores the double, and canonicalises to
+`0.30000000000000004` — the writer never rounds a stored value on the way out.
+
+#### 4.5.3 `geometry_hash`
+
+A setup's outputs depend on geometry that includes its own adjustments (§4.3.2),
+so the geometry is hashed in its own right. `geometry_hash` is the SHA-256 of the
+JCS form of exactly this object, and of nothing else:
+
+```text
+{ "frame": { "standard": "ISO 8855" },
+  "corners": { "<side>": { "<point path>": [x, y, z], … }, … },
+  "axle": { "<axle>": { "track": <mm>, "tyre_radius": <mm> } } }
+```
+
+(schematic — the placeholders are not JSON)
+
+with points in **canonical, transformed** form (after every adjustment in
+§4.3.2), bare numbers rather than `{v, s}` objects (provenance does not change
+geometry), and sides ordered as JCS orders them. Two setups with the same base
+model and the same adjustments therefore have the same `geometry_hash` on any
+device, which is what E7.1b asserts and what makes a shared sheet reproducible.
+
+#### 4.5.4 Fixtures and the unit guard
+
+Two fixture documents are published with this specification and are the
+acceptance test for any implementation (E1.7):
+
+| File | Purpose |
+|---|---|
+| `docs/specs/fixtures/hash-1.json` + `hash-1.sha256` | A complete model in the current schema; exercises nested objects, arrays, negative zero, an integral float, an exponent-form value and an `x_` key |
+| `docs/specs/fixtures/hash-2.json` + `hash-2.sha256` | The same body with two members reordered and one insignificant whitespace difference, proving order-independence, plus a second body with one changed digit, proving sensitivity |
+
+A candidate implementation that reproduces neither published value has not
+implemented §4.5 and may not write a file with a `content_hash`.
+
+**Unit guard (R-2).** The adapter that converts a document into the typed physics
+model rejects any coordinate whose modulus exceeds **3000 mm** with
+`schema error: coordinate looks like metres`. It is the one automated defence
+against a metre value in a millimetre field, and E3.8's property test exercises
+both sides of the boundary.
+
+### 4.6 Document references, and the model-missing state
+
+A setup references its model; it does not embed it (§4.1 rule 6). A setup file
+that arrives from another device therefore frequently arrives **without** the
+model it names, and this section defines that path end to end so it cannot
+dead-end.
+
+**Library record state.** Every setup in the library is in exactly one of four
+states. The state is stored in the library index, **never in the setup file**: a
+file must not claim a model it has not got, and a state written into the file
+would be wrong on the next device.
+
+| State | When | Outputs | Allowed actions |
+|---|---|---|---|
+| `linked` | `model_ref.content_hash` resolves to a stored revision | computed | all |
+| `model_missing` | `model_ref.content_hash` resolves to nothing | none; every output `REFUSED(model_missing)` | Import this model… · Use a different model… · Discard · share/export (read-only values) |
+| `mapped` | the user mapped it onto a different model revision | computed, each carrying the "geometry differs from the sender's car — outputs are not comparable" banner | all, plus "restore the original reference" while `mapped_from` is retained |
+| `diverged` | the library's current revision for `model_ref.id` has a different hash from `model_ref.content_hash` | computed against the snapshot the setup was saved with, never silently against the new one | Recompute against current · Keep this snapshot, recorded in `meta`. The state exists in v1 because it is derived from the library index; what E2.7 (R2) adds is the notice that explains it |
+
+**The three actions, precisely.**
+
+1. **Import this model…** opens the OS file picker in the same flow. On install:
+   hash equal → state becomes `linked` and outputs compute; same `id`, different
+   hash → the E2.7 comparison flow runs; different `id` → the user is told the
+   file is a different car and offered action 2 instead. Nothing is installed
+   silently.
+2. **Use a different model…** lists the library and, on selection, writes
+   `model_ref.mapped_from = {id, content_hash, name}` — **the original values,
+   verbatim** — sets `meta.mapped_at`, and leaves the original `model_ref`
+   untouched apart from the added `mapped_from` member. State becomes `mapped`.
+   Every output then carries the non-comparability banner, and E4.3 refuses an
+   output comparison between a `mapped` setup and a `linked` one.
+3. **Discard** removes the library record and touches nothing outside the app; a
+   file in the user's Downloads folder is not deleted.
+
+**What the user sees.** In the list: a "model missing" badge, the sender's sheet
+label, and no numbers. In detail: every stored input, condition and note,
+read-only, with its provenance; the output list in `REFUSED(model_missing)` state
+with the field named; and the three actions as buttons, not as a menu. The whole
+path is E6.9.
+
+### 4.7 Validation, versioning and fixtures
+
+- `schema_version` is `MAJOR.MINOR.PATCH` semantic versioning, as a **string**.
+  There is no integer form anywhere; `docs/specs/physics/01`'s former integer is
+  withdrawn (§4 preamble).
+- A reader **refuses** a document whose major is greater than it supports, naming
+  both versions and writing nothing (E6.6).
+- A reader **accepts** a greater minor within the same major, preserves unknown
+  keys per §4.1 rule 7, and marks the library row "contains fields from a newer
+  version" (E6.6).
+- A reader **refuses** a document that fails the schema, naming every offending
+  field path and reason in one pass — not the first one (E6.5).
+- One fixture document per `schema_version` the app can write, plus one for each
+  version it can still read. Each fixture either loads or is refused with a named
+  reason; adding a version without a fixture fails the gate (E9.10).
+- No document is ever written that fails its own schema; the writer validates
+  before it renames the temp file (E8.12).
+
+### 4.8 Damper model, and the damping-ratio band
+
+**Damping ratio ships in v1 as an estimate** (owner decision, 2026-10-30). It is
+not a measurement, and the app never presents it as one.
+
+**What is computed.** ζ per corner at the two stated shaft speeds, from the
+orifice model `orifice_single_piston_v1` (physics/07), whose inputs are the
+piston bore, the shaft diameter, the piston-hole diameter, the hole count, the oil
+viscosity at the recorded ambient temperature, and a blow-off force. The blow-off
+force is dyno-only; it is therefore an `estimated` value with a `basis` and a
+`tolerance_pct`, and it is the dominant term — which is exactly why the output is
+an estimate.
+
+**What the band is.** The band is **computed, not asserted**: ζ is recomputed with
+each estimated input moved to the ends of its own `tolerance_pct`, one at a time,
+and the band is the resulting [min, max] at that shaft speed. It is displayed
+wherever ζ is displayed and carried in every export. A fixed "±30%" label is not
+acceptable — the band must move when the inputs' tolerances move, and a test
+asserts that doubling one input's `tolerance_pct` widens the band.
+
+**What the app leads with.** Not the absolute value. ζ is shown with its band,
+its `inferred` tier and the words "estimate — the change between two sheets is
+the reliable part", and whenever two setups are compared the **direction and
+sign** of the ζ change is promoted above the absolute values in the compare view.
+The absolute number is never used as a headline, never rounded to more than two
+significant figures, and never marked `validated` (E3.6).
+
+**What R2 adds, if Dave wants a measured number.** Two options are recorded so
+they are not rediscovered:
+
+1. a `damper_curve` document kind (`points: [{shaft_speed, force}]`, `source`,
+   `datum`) so a user with a dyno sheet or a manufacturer's curve enters what they
+   have; ζ then becomes `firm` for that corner;
+2. a measured drop-test workflow: the user drops the corner, records the
+   oscillation period from a video, and ζ follows from the log decrement. One
+   afternoon of user effort, no dyno, real data.
+
+**Fields the model needs for §4.8**, all in §4.3.1 with `on_absence: REFUSE`:
+`corners.<c>.damper_piston_bore`, `.damper_shaft_dia`, `.damper_hole_dia`,
+`.damper_piston_holes`, `.damper_oil_viscosity`, `.damper_blowoff_force`. Without
+them ζ is `REFUSED`, and the app says which field is missing rather than guessing.
+
+### 4.9 Licence, contributors and attribution
+
+Model data ships under **CC BY 4.0, contributor-attributed** (`docs/LICENSING.md`).
+CC BY requires attribution on redistribution, so attribution is schema, not a
+screen (E7.12).
+
+```json
+{
+  "license": { "id": "CC-BY-4.0", "url": "https://creativecommons.org/licenses/by/4.0/",
+               "note": "optional, free text" },
+  "contributors": [ { "name": "D. W.", "role": "measured", "contact": "optional" },
+                    { "name": "P. Smith", "role": "reviewed" } ],
+  "attribution_text": "Example 1/10 TC — measured by D. W., 2026-10-12; reviewed by P. Smith. CC BY 4.0."
+}
+```
+
+- `role` ∈ `measured`, `contributed`, `reviewed`, `licensed_from`, `maintained`.
+- `attribution_text` is **the exact string a re-sharer must reproduce**. It is
+  stored, not generated, because a generated string cannot be kept stable across
+  app versions, and a licence condition that changes with a release is not a
+  licence condition.
+- All three members are in the hashed body (§4.5.1), are preserved through
+  import, library listing, analysis, export and re-share, and are shown on the
+  library row and the analysis provenance line (E7.12), and in the credits screen
+  generated from the files themselves (E9.6).
+- A setup that was built from someone else's model carries
+  `derived_from_models[] = [{id, content_hash, attribution_text}]`, so a shared
+  sheet carries the sender's attribution even when the recipient never receives
+  the model.
+- A model whose `license.id` begins `CC-BY` and which has no `contributors` or no
+  `attribution_text` is **refused at import** (E7.12); a model with no `license`
+  at all is refused, because a file that cannot legally be re-shared must not
+  enter a library built for sharing.
+
+### 4.10 The machine-readable field map
+
+`docs/specs/fields.yaml` is the single source for both field tables and for every
+test that iterates fields. One entry per field:
+
+```yaml
+- field: body.cg.height
+  type: value
+  unit: mm
+  req: no
+  on_absence: ESTIMATE          # ASSUME | ESTIMATE | REFUSE | OMIT
+  estimate: two_hang_plumb_line # names the procedure in docs/specs/procedures/
+  band: true                    # the value carries a computed band
+  plausible: [10, 120]
+  consumed_by: [load_transfer_split]
+  worksheet: yes
+  datum: "flat plate, chassis pivot axis"
+```
+
+Rules, all enforced by E9.10:
+
+- `on_absence` is mandatory and is one of the four legal values.
+- `assume` is mandatory where the policy is `ASSUME` and forbidden otherwise.
+- `estimate` and `band` are mandatory where the policy is `ESTIMATE`.
+- `consumed_by` lists output ids from §4.4; every id must exist there.
+- `plausible` is a closed interval in the field's own unit, or absent for a field
+  with no meaningful range.
+- The Markdown tables in §4.2.1 and §4.3.1 are **generated** from this file, and
+  the gate fails if the checked-in tables differ from the generated ones.
+
+### 4.11 Tiers of claim: firm, inferred, speculative
+
+Every value and every statement about how the car behaves carries one tier, on
+every surface and in every export. The tier is orthogonal to the state in §4.4.1:
+the state says whether the number exists, the tier says how much it is worth.
+
+| Tier | Means | Examples | Must display |
+|---|---|---|---|
+| `firm` | Derived from a value the file records as `measured`, through an equation used inside its stated domain | motion ratio, wheel rate, roll-centre height (no `assumed`/`inferred` inputs) | nothing extra |
+| `inferred` | Derived from an estimate, an inference procedure, or a model whose inputs are not measured; carries a computed band (§4.8) | damping ratio (§4.8), CG height (§4.2.1 `ESTIMATE`), load-transfer split when `cg.height` is inferred, **every statement about grip** | the word "inferred", the band, and — for any claim about car behaviour — the words **"all else equal"** |
+| `speculative` | A candidate offered for the user to try, never a result | a suggested change from the setup-sheet interpreter (E2.13) | "speculative", "try and measure" |
+
+Three hard rules: **grip is never `firm` and never a computed quantity** — the app
+may say "more rear bar usually increases rear roll stiffness, which usually
+increases oversteer, all else equal", labelled `inferred`, and may not print a
+grip value; **no composite grip or handling score exists at any tier** (E5.6);
+and **CG height is never requested as a measurement** — corner scales cannot
+locate a CG, so it is `ESTIMATE` with the two-hang plumb-line procedure or a
+component-mass estimate, and every output that consumes it is `inferred` with a
+band.
+
+---
+
+## 5. Functional and non-functional requirements
+
+### 5.1 Functional requirements
+
+The capability set, numbered for the plan. Each is proven by the acceptance
+criteria named beside it; the ACs are the contract, this list is the map.
+
+| # | Capability | Proven by |
+|---|---|---|
+| FR-01 | Create, measure, edit and revision a car model, with per-value provenance | E1.1–E1.3, E2.7 |
+| FR-02 | Guide the measurement, in physical order, with datums and diagrams | E1.5, E1.10, E5.2 |
+| FR-03 | Record mass properties, including a sprung/unsprung split derived from raw readings, and infer CG height | E1.2, E1.8, E1.10 |
+| FR-04 | Create, edit and revision setups against a specific model revision | E2.1, E2.2, E2.7 |
+| FR-05 | Compute the twelve outputs in §4.4 from a complete model and setup | E3.1–E3.6, E3.18 |
+| FR-06 | Show the equation, the substituted inputs, the units, the state and the tier behind every output | E3.7, E3.16, §4.11 |
+| FR-07 | Handle degenerate and out-of-domain geometry without producing a fake number | E3.8, E3.9 |
+| FR-08 | Recompute continuously while an input is being dragged | E3.12 |
+| FR-09 | Validate the model against a measured wheel rate and flag disagreement | E1.10, E3.13 |
+| FR-10 | Compare two setups: input deltas, output deltas, causal inputs, baseline, and differing conditions | E4.1–E4.6, E4.9 |
+| FR-11 | Explain any output and any input in place, with definitions that close | E5.1–E5.3, E5.8 |
+| FR-12 | State the model's limits and assumptions on the analysis screen and in every export | E5.5, E7.1a |
+| FR-13 | Maintain a local model library with completeness and provenance visible | E6.1–E6.3 |
+| FR-14 | Install and share models and setups as files through the OS, with attribution intact | E6.2, E6.4, E7.5, E7.12 |
+| FR-15 | Export any model, setup, comparison and sheet; back up and restore the library | E7.1a–E7.8 |
+| FR-16 | Offer a guided first run from empty install to first delta | E5.7 |
+| FR-17 | Work completely with no network, no account and no personal data | E8.1–E8.3, E8.13 |
+| FR-18 | Be usable one-handed, in sunlight, with gloves, at 200% text | E8.6–E8.16c |
+| FR-19 | Open a setup whose model is absent, and map it onto another deliberately | E6.9 |
+| FR-20 | Validate, version, canonicalise, hash and migrate documents reproducibly | E1.7, E6.5, E6.6, E9.10 |
+| FR-21 | Enforce the clean-room rule and the no-score rule mechanically | E5.4, E5.6, E9.4 |
+| FR-22 | Save atomically, survive process death, and report save failures without loss | E8.12, E8.14, E8.15, E1.13 |
+| FR-23 | State the privacy position in-app and in the store declaration | E8.13 |
+| FR-24 | Gate the release: every stage exits 0, every MUST has a test, every checklist item is signed | E9.3, E9.8, E9.9, E9.10 |
+| FR-25 | Infer, band and tier every quantity the user cannot measure, and never dress an inference as a measurement | E3.2, E3.6, E5.2, E5.6, §4.11 |
+| FR-26 | Interpret a driver's written report as understeer/oversteer claims with phases and tiers | E2.13 |
+
+### 5.2 Performance
+
+**Reference device (the budget's denominator).** A mid-range phone of the class
+in a racer's pocket in 2026: 8 cores (2 performance + 6 efficiency, roughly
+Snapdragon 695 / Dimensity 700 class), 4 GB RAM, 1080×2400 at 60 Hz, Android 12,
+**release build, profile mode, no debugger attached, battery not in saver mode**,
+device at 25 °C. Every number below is measured on that device; a faster phone
+proves nothing and a slower one is not a release blocker until it is the
+reference.
+
+| # | Measurement | Target | Test | AC |
+|---|---|---|---|---|
+| P-01 | Full analysis recompute for a complete model (all outputs, both axles, 13-row roll-centre sweep) | **≤16 ms** typical, ≤25 ms at p99 | Timing harness over 1,000 iterations, release build | E3.12 |
+| P-02 | Recomputation during a continuous slider drag of 10 s | **≥95% of frames presented within 16.7 ms**; no frame >32 ms | Automated frame-timing capture | E3.12 |
+| P-03 | Single-output recompute (one output, one input change) | ≤2 ms | Timing harness | — (design target) |
+| P-04 | Cold start to interactive analysis screen | ≤2.0 s | Automated launch test on release build | E8.5 |
+| P-05 | Open a stored model | ≤300 ms | Timing harness | E8.5 |
+| P-06 | Library list, 200 models, scroll | Sustained 60 fps | Frame-timing capture | E6.3 |
+| P-07 | Validate + import a 1 MB model file | ≤150 ms | Timing harness | — (design target) |
+| P-08 | Generate a one-page setup sheet PDF | ≤2.0 s | Timing harness | E7.4 |
+| P-09 | Peak resident memory during analysis | ≤150 MB | Platform profiler | — (design target) |
+| P-10 | Continuous use, 30 minutes | No frame-rate drop attributable to thermal throttling; ≤5% battery on the reference device | Recorded in the release checklist (C-03) | E9.3 |
+
+The last column exists so that a performance number without a criterion is
+visible as such: P-03, P-07 and P-09 are design targets, not release gates, and
+saying so is better than pretending they are tested.
+
+**Design consequence:** P-01 and P-02 together mean the analysis must be a
+single pure function over a pre-parsed model — allocating a new results object
+per frame is acceptable, re-parsing JSON per frame is not. This is a constraint
+on the physics package's API (it takes a typed model, not a file) and it is
+already implied by the pure-Dart rule.
+
+### 5.3 Reliability and data safety
+
+Every rule here has an AC id, because a rule without one is a rule nobody builds.
+
+- The app never presents a number it cannot justify: no `NaN`, no `Infinity`, no
+  silent default, no inference without its band (E1.2, E1.8, E1.9, E2.4, E3.8,
+  E3.16, §4.11).
+- Saves are atomic; a killed process never leaves a corrupt current revision
+  (E8.12).
+- A failed save is reported on the field being saved, with a retry that touches
+  only that row, and no other value is lost (E8.14).
+- A corrupt or unreadable file is quarantined and named; the rest of the library
+  still opens (E8.15).
+- Every model revision and setup revision is retained until the user deletes it;
+  deletion is confirmed and, for a model revision, the setups that reference it
+  are named first (E2.2).
+- A backup carries a hash per document and a restore verifies every one before
+  writing anything (E7.6).
+- No operation requires a network acknowledgement to complete (E8.1, E8.2).
+- Work in progress survives a kill: the worksheet field and the setup working
+  copy come back exactly as they were (E1.13).
+
+### 5.4 Accessibility
+
+Target: **WCAG 2.2 AA** for the app's own screens. Each rule below has exactly
+one AC, so the nine rules cannot be claimed by one grab-bag criterion.
+
+| # | Requirement | AC |
+|---|---|---|
+| A-01 | Minimum interactive target 44×44 dp with ≥8 dp separation | E8.7a |
+| A-02 | Text scales to 200% with no clipping, overlap or loss of a value | E8.7b |
+| A-03 | Contrast: 4.5:1 body text, 3:1 large text and non-text UI, both themes | E8.7c |
+| A-04 | Never colour alone: every delta carries a sign and a direction word; every chart series carries a line style and a direct label | E8.7c |
+| A-05 | Every chart has an equivalent table view reachable in one tap | E8.7d |
+| A-06 | Every computed value announces name, value, unit, state, tier and change state to a screen reader | E8.8 |
+| A-07 | Focus order follows reading order; the analysis screen is operable by switch access | E8.16b |
+| A-08 | No content requires precise dragging: every slider has a stepped alternative | E8.16a |
+| A-09 | No flashing content; motion respects the system reduce-motion setting | E8.16c |
+
+### 5.5 Localisation readiness
+
+- All user-facing text lives in externalised resources from the first commit; no
+  string is assembled by concatenation (E8.9a).
+- Plurals and numbers use the platform's locale-aware formatting; units are
+  formatted per locale (decimal separator) and converted from storage units once.
+- The layout survives a pseudo-locale of +40% string length and an RTL locale
+  without clipping or reflow breakage (E8.9b, R2).
+- v1 ships English only (D10), which is why RTL layout and the pseudo-locale are
+  SHOULD/R2 while externalisation is MUST/R2: the cheap part is kept, the
+  expensive part is deferred.
+
+### 5.6 App size and distribution
+
+The numbers live in **E8.11** and nowhere else: Android App Bundle download
+≤ 25 MB, installed footprint ≤ 60 MB, with the measuring command recorded in the
+release checklist (C-02). No bundled model library beyond the example models
+(E6.1); no bundled video, no bundled fonts beyond one variable family;
+explanations are text, not images. iOS figures are absent because v1 does not
+ship on iOS (D-10).
+
+### 5.7 Maintainability and IP
+
+- The physics package has no Flutter dependency, and a test inside it asserts that
+  (review rule 3); the test runs in E9.8's test stage.
+- Every physics function states its units in its doc comment, and that doc comment
+  is in SI, because the package is SI-only inside its boundary (R-2).
+- Every constant in the physics carries a citation (review rule 1), and E3.11
+  requires the golden value to trace to a source outside the codebase.
+- No forbidden material in the repository or the artifacts, enforced by the IP
+  and overlap stages (E5.4, E9.4).
+
+---
+
+## 6. Non-goals and out of scope for v1
+
+These are stated so that a reviewer can reject work that drifts into them, and so
+that a user is never promised them by accident.
+
+### 6.1 Non-goals (not this product, at any version)
+
+| # | Non-goal | Why |
+|---|---|---|
+| N-01 | A lap-time simulator | The intent forbids it. Nothing in this app predicts a lap time, and no output is labelled as performance. |
+| N-02 | A tyre model of record | A tyre model whose coefficients we cannot measure would launder guesses into "grip" numbers. Absent at every version, not deferred. |
+| N-03 | A driving game or a physics sandbox | Different product. |
+| N-04 | A telemetry platform | Requires hardware partnerships, real-time ingest and a backend — all excluded by the offline constraint. |
+| N-05 | An account system, a cloud service, a subscription | Excluded by the intent and by the funding model. |
+| N-06 | Any dependence on a proprietary database engine or an installer | This is the failure that killed the predecessor. |
+| N-07 | Reproducing the predecessor's user interface | Its workflows are kept because they work; its screens, icons, wording and name are not. |
+| N-08 | **A grip value, a grip score or a "balance verdict", at any tier** | Grip is not measurable by this app and not computable from its inputs. Presenting a number, even labelled `inferred`, would convert an inference into a claim the app cannot defend (E5.6, §4.11). |
+
+### 6.2 Out of scope for v1 (candidates for later)
+
+| # | Deferred | Trigger to revisit |
+|---|---|---|
+| L-01 | Motor, battery and ESC modelling; dyno analysis | After v1 ships and the geometry core is validated in use |
+| L-02 | Acceleration simulation and time-domain chassis roll (E3.15) | After v1; needs a validated damper model and a lateral-g input |
+| L-03 | Chassis torsional stiffness, diff-height effect, aero | Each needs measured inputs the app cannot currently obtain |
+| L-04 | Droop-limited roll behaviour in the static analysis | Needs a load-path model; v1 states the limit instead of guessing |
+| L-05 | Desktop and web builds | Same source, later rendering; v1 is Android only (D-10) |
+| L-06 | Any sync, sharing service or model store (E6.8) | Files work offline; a store adds cost and a trust boundary |
+| L-07 | OCR of paper sheets (E2.10), photo/CAD capture (E1.12), sheet-format adapters (E7.10) | Each is a separate feature with its own accuracy problem |
+| L-08 | Multi-setup comparison beyond two (E4.8) | Two is the question users actually ask |
+| L-09 | In-app teaching videos or links out to them | The predecessor's teaching is not ours to link; see §8.3 on the removed E5.9 |
+| L-10 | **iOS** | D-10: Android is the v1 release target. Revisit with a store account and a device in hand; every Apple-only clause was moved out of R1 in round 2 |
+| L-11 | A **measured** damping ratio: a `damper_curve` document or a drop-test workflow (§4.8) | When a user asks for a number they can trust, or a dyno sheet turns up. The estimate plus its band is v1's answer |
+| L-12 | Non-linear ARB setting curves (`arb.setting_table`) | When a blade-bar user reports the linear assumption is what makes the number wrong |
+
+---
+
+## 7. Decisions: taken, and still open
+
+### 7.1 Taken — recorded here so they are not re-opened
+
+| # | Decision | Lands in |
+|---|---|---|
+| R-1 | **Frame is ISO 8855**: x forward, y **left**, z up, origin on the ground plane at the rear axle centre. Per-wheel quantities are per-wheel signed (camber positive = top outboard, toe positive = toe-in) and negated on mirroring; car-level quantities are never signed per side. | §4.2, E3.3, E3.4, all hardpoints re-derived |
+| R-2 | **Storage is mm, g, degrees**; SI exists only inside the physics package, at one conversion boundary; the metre-value guard is `\|c\| > 3000 mm`. | §4.1 rule 1, §4.5.4 |
+| D-09 | One gate command: `cd app && dart run tool/gate.dart`. | E9.8, AGENTS.md |
+| D-10 | **iOS is deferred; Android is the v1 release target.** No AC may require an Apple-only capability. | E8.1, §2.4, L-10, §8.3 |
+| D-11 | Every computed property carries a visible validity state, `not_yet_validated` initially. | §4.4.1, E3.16 |
+| D-12 | v1 = geometry, balance and damping ratio. Round 2 could not support damping ratio as specified, and the owner's decision of 2026-10-30 resolved it as an estimate with a band rather than a measurement. | §2.1, §4.8, E3.6 |
+| D-13 | **Absence policy**: every field declares `on_absence` ∈ `ASSUME`/`ESTIMATE`/`REFUSE`/`OMIT`; three prose policies were deleted and the tests are generated from the table. | §4.1 rule 3, E1.2, E2.4, E9.10 |
+| D-14 | **Canonical form is RFC 8785 JCS**, scope = body minus `meta` and `content_hash`, with published fixtures. | §4.5, E1.7 |
+| D-15 | **Geometry in setups is a closed transform**: three adjustments, each with one axis, one sign and one unit; `geometry_hash` identifies the geometry actually used. | §4.3.2, §4.5.3, E2.1, E7.1b |
+| D-16 | **Attribution is schema**: `license`, `contributors[]`, `attribution_text`, hashed and preserved through every hop. | §4.9, E7.12, E9.6 |
+| D-17 | **Model-missing is a first-class state** with three actions and a recorded mapping. | §4.6, E6.9 |
+| D-18 | **Release markers** R0/R1/R2 on every AC; v1 capped. | §2, §8.2 |
+| D-19 | **Owner decisions of 2026-10-30**: optional conditions with a sheet-diff warning; damping ratio as a banded estimate in v1; CG height inferred, never measured; grip inference-only; the sheet interpreter's vocabulary, phases and tiers. | E4.9, E3.6, §4.2.1, §4.11, E2.13 |
+
+### 7.2 Still open for the owner
+
+These are the questions this document deliberately does not answer. Each costs
+something if answered late.
+
+**O-1 — Is the damping-ratio estimate the right promise?** The owner's decision
+makes ζ an estimate with a band and leads with the direction of change. The cost:
+users who want a number to write down will read "estimate" as "unreliable", and
+the measured path (L-11) is the only cure. The alternative — ship no ζ in v1 —
+removes the band from four screens and one output. **Decide before the R1 freeze**,
+because E3.6 is R1 and §4.8's field set is in the schema.
+
+**O-2 — Can a user actually measure the rack?** Bump steer (E3.5) needs
+`steering.rack`, and measuring rack height often means removing the bumper and the
+rack cover. Three options, and the document assumes the first: (a) ship it as a
+`measured` field with a procedure and accept that some users will `estimate` it;
+(b) make `rack` `ESTIMATE` with a published procedure based on a photograph and
+a tape; (c) drop bump steer from v1. If (a), the procedure must exist before R1's
+measurement guidance is written; if (c), E3.5 moves to R2 and §4.4 loses a row.
+
+**O-3 — Is the linear bar assumption acceptable for a blade bar?** `arb_setting`
+is now defined as a linear fraction of the link rate (§4.3.3). Blade bars are not
+linear. Options: accept the assumption and say so (current state, L-12), or add
+`setting_table` at R1, which needs a measurement the user probably cannot make.
+
+**O-4 — Does the sheet interpreter belong in v1.1 or v1?** E2.13 is MUST/R2. It is
+the only feature that consumes the driver's own words, the corpus says that is how
+racers think, and it is cheap; it is R2 only because it is new surface. Pull it
+forward if v1 has room.
+
+**O-5 — The name (D1), the model-data permission (D4), the review bar (D5), the
+first shipped models (D7), the minimum OS and reference device (D8), the store
+accounts (D9), the localisation timing (D10).** These are unchanged from v0.1 and
+are listed below with their original reasoning.
+
+---
+
+### Original decision notes (D1–D10), with round-2 status
+
+**D1 — The product name.**
+*Question:* ship as "Setup Lab", or name it before the first store submission?
+*Recommendation:* treat "Setup Lab" as an internal codename and decide the store
+name at least four weeks before first submission, after a store and trademark
+search in the app stores and in the RC trade. The name is the one thing that
+cannot be changed after reviews, backlinks and community references exist.
+*Cost of getting it wrong:* a rename after launch breaks every shared link, every
+setup file's `meta`, and the community's memory of the app.
+**Status:** open.
+
+**D2 — Depth of v1.**
+*Question:* geometry + balance only, or wait for damper and motor-dyno parity
+with the predecessor?
+*Recommendation:* geometry, balance and damping ratio as an **estimate** — no
+motor dyno, no acceleration simulation (as written in §2.1).
+*Cost of getting it wrong:* aiming for parity delays the first usable artifact by
+months and puts the hardest, least-verified part in front of the part that makes
+the app worth installing.
+**Status:** resolved — see §2.1 and §4.8 (damping is in, as an estimate).
+
+**D3 — Tyre model.**
+*Question:* ship a crude grip-versus-load model with a warning, or none?
+*Recommendation:* **none at any version**, and no composite "grip" or "balance
+verdict" score (E5.6, N-02, N-08).
+*Cost of getting it wrong:* a crude tyre model makes the app *confidently wrong*
+in exactly the situation it is consulted for.
+**Status:** resolved — N-02, N-08.
+
+**D4 — Model data from the predecessor, and importing it.**
+*Question:* can the chassis/damper/motor model data be obtained from the family,
+and may it be imported?
+*Recommendation:* **do not import it and do not build an importer** (E6.5). Ask
+the family in writing for the *data* under a licence compatible with CC BY 4.0
+attribution; until a written answer exists, the library is built from our own
+measurements and community re-measurements.
+*Cost of getting it wrong:* building the importer before permission converts a
+polite request into a fait accompli. This is the only decision here that cannot be
+walked back.
+**Status:** open — and note that §4.7's licence rules now make the answer
+load-bearing: a model with no licence cannot be imported at all.
+
+**D5 — How community models are reviewed.**
+*Question:* what does a contributed model have to pass before it ships?
+*Recommendation:* a **published checklist plus two independent measurement
+records, or photographic evidence for every hardpoint, plus a reproducibility
+run**: a second person re-enters three random hardpoints from the contributed
+worksheet and must land within 0.5 mm. Review happens as a repository pull
+request against the model library, with the reviewer named in `contributors[]`.
+No in-app submission, no voting.
+**Status:** open; E6.7 (contribution bundle) is now LATER, so the PR path is the
+only path.
+
+**D6 — Storage units in the JSON.**
+*Recommendation:* **mm in the file, SI at the physics boundary.**
+**Status:** resolved by R-2 — §4.1 rule 1.
+
+**D7 — Where the first shipped models come from.**
+*Recommendation:* **ship exactly one complete example model that we measured
+ourselves**, fully sourced, plus a worked measurement session recorded as a
+document, and let the community library grow from contributions (D5). Do not ship
+ten half-measured models to look substantial.
+**Status:** open; E6.1 is R0 and its fixture is the example model in §4.2.
+
+**D8 — Minimum OS versions and the performance denominator.**
+*Question:* Android 8.0 (API 26), and the reference device in §5.2?
+*Recommendation:* **yes to both**, and buy one cheap reference device, keep it,
+and run every performance test on it. iOS 15 is deferred with the platform (D-10).
+*Cost of getting it wrong:* a budget validated on a flagship ships an app that
+stutters on the phones racers actually bring to a track.
+**Status:** open, but E8.1 now asserts `minSdkVersion ≥ 26`.
+
+**D9 — Store accounts against "free forever, zero running cost".**
+*Recommendation:* one Google Play account held personally by the owner, budgeted
+as a fixed annual cost, and the public claim phrased as "free to use, no account,
+no server, no ads".
+**Status:** open; with iOS deferred the Apple account is no longer an R1 cost.
+
+**D10 — Localisation timing.**
+*Recommendation:* **English in v1, fully externalised**, translate after the
+explanation text stops changing.
+**Status:** resolved in direction (E8.9a MUST/R2, E8.9b SHOULD/R2), no date.
+
+---
+
+## 8. Traceability
+
+### 8.1 Intent statements referenced
+
+| ID | Statement (from `docs/intent.md`, abbreviated) | Witness AC |
+|---|---|---|
+| I1 | Model the chassis once and keep the model forever, in a plain-text format the community can version and share | E7.1a |
+| I2 | Calculate the properties that matter — camber/toe gain, roll centre and migration, bump steer, wheel rates, motion ratios, load-transfer split, damping ratios | E3.1 |
+| I3 | Show the equation behind every number | E3.7 |
+| I4 | Compare two setups side by side and say what changed and why it matters | E4.1 |
+| I5 | Teach the same concepts at the point where they are used | E5.1 |
+| I6 | Run on a phone at the track, offline, no account, no server, no subscription | E8.1 |
+| I7 | One codebase, cross-platform, store-shippable, no installer, no proprietary database | E8.1 (Android artifact, API 26+, no INTERNET) |
+| I8 | Zero running cost | E8.13 |
+| I9 | No predecessor code, binaries, help text, iconography or name | E9.4 |
+| I10 | Physics as a pure Dart package, unit-testable and reusable headless | E3.11 |
+| S | Success test: model in under 30 minutes, predict the direction of a camber-link or roll-centre change correctly | E9.5 (R2); at R1, E4.1 and E3.14 carry the direction claim |
+| N2 | Non-goal: a tyre model of record (ties to §6.1, N-02 and N-08) | E5.6 |
+
+The **witness** column is the criterion that would fail if that intent were
+abandoned. It is the answer to the round-1 finding that the intent column had
+become a catch-all: every intent now has at least one AC whose failure is a
+capability failure, not a formatting failure.
+
+### 8.2 Coverage
+
+**108 acceptance criteria** across nine epics, with a release marker on every
+one:
+
+| Release | MUST | SHOULD | LATER | Total |
+|---|---|---|---|---|
+| **R0** — Slice 0 | 8 | 0 | 0 | **8** |
+| **R1** — v1 | 38 | 2 | 0 | **40** |
+| **R2** — v1.1 and later | 38 | 15 | 7 | **60** |
+| **All** | 84 | 17 | 7 | **108** |
+
+v1 therefore ships **46 MUSTs**: 8 in the Slice 0 subset and
+38 in the rest of v1 — the round-2 cap of ~35 plus the three that the
+owner's late decisions and the checklist gate added (E3.6 damping as a banded
+estimate, E4.9 the conditions warning, E9.3 the checklist gate).
+
+Verification legend: `U` unit, `G` golden value from a source outside the
+codebase, `P` randomised property test, `W` widget/integration, `B` build or CI
+check, `M` scripted manual check, `E` usability evaluation on real users,
+`U (perf)` timing harness. **No MUST carries `M` alone**: every manual check is
+paired with an automated one, and the only observational criterion (E9.5) is
+tagged `E` with its protocol and pass rule written into the AC itself.
+
+| AC | Tag | Release | Primary intent | Verification |
+|---|---|---|---|---|
+| E1.1 | MUST | R1 | I1 | W |
+| E1.2 | MUST | R1 | I1 | W, U |
+| E1.3 | MUST | R1 | I1 | U |
+| E1.4 | MUST | R2 | I1 | W, U |
+| E1.5 | MUST | R2 | I1 | W, B |
+| E1.6 | MUST | R2 | I1 | W |
+| E1.7 | MUST | R1 | I1, I10 | U |
+| E1.8 | MUST | R1 | I1 | W |
+| E1.9 | MUST | R1 | I1 | W |
+| E1.10 | MUST | R2 | I1 | W, M |
+| E1.11 | SHOULD | R2 | I1 | W |
+| E1.12 | LATER | R2 | I1 | — |
+| E1.13 | MUST | R2 | I1 | W |
+| E2.1 | MUST | R1 | I1, I4 | U |
+| E2.2 | MUST | R1 | I1, I4 | U, W |
+| E2.3 | SHOULD | R2 | I1, I4 | U, W |
+| E2.4 | MUST | R1 | I1, I4 | U, W |
+| E2.5 | MUST | R2 | I1, I4 | W |
+| E2.6 | MUST | R2 | I1, I4 | W |
+| E2.7 | MUST | R2 | I1, I4 | U, W |
+| E2.8 | SHOULD | R1 | I1, I4 | U, W |
+| E2.9 | SHOULD | R2 | I1, I4 | U, W |
+| E2.10 | LATER | R2 | I1, I4 | — |
+| E2.11 | MUST | R1 | I1, I4 | W, U |
+| E2.13 | MUST | R2 | I5 | W, U |
+| E3.1 | MUST | R0 | I2 | G |
+| E3.2 | MUST | R1 | I2 | G |
+| E3.3 | MUST | R0 | I2 | G |
+| E3.4 | MUST | R0 | I2 | G |
+| E3.5 | MUST | R1 | I2 | G, W |
+| E3.6 | MUST | R1 | I2 | G, W |
+| E3.7 | MUST | R0 | I2, I3 | G |
+| E3.8 | MUST | R1 | I2 | P |
+| E3.9 | MUST | R2 | I2 | G, W |
+| E3.11 | MUST | R0 | I2 | G, B |
+| E3.12 | MUST | R1 | I2 | U (perf) |
+| E3.13 | MUST | R2 | I2 | W, U |
+| E3.14 | MUST | R2 | I2 | U |
+| E3.15 | LATER | R2 | I2 | — |
+| E3.16 | MUST | R0 | I2, I3 | W, U |
+| E3.17 | SHOULD | R2 | I2 | U |
+| E3.18 | SHOULD | R2 | I2 | G |
+| E4.1 | MUST | R1 | I4 | W |
+| E4.2 | MUST | R2 | I4 | W |
+| E4.3 | MUST | R1 | I4 | W |
+| E4.4 | MUST | R2 | I4 | W |
+| E4.5 | MUST | R2 | I4 | W, U |
+| E4.6 | SHOULD | R2 | I4 | U |
+| E4.7 | SHOULD | R2 | I4 | W |
+| E4.8 | LATER | R2 | I4 | — |
+| E4.9 | MUST | R1 | I4 | W |
+| E5.1 | MUST | R0 | I5, I3 | W |
+| E5.2 | MUST | R1 | I5 | W, M |
+| E5.3 | SHOULD | R2 | I5 | B |
+| E5.4 | MUST | R1 | I9 | B |
+| E5.5 | MUST | R1 | I5 | W, B |
+| E5.6 | MUST | R1 | N2 | B, W |
+| E5.7 | SHOULD | R1 | I5 | W |
+| E5.8 | SHOULD | R2 | I5 | W |
+| E6.1 | MUST | R0 | I1 | U |
+| E6.2 | MUST | R1 | I1 | W |
+| E6.3 | MUST | R2 | I1 | W |
+| E6.4 | MUST | R1 | I1 | W |
+| E6.5 | MUST | R1 | I1 | U, W |
+| E6.6 | MUST | R2 | I1 | U |
+| E6.7 | LATER | R2 | I1 | — |
+| E6.8 | LATER | R2 | I1 | — |
+| E6.9 | MUST | R1 | I1, I4 | W |
+| E7.1a | MUST | R1 | I1 | U |
+| E7.1b | MUST | R1 | I1 | U |
+| E7.2 | MUST | R1 | I1 | U |
+| E7.4 | MUST | R2 | I1 | W, M |
+| E7.5 | MUST | R2 | I1 | U |
+| E7.6 | MUST | R2 | I1 | U |
+| E7.7 | SHOULD | R2 | I1 | U |
+| E7.8 | SHOULD | R2 | I1 | U |
+| E7.10 | LATER | R2 | I1 | — |
+| E7.11 | MUST | R2 | I1 | U |
+| E7.12 | MUST | R1 | I1, I9 | U |
+| E8.1 | MUST | R1 | I6, I7 | B |
+| E8.2 | MUST | R2 | I6 | W |
+| E8.3 | MUST | R2 | I6 | W |
+| E8.5 | MUST | R2 | I6 | U (perf) |
+| E8.6 | MUST | R2 | I6 | W |
+| E8.7a | MUST | R2 | I6 | W |
+| E8.7b | MUST | R2 | I6 | W |
+| E8.7c | MUST | R2 | I6 | U |
+| E8.7d | SHOULD | R2 | I6 | W |
+| E8.8 | MUST | R2 | I6 | W |
+| E8.9a | MUST | R2 | I6 | B |
+| E8.9b | SHOULD | R2 | I6 | W |
+| E8.11 | SHOULD | R2 | I6 | B |
+| E8.12 | MUST | R1 | I6 | U, W |
+| E8.13 | MUST | R1 | I6, I8 | B, W |
+| E8.14 | MUST | R2 | I6 | W |
+| E8.15 | MUST | R2 | I6 | W |
+| E8.16a | MUST | R2 | I6 | W |
+| E8.16b | MUST | R2 | I6 | W |
+| E8.16c | MUST | R2 | I6 | W |
+| E9.1 | MUST | R2 | I10 | W |
+| E9.3 | MUST | R1 | I10 | U |
+| E9.4 | MUST | R1 | I9 | B |
+| E9.5 | MUST | R2 | S | E |
+| E9.6 | MUST | R2 | I9 | B |
+| E9.7 | SHOULD | R2 | I10 | W |
+| E9.8 | MUST | R1 | I10 | B |
+| E9.9 | MUST | R1 | I10 | B |
+| E9.10 | MUST | R1 | I10, I1 | B |
+
+### 8.3 Removed in round 2
+
+Nothing disappears silently. Every criterion that was deleted, replaced or folded
+in this revision is listed here with its reason.
+
+| AC | Disposition | Reason |
+|---|---|---|
+| E3.10 | **deleted** | "every output agrees to 1e-9 on two devices, debug and release" demands bit-agreement from transcendental functions across ARM64 and x86_64 libm and across AOT and JIT; it duplicates E7.1a's tolerance, which is stated per fixture on one platform with a cross-platform allowance. |
+| E8.4 | **deleted** | Its only machine-checkable content was "no `INTERNET` permission", which is E8.1; the rest is not provable from inside the app. Privacy is now E8.13 (dependency check + privacy screen + store declaration). |
+| E8.10 | **deleted** | "used in direct sunlight" has no protocol and duplicated E8.7c, which computes the same contrast ratios from the theme tokens in both themes. |
+| E5.9 | **deleted** | A LATER that would link out to the predecessor's teaching inside a clean-room successor — the fastest way to turn a respectful project into an accusation, for zero product value. L-09 records it. |
+| E1.7 (old text) | **replaced** | The old criterion demanded byte-identical persistence "including field order and float representation": a serialiser property that blocks every legitimate serialiser change and is unsatisfiable alongside unknown-key preservation. Now hash stability plus two published hash fixtures (§4.5.4). |
+| E9.3 (old text) | **replaced** | "store copy checked … recorded in the release checklist" was an editorial check with no artifact and no failure mode. E9.3 now asserts that the checklist file exists and every §3.5 item is signed; the editorial check itself is C-01. |
+| E3.6 (old text) | **rewritten** | It required "a damper curve" that no document kind held, and a curve model the schema could not feed. It is now the banded estimate of §4.8 with the band computed from input tolerances. |
+| E8.7 (old text) | **split** | Five unrelated assertions plus "meeting WCAG 2.2 AA" cannot fail independently. Now E8.7a–d, one assertion each. |
+| E8.9 (old text) | **split** | Pseudo-locale and RTL were MUST while no RTL locale ships. Now E8.9a (externalisation, MUST) and E8.9b (pseudo-locale + RTL, SHOULD), both R2. |
+| E8.16a–c | **added** | A-07, A-08 and A-09 lived in §5.4 with no AC at all, so three accessibility rules were invisible to the audit. Listed here so a reader does not hunt for an earlier E8.16a. |
+| E1.4 (old text) | **rewritten** | It promised that entering FL "writes" FR while rule 3 forbids defaults. Now: with `symmetry: true` the right corner is derived at load with `derived_by_mirror` provenance and never stored; with `false` it must be entered. |
+| E1.2, E1.8, E1.9, E2.4 (old text) | **rewritten** | They carried three contradictory absence policies in prose. The behaviour is now the `on_absence` column of §4.2.1/§4.3.1 and the tests are generated from it (E9.10). |
+| E7.1 (old text) | **split** | It claimed export/import equality for "a model or setup" while a setup cannot even be opened without its model. Now E7.1a (model) and E7.1b (setup, including the model-absent path). |
+| E9.8 (old text) | **rewritten** | It depended on a `spec_audit` tool that no AC required: a circular gate. E9.8 now asserts every named stage exits 0 and that a stage with no AC fails the audit, and each stage has its own AC (E8.1, E8.13, E9.4, E9.9, E9.10). |
+| E7.3 | **folded into E7.1a** | "the export carries `schema_version`, app version, provenance, assumptions" is an assertion about a round-tripped file, and E7.1a is that file's test. |
+| E7.9 | **folded into E6.5** | "refuse a binary database or an installer" is a rejection case; E6.5 is the rejection test, and it now names the foreign-artifact path explicitly. |
+| E9.2 | **folded into E9.10** | "one fixture per schema version, adding a version without a fixture fails" is a build gate; E9.10 clause (d) is the same assertion with seeded-failure semantics. |
+| E2.12 (planned) | **folded into E1.13** | One process-death criterion covers the worksheet draft and the setup working copy; two criteria would share one mechanism and one test. |
+| E1.14 (planned) | **folded into E9.10** | The `fields.yaml` completeness check is a build gate, and the round-2 rule is one AC per gate. |
+| E9.11 (planned) | **folded into E8.1** | The manifest gate is the only place "no `INTERNET` permission" is asserted; two criteria for one check would allow one to pass while the other failed. |
+| E6.3, E6.6, E2.5, E2.6, E2.7, E4.2, E4.4, E4.5, E7.4, E7.5, E7.6, E7.11, E8.2, E8.3, E8.5, E8.6, E8.8, E8.11, E8.14, E8.15, E9.1, E9.5, E9.6 | **moved to R2** | Not deleted: retain their ids and their content, and do not block v1. Each was cut because v1 is capped at 46 MUSTs (R0's 8 plus R1's 38) and these are the ones a first release can ship without while staying honest. |
+
+### 8.4 What the audit checks
+
+E9.9 and E9.10 together enforce, mechanically, the four properties this section
+claims: every MUST id appears in at least one test annotation; every annotation
+resolves to an AC with the same tag and release marker; no LATER AC has a test;
+and every output id in §4.4, every field in the two field tables and every gate
+stage in E9.8 has a corresponding AC. The tables above are hand-checked at this
+revision and are machine-checked from the first commit.
+
+---
+
+## 9. Evidence base, and what it changed
+
+The corpus was read as evidence of what users ask for and what vocabulary they
+use, never as a source of sentences. Files read for this version:
+
+- `docs/intent.md` — complete.
+- `AGENTS.md`, `docs/review-rules.md`, `docs/LICENSING.md`, `DEDICATION.md`,
+  `docs/research/README.md` — complete.
+- `docs/reviews/round1/CONSOLIDATED.md` and the four round-1 reports — complete.
+- `docs/research/handbook/science-of-setup-index.md` — complete; supplied the
+  chapter vocabulary (weight transfer, overall suspension stiffness, camber and
+  camber gain, roll centre and camber gain, ackermann, shocks) that §4.4 follows.
+- `docs/research/forum/rctech-thread.md` — searched across 494 posts for
+  *measure, arm movement, unsprung, roll center/centre, print, import, export,
+  model, setup sheet, camber link, droop, shim, screenshot, database, mac,
+  tablet, compare, slider, graph, tyre, diff height*; excerpts read in full.
+- Transcripts read in whole or in substantial part (7 of the 56 available):
+  `RC3 V4.3.2 Intro`, `MTC2 Setup Features`, `SetupCharts`,
+  `Touring Car Steering Setup`, `Laser Setup System Demo`,
+  `MTC2 Roll Center Testing Part 1`,
+  `Episode 8 - RC3 Acceleration Simulation Validation`.
+
+What the evidence changed in this spec:
+
+1. **Mobile-first is not a nice-to-have.** Phone and tablet access was the most
+   requested capability in the whole thread, and the author's own answer was
+   remote-desktopping into a Windows machine left running at home. That is the
+   user need behind E8.1–E8.6.
+2. **Measurement guidance is a first-class feature, not help text.** The same
+   measurement questions recur for a decade ("how do I measure the arm movement
+   value?", "how do I figure sprung/unsprung?"), including a detailed worked
+   method for weighing unsprung mass. Hence E1.5, E1.10 and the requirement that
+   every input has a "how do I measure this" entry (E5.2), and it is why CG
+   height is an inference with a published procedure rather than a measurement
+   nobody can take.
+3. **Live, quantified deltas are the feature that made the tool teach.** The
+   later versions added charts that update as a value is changed, compare against
+   a selected baseline, and quantify *how much* of a change was made, with the
+   ability to isolate one effect. That is E3.12, E4.1–E4.6, and it is why the
+   performance budget exists at all.
+4. **Overwriting a known-good setup is a documented failure.** The author warns
+   users that saving after experimenting overwrites the setup the graphs were
+   comparing against. Hence E2.2, E2.7 and the baseline concept in E4.5.
+5. **Printing and notes are how the track session actually works.** Requests for
+   a one-page summary and for separate track/setup/tyre notes recur. Hence E7.4,
+   E2.8, and the optional conditions block (surface, temperature, humidity, tyre,
+   motor) that E4.9 warns about when two sheets disagree.
+6. **Export anxiety is real.** Users were told to back up the database and export
+   models as text because a glitch would lose their work; schema changes were
+   resisted for fear of data loss. Hence E7.1a–E7.6, §4.5's canonical form and
+   the migration fixtures in E9.10.
+7. **The gaps are documented, so v1 names them.** Tyre behaviour is absent by
+   design, the diff-height torque effect was explicitly declined, ackermann was
+   never modelled as a handling influence, and droop limits sat outside the
+   charts because they depend on the handling condition. §6 and E5.5 carry each
+   of those forward explicitly rather than letting users discover them.
+8. **Library growth was the author's own biggest problem** — he could not get his
+   hands on every chassis. That is why the contribution path and the review bar
+   (D5) are specified rather than assumed, and why a shared sheet must carry its
+   attribution (E7.12) rather than lose it on the way.
+9. **The vocabulary of a driver's report is understeer/oversteer, at a phase.**
+   The corpus talks about the car "pushing" at entry or "loose" off the corner,
+   never in the app's own terms. That is why E2.13 normalises push/loose into
+   understeer/oversteer, insists on a phase, and requires every inferred claim to
+   say "all else equal".
+
+---
+
+## 10. What changes at v0.3
+
+- Round 2 verification (`R2-V`): a fresh critic recomputes the corrected
+  roll-centre sensitivity table, the mirror case and the canonical hash fixtures,
+  and re-checks every AC in §3 against the testability bar.
+- `docs/specs/plan.md`: a per-epic effort estimate and build order starting from
+  Slice 0 (§2.3), with the R1 MUST set as the plan's fixed scope and the R2 set as
+  its backlog.
+- `docs/specs/fields.yaml` written and the §4.2.1/§4.3.1 tables regenerated from
+  it, so E9.10 has something to compare against.
+- The three documents that must agree with this one — `physics/01` (frame and
+  units), `architecture.md` (the one conversion boundary, `gate.dart`) and
+  `docs/design/screens.md` (the `inferred` tier, the model-missing state, the
+  conditions warning) — reconciled against §4 and §2.
+- Answers to O-1, O-2 and O-4 recorded in §7.1, and the damping-ratio field set
+  frozen before the R1 freeze.

@@ -335,7 +335,8 @@ details[open] .chev{transform:rotate(90deg)}
 
 .cgline{font-size:10.5px;line-height:15px;color:var(--on-surface-var);margin-top:8px;padding-top:8px;border-top:1px dashed var(--outline-var)}
 .cgline b{color:var(--on-surface);font-weight:500}
-.dir{display:flex;align-items:center;gap:6px;font-size:11.5px;line-height:16px;color:var(--on-surface);margin-top:4px}
+.dir{display:flex;align-items:baseline;gap:6px;flex-wrap:wrap;font-size:11.5px;line-height:16px;color:var(--on-surface);margin-top:4px}
+.dir b{min-width:0}
 .dir .ar{color:var(--primary);font-size:11px}
 .levers{margin-top:10px;border:1px solid var(--outline-var);border-radius:10px;overflow:hidden}
 .levers summary{display:flex;align-items:center;gap:8px;min-height:40px;padding:0 12px;cursor:pointer;list-style:none;font-size:12px;font-weight:500}
@@ -345,6 +346,15 @@ details[open] .chev{transform:rotate(90deg)}
 .levers[open] summary svg{transform:rotate(90deg)}
 .levers .lv{display:flex;justify-content:space-between;gap:10px;padding:7px 12px;border-top:1px solid var(--outline-var);font-size:11.5px;line-height:16px;color:var(--on-surface-var)}
 .levers .lv b{color:var(--on-surface);font-weight:500;white-space:nowrap}
+
+.nvring{display:inline-block;width:7px;height:7px;border-radius:50%;border:1.2px solid var(--outline);vertical-align:2px;margin-left:3px;position:relative}
+.nvring::after{content:"";position:absolute;left:-1px;top:2.4px;width:8px;height:1px;background:var(--outline);transform:rotate(45deg)}
+.speeds{display:flex;gap:6px;margin:8px 0 2px}
+.speeds button{height:28px;padding:0 10px;border-radius:8px;border:1px solid var(--outline-var);font-size:11px;color:var(--on-surface-var)}
+.speeds button[aria-pressed="true"]{background:var(--s-high);border-color:transparent;color:var(--on-surface)}
+.corner{display:grid;grid-template-columns:52px 1fr 1fr;gap:6px;font-size:11.5px;line-height:16px;padding:4px 0;border-bottom:1px solid var(--outline-var)}
+.corner .h{font-size:9.5px;letter-spacing:.6px;text-transform:uppercase;color:var(--on-surface-var);font-weight:600}
+.corner .v{font-variant-numeric:tabular-nums;color:var(--on-surface)}
 </style>
 </head>
 <body class="">
@@ -365,6 +375,7 @@ details[open] .chev{transform:rotate(90deg)}
   <symbol id="i-swap" viewBox="0 0 24 24"><path d="M4.5 8.5h14l-3.2-3.2M19.5 15.5h-14l3.2 3.2"/></symbol>
   <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.6"/><path d="M12 11.2v5.4M12 7.7v.2"/></symbol>
   <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 4.4L20.6 19.6H3.4z"/><path d="M12 10v4.1M12 16.9v.2"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.6"/><path d="M12 11.2v5.4M12 7.7v.2"/></symbol>
   <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
   <symbol id="i-down" viewBox="0 0 24 24"><path d="M12 5v13M6.5 12.5L12 18l5.5-5.5"/></symbol>
  </defs>
@@ -584,21 +595,30 @@ MR = 62.0 / 100.0 = 0.62</div>
     <span class="pair">
       <span class="pcol">
         <span class="k">FRONT</span>
-        <span class="pv"><span class="n">~0.42</span><span class="u">±0.06</span><span class="ring" title="Not yet validated"></span></span>
+        <span class="pv"><span class="n">~0.42</span><span class="u">±0.06</span><span class="nvring" title="Inferred — not a measured quantity"></span></span>
         <span class="prov" style="margin-top:0"><span class="pbadge est">estimated</span></span>
         <span class="delta down"><span class="arw">▼</span>−0.03</span>
       </span>
       <span class="pcol">
         <span class="k">REAR</span>
-        <span class="pv"><span class="n">~0.38</span><span class="u">±0.05</span><span class="ring" title="Not yet validated"></span></span>
+        <span class="pv"><span class="n">~0.38</span><span class="u">±0.05</span><span class="nvring" title="Inferred — not a measured quantity"></span></span>
         <span class="prov" style="margin-top:0"><span class="pbadge est">estimated</span></span>
       </span>
     </span>
     <svg class="chev"><use href="#i-chev"/></svg>
   </summary>
   <div class="mb">
-    <p class="dir"><span class="ar">▲</span><b>Heavier oil → more damping at the wheel</b><span style="color:var(--on-surface-var)">· rear 350 → 400 cSt</span></p>
-    <p class="dir"><span class="ar" style="color:var(--delta-down)">▼</span><b>Shock laid down → less wheel damping</b><span style="color:var(--on-surface-var)">· front, 12° from vertical</span></p>
+    <p class="dir"><span class="ar">▲</span><b>Rear oil 350 → 400 cSt: more damping at the wheel, ζ +0.04</b></p>
+    <p class="dir"><span class="ar" style="color:var(--delta-down)">▼</span><b>Shock laid down, 12° from vertical: less wheel damping, ζ −0.02</b></p>
+    <div class="speeds" role="group" aria-label="Shaft speed">
+      <button aria-pressed="true">5 mm/s</button><button aria-pressed="false">300 mm/s</button>
+    </div>
+    <div class="corner"><span class="h">corner</span><span class="h">5 mm/s</span><span class="h">300 mm/s</span>
+      <span>FL</span><span class="v">~0.42 ±0.06</span><span class="v">~0.26 ±0.04</span>
+      <span>FR</span><span class="v">~0.42 ±0.06</span><span class="v">~0.26 ±0.04</span>
+      <span>RL</span><span class="v">~0.38 ±0.05</span><span class="v">~0.24 ±0.03</span>
+      <span>RR</span><span class="v">~0.38 ±0.05</span><span class="v">~0.24 ±0.03</span>
+    </div>
     <div class="eq">ζ = c / (2 × √(k<sub>w</sub> · m))
   = 7.2 / (2 × √(189 × 0.385))
   = 0.42   band 0.36 – 0.48 (damper model range)</div>
@@ -611,7 +631,7 @@ MR = 62.0 / 100.0 = 0.62</div>
       <div class="lv"><span>Spring rate</span><b>stiffer → lower ζ</b></div>
       <div class="lv"><span>Shock angle</span><b>more laid down → less</b></div>
     </details>
-    <div class="vfoot"><span class="vtag"><svg><use href="#i-alert"/></svg>not validated</span><span class="t"><b>Computed, not yet validated.</b> The equation is the published one and the inputs are yours; no bench case exists for this output yet. <a href="learn.html" style="color:var(--primary);text-decoration:none">How a number gets validated →</a></span></div>
+    <div class="vfoot"><span class="vtag ok"><svg><use href="#i-info"/></svg>inferred · not a measured quantity</span><span class="t"><b>This is an inference, so there is nothing to validate against.</b> ζ comes from the damper model's assumptions, not a bench test; the band shows how far it moves when those assumptions move, and the route is <b>orifice_single_piston_v1</b>. The spec forbids marking ζ validated, so this card never does. <a href="learn.html" style="color:var(--primary);text-decoration:none">What the band means →</a></span></div>
   </div>
 </details>
 <div style="height:26px"></div>
@@ -629,7 +649,7 @@ MR = 62.0 / 100.0 = 0.62</div>
     <button class="tg" id="themeBtn" aria-pressed="false">☾ Dark</button>
     <button class="tg" data-state="missing" aria-pressed="false">Missing input</button><button class="tg" data-state="undefined" aria-pressed="false">Parallel links</button>
   </div>
-  <div class="meta">The two toggles are the states the analysis has to survive. Only the affected cards change; the rest keep their numbers.<br><a class="link" href="index.html">All screens →</a> &nbsp; <a class="link" href="design-notes.html">Token check →</a></div>
+  <div class="meta">The two toggles are the states the analysis has to survive. Only the affected cards change; the rest keep their numbers.<br><a class="link" href="sheets.html">This car's sheets →</a><br><a class="link" href="index.html">All screens →</a> &nbsp; <a class="link" href="design-notes.html">Token check →</a></div>
 </aside>
 <script>
 (function(){

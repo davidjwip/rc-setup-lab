@@ -40,18 +40,13 @@ drill-down inside each destination.**
 - The car → setup → analysis path is a **linear push stack**, not a set of peer tabs. There
   is exactly one obvious "back".
 
-**Known conflict, to be arbitrated by the owner.** The throwaway wireframes in `wireframes/`
-draw a four-item bar — *Garage · Setup · Compare · Learn* — with *Setup* as a peer destination.
-That is a defensible alternative: setup editing is the most frequent act at the track, and a
-permanent tab makes it one tap. It is rejected here for one reason: a *Setup* branch has no car
-until one is chosen, so it opens on a picker or on the last car used, and the user has to hold
-"which car is this tab showing?" in their head — the same ambiguity that makes the old app's
-multiple setup pages confusing. With three destinations, "my car" is one object and everything
-else hangs off it.
-
-If the owner prefers four, the change is small and local: add a fourth branch whose root is
-`/car/:carId/setup/:lastSetupId/analysis`, keep every sub-route below it unchanged, and accept
-the "no car yet" empty state on that branch. No screen or state in this document changes.
+**Resolved (D-01, applied 30 Oct 2026).** The wireframes previously drew a four-item bar —
+*Garage · Setup · Compare · Learn* — with *Setup* as a peer destination. It is rejected for one
+reason: a *Setup* branch has no car until one is chosen, so it opens on a picker or on the last car
+used, and the user has to hold "which car is this tab showing?" in their head — the same ambiguity
+that made the old app's multiple setup pages confusing. With three destinations, "my car" is one
+object and everything else hangs off it: setup, analysis, chassis, sheets, diff and export are all
+pushes inside the Garage branch. Every wireframe now draws three items.
 
 ### 2.2 Why not the alternatives
 
@@ -75,11 +70,16 @@ Garage  (branch 0, initial)      Compare (branch 1)         Learn (branch 2)
       /car/:carId/geometry/wizard/:groupId
       /car/:carId/geometry/wizard/:groupId/:fieldId
       /car/:carId/geometry/field/:fieldId
+    /car/:carId/chassis
+    /car/:carId/mass
+    /car/:carId/sheets
+      /car/:carId/sheets/diff?a=&b=
     /car/:carId/setups
       /car/:carId/setups/new
     /car/:carId/setup/:setupId
       /car/:carId/setup/:setupId/analysis
       /car/:carId/setup/:setupId/analysis/:propertyId
+      /car/:carId/setup/:setupId/export
 ```
 
 Global (pushed above the shell, no bottom bar): `/welcome`, `/settings`, `/settings/units`,
@@ -146,7 +146,7 @@ input**. Setup Lab inverts that:
 | Old input | Setup Lab behaviour |
 |---|---|
 | "Arm movement" | Never asked. Motion ratio is computed from the shock mount points. The wizard offers an optional **verification**: move the wheel 10 mm, read shock travel with the calipers; the app compares your reading to its computed value and says "within 4% — model agrees" or "off by 23% — one of these three points is probably wrong" and links them. |
-| "Unsprung weight" | Never asked as a bare number. The app offers a **weighing recipe** (block the chassis, weigh the corner, subtract the sprung share). Until then it follows the spec (absent → 0, with a visible assumption on the card and in every export); a library estimate is offered only as an explicit opt-in and is then flagged `estimated` wherever it is used. |
+| "Unsprung weight" | Never asked as a bare number. The app offers a **weighing recipe** (block the chassis, weigh the corner, subtract the sprung share). Until then the field is `unknown`: every property that needs it becomes `missing` and names it — there is no assume-zero path. A library value is an explicit opt-in, marked `inherited` with its source, never a silent default. |
 | "Where is the chassis mount if the arm is swept?" | The mount is a 3-axis point. Fore/aft offset is a first-class field, so a swept arm is modelled as swept, not approximated by choosing "the closest hole". |
 
 ---
@@ -194,7 +194,7 @@ masquerades as the user's own car.
 
 | Door | Who | What happens |
 |---|---|---|
-| **Template** (bundled, e.g. "1/10 TC — double wishbone, 4WD") | The 80% case; the racer owns a common chassis | Creates a car pre-filled with library hardpoints. Every field carries provenance `library`. The user's only job is to correct what differs. Analysis is available **immediately**, flagged "template geometry" until measurements replace it. |
+| **Template** (bundled, e.g. "1/10 TC — double wishbone, 4WD") | The 80% case; the racer owns a common chassis | Creates a *car model* pre-filled with library hardpoints. Every field carries the **`inherited`** badge and the template's name and version. The user's only job is to correct what differs. Analysis is available immediately — as `inherited`, never as a solid numeral — until measurements replace it. |
 | **From scratch** | Chassis nerd, unusual car | Empty car, no geometry. Analysis shows the "not yet computable" state until Flow 3 supplies inputs. |
 | **Import** | Second device, shared model | `/garage/import` — paste JSON, pick a file, preview, validate. |
 
@@ -290,13 +290,18 @@ is the mechanism that keeps fabricated numbers out of the physics.
 
 | Answer | Stored as | What the analysis does |
 |---|---|---|
-| A number | `measured` + timestamp + method | Uses it normally |
-| "Use library value" (only if a template supplied one) | `library` + which template and version | Uses it, card shows an "inherited" footnote; never a silent default |
-| "Approximate" | `estimated`, value kept, tolerance ±15% | Uses it, value rendered with a leading `~`, card carries a "2 estimated inputs" chip that opens the list |
+| A number | `measured` + timestamp + method | Uses it normally, badge `computed` |
+| "Use library value" (only if a template or a sheet supplied one) | `library` + which template/sheet and version | Uses it, badge **`inherited`** on the value and the source named on the row; never a silent default, never a solid numeral |
+| "Approximate" | `estimated`, value kept, **tolerance only if the source record carries one** | Uses it, value rendered with a leading `~`; if the record has no tolerance, the `~` is the only mark. There is no default ±15% |
 | "Not sure — skip" | `unknown` | **Does not use it.** Every property that needs it becomes `missing` with the field named and a link straight back to this task |
 
-There is no fifth state and no default of `0`. Zero is a legitimate measurement (a pivot on
+There is no fifth *answer* and no default of `0`. Zero is a legitimate measurement (a pivot on
 the ground plane), which is exactly why it must never stand in for "I don't know".
+
+Two marks follow every value into the analysis and onto every export: its **provenance badge**
+(computed / estimated / inherited / missing / undefined) and its **validation state** (a hollow
+ring, `computed, not yet validated`, until a bench case exists). A tolerance is data, never a
+system default — see `design-system.md` §9.
 
 **Blocking is forbidden.** Skipping never produces a modal, a nag, or an inability to save.
 It produces a named gap that shows up later as words, not as a dash.
@@ -358,7 +363,10 @@ re-measurement; it never asks for geometry.
 **Entry points:** Car screen → "New setup"; Setup list → "New"; or **copy** from any existing
 setup (the normal case — nobody starts from blank twice).
 
-**Pre-fill:** from the car's template defaults, then overridden by the setup being copied.
+**Pre-fill:** none. A new sheet is **empty** — every value *not set*, analysis *0 of 7 computed*.
+Copying another sheet is an explicit choice, and every copied value is marked `inherited` with the
+source sheet named. A car's geometry may come from a template; a **setup** may not, because a setup
+is the record of what was run.
 Fields the car owns (tyre size, spring free length) are shown as **inherited rows**: greyed,
 with a small "from car ›" link. Tapping the link goes to the car field, not to a second editor.
 
@@ -591,7 +599,46 @@ business guessing on a phone in a pit lane.
 
 ---
 
-## 11. Cross-cutting rules
+## 11. Flow 8 — Sheets, diffs and the interpreter
+
+**The loop this flow exists for.** A racer runs four sheets in a day, changes three things, and by
+the evening cannot say which change did what. The library keeps the sheets; the diff turns two of
+them into a reading with a stated confidence.
+
+**Steps.**
+
+1. **Library** (`/car/:carId/sheets`) — the car's sheets newest-first, each with its date, note and
+   **optional conditions** (surface, temperature, humidity, free text for tyres and motor). The
+   baseline is pinned. Imported sheets carry `inherited` and the source name.
+2. **Pick two** — any two, not just consecutive ones: a session against last month's reference is
+   the normal case. Default selection is the newest sheet and its predecessor.
+3. **Conditions gate** — a field-by-field table (match / differs) and then one banner:
+   *Comparable*, **Different conditions — not like-for-like** (naming the fields), or **No
+   conditions recorded — this diff cannot say whether it is like-for-like**. This appears before
+   the first claim.
+4. **What this did** — the tiered interpreter. Firm rows first (geometry, rates, stiffness split,
+   with validation rings), then Inferred (balance direction, with **all else equal**, *Reverses if*
+   and *What it does not claim*), then Speculative (named and refused). A grip sentence appears only
+   as an inference strip: no number, no badge, no ring.
+5. **What you changed** — grouped by area, changed rows only, `A → B`, `inherited` where a sheet
+   came from someone else.
+6. **Act on it** — *Open B*, *Apply B to car*, *Export this diff*, or *Read the concept*.
+
+**Rules.**
+
+- A rule with no tier does not ship; the screen has no unlabelled sentence.
+- Understeer / oversteer, entry / mid / exit. Not push / loose.
+- Damping leads with direction ("heavier oil → more damping at the wheel"); the magnitude is an
+  estimate with a band, and the band is the damper model's own, never a default percentage.
+- Nothing on the screen is hidden because a tier is empty. "We do not model entry" makes the
+  mid-corner claim more believable, not less.
+
+**States.** both sheets · one slot empty · identical sheets · conditions differ · conditions not
+recorded · a sheet fails to load · offline (no claims need the network).
+
+---
+
+## 12. Cross-cutting rules
 
 ### 11.1 Offline is the default state, not an error
 
@@ -632,7 +679,7 @@ display unit never changes stored values.
 
 ---
 
-## 12. Publishing a setup (asked for in the thread's first month, and again ever after)
+## 13. Publishing a setup (asked for in the thread's first month, and again ever after)
 
 "Also a print your setup option" appears within the first fifty posts. Ship it as
 a first-class action, not a settings toggle:
@@ -649,7 +696,7 @@ a first-class action, not a settings toggle:
 
 ---
 
-## 13. State contracts (implementable shape)
+## 14. State contracts (implementable shape)
 
 Named for a Riverpod/go_router implementation. No UI framework detail beyond names.
 
@@ -667,7 +714,7 @@ Named for a Riverpod/go_router implementation. No UI framework detail beyond nam
 | `unitsProvider` | `Notifier<DisplayUnits>` | persisted | Conversion happens only at render |
 | `learningProgressProvider` | `Notifier<Set<ConceptId>>` | persisted | Path checkmarks |
 
-### 13.1 The analysis result is a sealed union, not a nullable number
+### 14.1 The analysis result is a sealed union, not a nullable number
 
 The single most important contract, because it is what makes rule 4 of `review-rules.md`
 (no NaN reaching a chart) and the "never invent a number" trap structurally impossible to
@@ -691,7 +738,7 @@ construction; `double.nan` is unrepresentable at the boundary.
 `MissingInputs` carries `FieldRef` (field id + measure task id), which is what makes the
 "Add it ›" deep link possible without the analysis layer knowing any routes.
 
-### 13.2 Draft lifecycle
+### 14.2 Draft lifecycle
 
 ```
 saved version ──edit──▶ dirty draft ──save──▶ new version (baseline flag preserved)
@@ -704,7 +751,7 @@ A draft is never silently written. A dirty draft surviving a tab switch is delib
 track, the phone locks, the app is killed, and the user expects their three edits to still be
 there. Drafts are persisted to local storage on every change, with the last write debounced.
 
-### 13.3 Route guards
+### 14.3 Route guards
 
 | Guard | Rule |
 |---|---|
@@ -716,7 +763,7 @@ there. Drafts are persisted to local storage on every change, with the last writ
 
 ---
 
-## 14. Open questions
+## 15. Open questions
 
 1. **Reconcile the wizard's task list against the spec's field tables.** `docs/specs/spec.md`
    §4.2.1 and §4.3.1 now carry the authoritative field names (`lower_arm.inboard_front` …
@@ -735,16 +782,20 @@ there. Drafts are persisted to local storage on every change, with the last writ
    on any chassis (bellcrank orientation differed enough that users asked "does it matter what
    direction the system is facing?"). Does v1 ship bump steer at all, or defer it and ship six
    cards?
-5. **Roll stiffness in °/g depends on sprung CG height**, which most users will not measure.
-   Do we ship a library estimate (flagged), or omit the °/g figure and show only N·m/deg?
+5. ~~Roll stiffness in °/g depends on sprung CG height.~~ **Resolved (owner, 30 Oct 2026):** CG
+   height is **inferred, never fetched from a scale session** — the route (plumb-line, component
+   estimate, or inherited) is shown on the card, the badge follows the route, and the card states
+   what it makes uncertain (total transfer, roll angle) against what it leaves robust (the balance
+   split). No "import from scales" affordance exists.
 6. **Does "compare across cars" earn its keep?** It is allowed with a warning, but if it never
    produces a useful comparison in testing, removing it simplifies the guardrail set.
-7. **Damping ratio needs shock dyno data** to be more than a geometric estimate from oil and
-   piston. v1's honest offer is "damping ratio from the shock model, which you may not have" —
-   is an estimate with a loud chip acceptable, or is card 7 absent until damper data exists?
-8. **Three tabs or four?** The wireframes in `wireframes/` show four (Garage · Setup · Compare ·
-   Learn). This document recommends three (Garage · Compare · Learn) for the reason in §2.1: a
-   Setup branch has no car until one is chosen. Owner's call; the migration is described in §2.1
-   and costs no screen changes.
+7. ~~Damping ratio needs shock dyno data.~~ **Resolved (owner, 30 Oct 2026):** ζ is an **estimate
+   in v1** — the card leads with the direction of change ("heavier oil → more at the wheel", "shock
+   laid down → less"), shows `~0.42 ± band` with the `estimated` badge, and offers a *What changes
+   this* panel. With no damper data the card is `missing` and keeps the panel; no estimate is
+   manufactured from a spring rate.
+8. ~~Three tabs or four?~~ **Decided: three** (D-01, 30 Oct 2026) — Garage · Compare · Learn. The
+   wireframes have been redrawn to three destinations; setup, analysis, chassis, sheets and export
+   are pushes inside the Garage branch.
 9. **Naming.** "Setup Lab" is a working title; the tab labels ("Garage", "Compare", "Learn")
    are chosen for shortness and should be re-tested with 5 club racers before they are frozen.

@@ -174,6 +174,9 @@ h2.sec{font-size:20px;line-height:26px;font-weight:500;letter-spacing:-.1px}
 .note{margin:12px 20px 20px;font-size:10.5px;line-height:15px;color:var(--on-surface-var);display:flex;gap:8px}
 .note .ring{margin-top:3px;flex:0 0 auto}
 
+
+.nvring{display:inline-block;width:7px;height:7px;border-radius:50%;border:1.2px solid var(--outline);vertical-align:2px;margin-left:3px;position:relative}
+.nvring::after{content:"";position:absolute;left:-1px;top:2.4px;width:8px;height:1px;background:var(--outline);transform:rotate(45deg)}
 </style>
 </head>
 <body>
@@ -205,7 +208,7 @@ h2.sec{font-size:20px;line-height:26px;font-weight:500;letter-spacing:-.1px}
 </header>
 <div class="frametag" role="note"><b>Example data</b><span>a synthetic sheet, printed to show where the validity state sits — not a real export</span></div>
 <div class="head">
-  <h1>Setup sheet</h1>
+  <h1>The printed page</h1>
   <div class="meta"><span>A4 portrait · 1 page</span><span class="sep"></span><span>what a printed sheet carries</span></div>
 </div>
 
@@ -238,6 +241,8 @@ h2.sec{font-size:20px;line-height:26px;font-weight:500;letter-spacing:-.1px}
   <div class="shgrp">Dampers</div>
   <div class="shrow"><span class="l">Oil, front / rear</span><span class="v">350 / 400 cSt<span class="ring"></span></span></div>
   <div class="shrow"><span class="l">Piston holes, front / rear</span><span class="v">2 / 2<span class="ring"></span></span></div>
+  <div class="shrow"><span class="l">Damping ratio ζ · 5 mm/s</span><span class="v">~0.42 ±0.06 <span style="font-size:9px;color:var(--on-surface-var)">inferred</span><span class="nvring"></span></span></div>
+  <div class="shrow"><span class="l">Damping ratio ζ · 300 mm/s</span><span class="v">~0.26 ±0.04 <span style="font-size:9px;color:var(--on-surface-var)">inferred</span><span class="nvring"></span></span></div>
 
   <div class="shgrp">Computed</div>
   <div class="shrow"><span class="l">Roll centre, front / rear</span><span class="v">22 / 31 mm<span class="ring"></span></span></div>
@@ -248,6 +253,7 @@ h2.sec{font-size:20px;line-height:26px;font-weight:500;letter-spacing:-.1px}
     <span class="vtag ok vv"><svg><use href="#i-check"/></svg>validated · bench</span>
     <p class="vu"><b>Computed, not yet validated.</b> Every number above was computed by Setup Lab 0.1 from this car's model and the published equations. None has been checked against a bench measurement, so no figure here is evidence — the second digit is arithmetic and the third is decoration.</p>
     <p class="vv"><b>Validated against a bench measurement.</b> Every output above carries a passing bench case: roll centre ±0.4 mm, camber gain ±0.06 °/10, wheel rate ±3% against a measured corner. Evidence and date are recorded per output in the app.</p>
+    <div class="counts">ζ above is <b>inferred, not a measured quantity</b> — it cannot be validated, and the band moves with the damper model's assumptions.</div>
     <div class="counts">Inputs · <b>32 measured</b> · 2 estimated (front ride height ±0.12 °/10; rear spring rate, no tolerance recorded) · 2 inherited from Mugen MTC2 template v2</div>
     <div class="gen">Generated 30 Oct 2026 · app 0.1 · schema 1 · sheet hash 4f2a…c91 · a record of what was run, not a validation certificate</div>
   </div>

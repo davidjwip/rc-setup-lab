@@ -23,17 +23,51 @@ empty cell is a design hole.
 | **error** | A load, parse, save or compute failure with a stated recovery |
 | **offline** | Network needed and absent — always informational, never blocking, and absent from every screen that has no network need |
 
-### 0.2 The value badge
+### 0.2 The value badge — five variants
 
-One component renders every number in the app, in four variants. This is the mechanism that
-keeps "we can't compute this" honest.
+One component renders every number in the app, in five variants. The badge says **where the
+number came from**; it does not say whether anyone has checked it. That is the validation state
+(§0.2.1), and the two are set together on every surface.
 
 | Variant | Look | Used when | Tappable |
 |---|---|---|---|
-| `computed` | Solid value + unit | All inputs measured or library-sourced | → property detail / field detail |
-| `estimated` | `~` prefix, dotted underline | Any input is `estimated` | same, plus "why is this approximate" |
+| `computed` | Solid value + unit | every input present and measured **on this car** | → property detail / field detail |
+| `estimated` | `~` prefix, dotted underline, stored tolerance if there is one | at least one input is an estimate | same, plus "why is this approximate" |
+| `inherited` | `↳` prefix in `secondary`, dotted underline, source named | at least one input came from another car's model, a template, or another user's sheet | → the source car or sheet |
 | `missing` | No numeral; `Not computable yet` + first missing input | `MissingInputs` | → the measure task for that input |
 | `undefined` | No numeral; `Undefined for this geometry` | `UndefinedGeometry` | → the two fields involved + what to check |
+
+**Precedence** when several apply: `missing`/`undefined` → `estimated` → `inherited` → `computed`.
+The most cautious provenance wins the badge; the provenance line beneath names every contributing
+source, so the ranking hides nothing.
+
+**Tolerance is data, not a default.** An estimated value prints the tolerance only if the source
+record carries one (`~2.8 lb/in ±0.2`); otherwise it prints the `~` and nothing else. There is no
+blanket ±15% — see `design-system.md` §9. A derived band (chassis torsion, damping ratio) is
+stated in the provenance line as the model's own range, never as a ± invented by the UI.
+
+**`inherited` is not `computed`.** A template or library value is another car's measurement; it is
+never a solid numeral, and its source is named on the row ("Inherited · Mugen MTC2 template v2",
+"Inherited · Dan's sheet (S02)").
+
+### 0.2.1 The validation state (D-11)
+
+Every number carries a second, independent mark: a hollow ring (computed, not yet validated) or a
+filled ring (validated against a bench measurement). v1 ships entirely in the first state.
+
+| State | Marker | Short copy | Full copy |
+|---|---|---|---|
+| `unvalidated` | hollow 7 px ring after the unit | `computed, not yet validated` | **Computed, not yet validated.** Every number here was computed from your model and the published equations; none has been checked against a bench measurement yet. |
+| `validated` | filled 7 px ring | `validated · bench` | **Validated against a bench measurement** — roll centre within 0.4 mm over five heights, 12 Mar 2026. |
+| `not_validatable` | ring with a diagonal | `inferred · not a measured quantity` | **This is an inference, so there is nothing to validate against** — the band shows how much it moves, and the route is named. Applies to damping ratio (E3.6c) and to nothing else that carries a value. |
+
+Where the words appear, per surface: Analysis card (ring per value, one strip under the header),
+property detail (a block under the value), compare row (ring per cell, one footnote under the
+table), maths panel (a footer inside the panel), sheet diff (one statement above the tier panel),
+and the export/setup sheet (ring per value plus a foot block with provenance counts, app version
+and date). Degradation swaps the marker, the chip and the sentence in place — the layout does not
+move, so old exports stay comparable. Evidence is per output **per model version**: when the model
+changes, a validated output returns to `unvalidated` with *Not yet re-validated for model 0.2*.
 
 ### 0.3 Delta chips
 
@@ -47,10 +81,25 @@ where the vocabulary differs, resolved once so an implementer does not have to c
 
 | Topic | Spec | On screen |
 |---|---|---|
-| Provenance | `measured`, `unknown`, `estimated`, `manufacturer`, `third_party`, field-absent | Badges read **measured**, **from template**, **approximate**, **not measured**. `from template` covers both `manufacturer` and `third_party`; the badge's detail line names which. |
+| Provenance | Eight source `type`s (`measured`, `estimated`, `manufacturer`, `third_party`, `library`, `derived`, `inferred`, `unattributed`) plus `unknown` | **Five badges.** The mapping below is the contract; the badge is a rendering of the source type, and the detail line always names the source. |
 | Camber gain units | deg/deg | Headline reads **deg per 10 mm bump** (what a racer measures with a setup station); the detail shows deg/deg, and the two are the same curve. |
 | Bump steer units | deg/mm | Headline reads **mm of toe per 10 mm bump**; the detail shows deg/mm. |
 | Outputs without a card | motion ratio, ride frequency, roll-centre migration, camber-at-roll, toe-at-roll, Ackermann | All exist as drill-downs inside cards 3–6. None becomes an eighth card. |
+
+**Source type → badge** (`spec.md` §4.1.4 → §0.2). Every type except `measured` is a visible downgrade,
+because the badge is the only place a user can see that a number is not theirs:
+
+| Spec source `type` | Badge | What the detail line says |
+|---|---|---|
+| `measured` | `computed` | the tool and the date ("calipers, 12 Aug") |
+| `derived` | `computed` | "computed from your measured values" — but precedence applies: if any input is estimated or inherited, the badge is that input's |
+| `estimated` | `estimated` | `by` and the stored `tolerance_pct` if present, else the `~` alone |
+| `inferred` | `estimated` **+ route chip** | the method ("derived · two-hang plumb-line" / "derived · component masses"), the band, and what it makes uncertain. The route chip is mandatory: an inferred value must never look like a user's guess |
+| `manufacturer` | `inherited` | the manual or drawing (`ref`) |
+| `third_party` | `inherited` | who supplied it (`by`) |
+| `library` | `inherited` | the model and field it was copied from (`ref`) |
+| `unattributed` | `missing` | "origin not recorded — a file defect"; counts as unmeasured |
+| `unknown` | `missing` | the measure task for that field |
 
 ### 0.5 Route → screen map
 
@@ -66,6 +115,11 @@ where the vocabulary differs, resolved once so an implementer does not have to c
 | `/car/:carId/geometry/wizard/:groupId` | Measure group | Garage |
 | `/car/:carId/geometry/wizard/:groupId/:fieldId` | Measure field | Garage |
 | `/car/:carId/geometry/field/:fieldId` | Field detail | Garage |
+| `/car/:carId/chassis` | Chassis card (material, thickness, torsion) | Garage |
+| `/car/:carId/mass` | Mass & CG card (derivation route) | Garage |
+| `/car/:carId/sheets` | Setup-sheet library | Garage |
+| `/car/:carId/sheets/diff?a=&b=` | Sheet diff + interpreter | Garage |
+| `/car/:carId/setup/:setupId/export` | Exported setup sheet | Garage |
 | `/car/:carId/setups` | Setup list | Garage |
 | `/car/:carId/setups/new` | New setup | Garage |
 | `/car/:carId/setup/:setupId` | Setup values | Garage |
@@ -79,7 +133,7 @@ where the vocabulary differs, resolved once so an implementer does not have to c
 | `/settings` | Settings | shell-less |
 | `/settings/units` | Units | shell-less |
 | `/settings/data` | Data & backup | shell-less |
-| `/settings/library` | Library | shell-less |
+| `/settings/library` | Template library | shell-less |
 
 Sheets, not screens: Why, Export, Version history, Unit picker, Lateral-g picker, Field
 explainer (inline in the wizard).
@@ -347,8 +401,10 @@ tyre) · baseline flag · changes vs baseline count ("4 changes") · draft dot �
 ("all 7 cards" / "5 of 7 — geometry incomplete" / "1 undefined").
 
 **States.**
-- **empty** — "No setups yet. A setup records what you ran, not what you measured." Primary
-  *Create your first setup*; secondary *Copy from template defaults*.
+- **empty** — "No sheets yet. A sheet records what you ran, not what you measured." Primary
+  *New sheet*; secondary *Copy from another car's sheet…* (an explicit act, with the copied values
+  marked `inherited` and the source named). There is no "template defaults" for a setup: a setup
+  has no defaults.
 - **partial** — rows exist; some carry a draft dot or an incomplete-analysis chip.
 - **complete** — normal list, baseline pinned to the top under a "Baseline" header.
 - **undefined-geometry** — rows show "1 undefined" chip; opening the setup lands on a card in
@@ -362,15 +418,22 @@ tyre) · baseline flag · changes vs baseline count ("4 changes") · draft dot �
 
 ## 12. New setup — `/car/:carId/setups/new`
 
-**Purpose.** Create a setup fast, usually by copying.
+**Purpose.** Create a sheet fast, usually by copying.
 **Primary.** *Create*.
-**Secondary.** *Copy from* (any existing setup, or template defaults) · *Start blank* · *Name
-from track* (pre-fills name and conditions from the last-used track name).
+**Secondary.** *Copy from* (any existing sheet, any car) · *Name from track* (pre-fills name and
+conditions from the last-used track name).
 
-**Data.** Name (pre-filled "S05"); copy source picker showing the last three setups with their
-conditions; conditions block (track, air temp, track temp, tyre) pre-filled from the copied
-source and clearly marked as "copied — update if different"; a preview of which analysis cards
-will be computable.
+**There is no template default.** A new sheet starts **empty**: every row reads *not set* and the
+analysis reads *0 of 7 computed*, each card naming its first missing value. Copying is an explicit
+choice and every copied value is marked `inherited` with the source sheet named. The old behaviour
+— "created from template defaults: every row has a value" — is exactly what E1/E2.4 forbid: it put
+someone else's spring rates on a measured car and computed confidently from them.
+
+**Data.** Name (pre-filled "S05"); optional copy-source picker showing the last three sheets with
+their conditions; conditions block — **all optional** — surface (carpet / asphalt / other), air
+temperature, humidity, plus free text for tyres and motor; values copied from a source are marked
+`inherited` and never pre-filled from a template; a preview of which analysis cards will be
+computable (0 of 7 on a blank sheet).
 
 **States.** empty (no name) · partial (copied values marked as inherited) · complete · 
 undefined-geometry (banner: "Geometry is incomplete — this setup's analysis will show 3 cards
@@ -392,8 +455,9 @@ field explainer; inherited rows marked "from car ›"; a sticky draft bar when d
 Discard · Save as v2").
 
 **States.**
-- **empty** — new setup created from template defaults: every row has a value; if a value is
-  genuinely unset it reads "not set" and the affected card is named.
+- **empty** — a new sheet: every row reads *not set*, sections show "none set", and the analysis
+  segment reads **0 of 7 computed**. Two actions only: *Copy from a sheet…* and *Set values by
+  hand*. Nothing is pre-filled, and no number is invented to make the screen look complete.
 - **partial** — some rows unset or unknown → inline note at the affected section: "Wheel rate
   can't be computed — front spring rate not set."
 - **complete** — all values set.
@@ -416,9 +480,27 @@ exists.
 **Secondary.** Per card: `?` → Why sheet, tap → property detail; header: *Lateral g* picker
 (default 1.0 g) · *Baseline* chip/menu · overflow: export sheet, copy diagnostics.
 
-**Data.** Header: setup name, baseline comparison target ("vs S01 baseline"), any confidence
-chip ("2 estimated inputs"), and the analysis-health line when incomplete ("4 of 7 computed").
-Seven cards, each: property name, front value, rear value, delta chip, `?`.
+**Data.** Header: setup name, baseline comparison target ("vs S01 baseline"), any provenance chip
+("2 estimated · 1 inherited"), and the analysis-health line when incomplete ("4 of 7 computed").
+Directly under it, the **validation strip**: `computed, not yet validated` plus `0 of 7
+bench-checked` and one sentence; it is stated once per screen, and each value carries its ring.
+Seven cards, each: property name, front value, rear value, its own delta chip, front and rear
+validation rings, `?`.
+
+The **damping-ratio card is an estimate, and the trend is the product** (D-13, E3.6): it leads with
+the signed direction *and* magnitude of the change (`▲ Rear oil 350 → 400 cSt: more damping at the
+wheel, ζ +0.04`), then `~0.42 ±0.06` with the `estimated` badge and the `not_validatable` ring (ζ is
+never `validated`, E3.6c), then a *What changes this* panel (oil viscosity, piston holes, spring
+rate, shock angle). Values are **per corner at two shaft speeds** (5 and 300 mm/s); the card's
+front/rear columns show low speed and a segmented control switches both. The band is re-derived by
+re-running ζ with each estimated input at its tolerance ends, is never constant, and is printed
+wherever ζ is — card, compare, detail and export. With any of the six damper inputs absent, ζ is
+`missing` naming that input, with no number, band or dash; the panel stays open.
+
+The **load-transfer card carries the CG-height caveat**: h is inferred (plumb-line or component
+estimate, both `estimated`; another car's value is `inherited` — never `computed`), and the card
+says which of its numbers move with it. Total transfer and roll angle are uncertain (±14.5% over
+h = 24–32 mm); the front/rear **share** is robust (±0.13).
 
 | Card | Headline numbers | Inside the detail |
 |---|---|---|
@@ -461,7 +543,9 @@ Seven cards, each: property name, front value, rear value, delta chip, `?`.
 *Compare* (opens the same property in comparison mode) · *Show inputs* (the fields used, with
 provenance) · *Read the concept*.
 
-**Data.** Property name and the current value(s); a chart over bump travel (roll centre,
+**Data.** Property name and the current value(s); a **validity block** directly under the value —
+state chip (`computed, not yet validated`), one sentence, *What would validate this ›*, and, once
+evidence exists, the evidence line and date; a chart over bump travel (roll centre,
 camber gain, bump steer, wheel rate) or over lateral g (load transfer, roll stiffness, roll
 angle), with the measured-range boundary drawn and the beyond-range segment dashed; a table of
 values at 0, 2, 5, 10 mm (or 0.5, 1.0, 1.5 g); the equation; the **input sensitivity ranking**
@@ -484,11 +568,15 @@ fallback, *Copy diagnostics*) · offline n/a.
 **Secondary.** Tap a slot → picker · *Set B as baseline* · *Save as note* · *Export sheet* ·
 *Show unchanged*.
 
-**Data.** Two slot cards (car, setup, version, date, conditions); a conditions-difference
+**Data.** Two slot cards (car, sheet, version, date, optional conditions); a conditions-difference
 warning when track/temp/tyre differ; sections in fixed order: **Consequences** (7 properties,
 delta only), **What you changed** (inputs that differ, grouped by subsystem), **Unchanged**
-(collapsed count), **Conditions**. Each consequence row: A value · B value · delta · one-line
-mechanical effect. Each change row: label · A · B · delta in the unit the racer thinks in
+(collapsed count), **Conditions**. Consequences lead (D-03); the change list is one tap away,
+directly under the header, not one scroll away. Each consequence row: A value · B value ·
+**its own** delta chip · ring on each cell · one-line mechanical effect. The damping row prints ζ with
+its band and its `not_validatable` state in both cells, because E3.6b requires the band wherever ζ is. An `inherited` badge
+appears on any row fed by an imported sheet, naming it. One footnote under the table carries the
+validation statement for every cell. Each change row: label · A · B · delta in the unit the racer thinks in
 ("+1.0 mm shim" not "+1.0 mm y").
 
 **States.**
@@ -621,7 +709,7 @@ failure → path tried, and a retry) · offline n/a (file export is local).
 
 ---
 
-## 24. Library — `/settings/library`
+## 24. Template library — `/settings/library`
 
 **Purpose.** Template chassis models and concept-pack versions.
 **Data.** Installed packs (name, version, source, field count, date); available updates; each
@@ -633,7 +721,141 @@ empty (no templates installed → "Restore built-in templates").
 
 ---
 
-## 25. Sheets and shared components
+## 25. Chassis card — `/car/:carId/chassis`
+
+**Purpose.** Record the plate: material, thickness, and torsion if the user has bench-tested it.
+**Primary.** *Save*.
+**Secondary.** *Bench-test torsion* (the procedure, with a tolerance) · *Use an estimate* ·
+*See what this changed*.
+
+**Data.** Material chips (carbon / aluminium / steel) · thickness (caliper, `K · 2.0`) ·
+**measured torsion** (optional, empty by default, N·m/deg) · estimated torsion (shown only while
+measured is empty) · **What the plate changed**: roll-centre height (*unchanged — fixed by
+hardpoints*), ride height (thicker plate lifts the car unless a shim comes out), mass, CG height,
+front share of roll stiffness. Each row: direction, number, validation ring.
+
+**States.**
+- **empty** — nothing entered: the estimate runs from material + thickness alone, marked
+  `estimated`, and the changed-quantities block is still shown with its defaults named.
+- **partial** — material set, thickness absent → estimate `missing`, changed block says which row
+  cannot be computed and why.
+- **complete** — thickness present (measurement or estimate), all five rows populated.
+- **undefined-geometry** — n/a: the chassis never makes a geometry quantity undefined.
+- **error** — save failed, retry inline. **offline** — n/a.
+
+**Notes.** Material and thickness are **not** allowed to claim a roll-centre change; the card
+states the correction in the row itself, because that is the misconception the feature invites.
+A measured torsion replaces the estimate entirely — no greyed "for reference" row beside it.
+
+---
+
+## 26. Mass & CG — `/car/:carId/mass`
+
+**Purpose.** Record masses, and record **how** the CG height was obtained.
+**Primary.** *Save*.
+**Secondary.** *Plumb-line procedure* · *Component estimate* · *Use another car's value*.
+
+**Data.** Corner and total mass; **CG height with its derivation route**: `plumb-line` (four corner
+weights at two ride heights — a measurement of h), `component estimate` (massed parts and their
+heights — an inference, band shown), or `inherited` (another car's value, source named). Then two
+columns: **what this makes uncertain** (total load transfer, roll angle) and **what it leaves
+alone** (the front/rear balance split — ±0.13 over h = 24–32 mm).
+
+**States.** empty (no mass data → load transfer `missing`) · partial (masses but no h route →
+h `missing`, not guessed) · complete · undefined-geometry n/a · error (save failed) · offline n/a.
+
+**Notes.** CG height **never carries `computed`** and the screen offers no "import from scales".
+Corner scales weigh the car; they cannot locate its centre of gravity. The old spec example that
+named corner scales as the source is the defect this screen exists to prevent.
+
+---
+
+## 27. Setup-sheet library — `/car/:carId/sheets`
+
+**Purpose.** The car's memory: every sheet, in order, with the conditions it was run in.
+**Primary.** Open a sheet; *Compare two* → sheet diff.
+**Secondary.** *New sheet* · *Import a sheet* · *Set as baseline* · *Duplicate* · *Export* ·
+filter by surface.
+
+**Data per row.** Date and time (fixed column) · name · chips (`baseline`, `draft`) · the user's
+note (two lines max, the app's only truncated prose) · **optional conditions**: surface
+(carpet / asphalt / other), temperature, humidity, free text for tyres and motor · changes vs the
+previous sheet · how many values are set · analysis health. An imported sheet carries `inherited`
+and the source name.
+
+**States.**
+- **empty** — "No sheets yet. A sheet is a snapshot of what you ran: the values, an optional note
+  on surface, temperature, humidity, tyres and motor, and words you will still understand next
+  season." Primary *New sheet*; secondary *Copy from another car's sheet…*.
+- **partial** — sheets exist, some with no conditions recorded (row says so plainly).
+- **complete** — the normal list, baseline pinned.
+- **undefined-geometry** — rows carry "1 undefined"; opening lands on that card.
+- **error** — one sheet unreadable: "This sheet couldn't be opened" + *Export raw* / *Remove*.
+- **offline** — export still works; sharing disabled with the reason.
+
+---
+
+## 28. Sheet diff + interpreter — `/car/:carId/sheets/diff?a=&b=`
+
+**Purpose.** What changed between any two sheets, and what the physics can defend about it.
+**Primary.** *Open B* · *Apply B to car*.
+**Secondary.** Change either slot · *Export this diff* · filter to changed values · *Read the
+concept*.
+
+**Data.** Slot cards A and B (sheet, date, conditions). A **conditions table** — surface,
+temperature, humidity, tyres/motor — with match/differ marks per field, then a banner:
+*Comparable*, or **Different conditions — not like-for-like** naming which fields differ, or
+**No conditions recorded — this diff cannot say whether it is like-for-like**.
+
+Then **What this did**, the tiered interpreter (`interpreter.md` is normative for the rules):
+
+| Tier | Backing | Wording contract |
+|---|---|---|
+| **Firm** | v1 physics — geometry, rates, stiffness split, arithmetic | direction and magnitude, with validation rings |
+| **Inferred** | steady-state reasoning from the firm rows | must contain **all else equal**, plus *Reverses if* and *What it does not claim* |
+| **Speculative** | needs a transient model or a measurement the app lacks | names the question and refuses it: `not answered` |
+
+**Grip is never measured or computed.** A grip sentence renders as an inference strip — hatched,
+dashed, no numeral, no unit, no badge, no ring — inside the Inferred tier, with one line naming
+what would make it a claim (tyre data or a measured test).
+
+Then **What you changed**, grouped Geometry / Springs & bars / Dampers / Alignment, changed rows
+only, `A → B`, `inherited` where a sheet was imported.
+
+**States.** complete (both sheets) · partial (one slot empty → *Pick a sheet*, no claims) ·
+identical sheets ("These two sheets are identical.", tiers suppressed) · different conditions
+(banner + Inferred tier dimmed + grip strip withdrawn) · undefined-geometry (a rule that depends
+on an undefined output is omitted, never softened) · error (a sheet fails to load) · offline n/a.
+
+**Notes.** Copy: understeer / oversteer, entry / mid / exit — never push / loose. A rule with no
+tier does not ship.
+
+---
+
+## 29. Exported setup sheet — `/car/:carId/setup/:setupId/export`
+
+**Purpose.** The page that leaves the phone, carrying its caveat with it.
+**Primary.** *Share PDF*.
+**Secondary.** *Copy text* · *Include notes* · *Include derived values* · paper size.
+
+**Data.** Car and sheet identity, date, conditions (as recorded) · the setup in sheet order, each
+value with its provenance badge and its validation ring (ζ prints with its band and
+`inferred · not a measured quantity`) · a **foot block**: the words *Computed,
+not yet validated* (or *Validated against a bench measurement* with the case), input-provenance
+counts (`32 measured · 2 estimated · 2 inherited`), app and schema version, sheet hash,
+generation date, and the line *a record of what was run, not a validation certificate*.
+
+**States.** complete · partial (some values not set → the sheet prints *not set*, never a default
+and never a blank cell) · undefined-geometry (the property is absent from the printed page with a
+named reason in the foot block) · error (PDF render failed → *Copy text* offered instead) ·
+offline (local file; sharing disabled with the reason).
+
+**Notes.** Degradation is a data change: when evidence exists the same slot prints `validated ·
+bench` and the evidence line; layout and column widths do not move.
+
+---
+
+## 30. Sheets and shared components
 
 | Component | Where | Contents |
 |---|---|---|
@@ -644,10 +866,15 @@ empty (no templates installed → "Restore built-in templates").
 | **Lateral-g picker** | Analysis header | 0.5 – 2.0 g in 0.1 steps, default 1.0, with "typical club racing cornering" hint |
 | **Field explainer** | Wizard, inline | The same concept text as the Learn entry, trimmed to the field, with a diagram |
 | **Notice banner** | Global | One line, dismissible, never modal; used for "car not found", "newer file version", "draft restored" |
+| **Provenance badge** | Every number | Five variants, §0.2. Inherited always names its source on the row |
+| **Validation ring + strip** | Every number | §0.2.1. Ring per value; the words once per surface; printed on every export |
+| **Tier panel** | Sheet diff | Firm / Inferred / Speculative, border style + word, never colour; `all else equal` mandatory on inferred claims |
+| **Grip inference strip** | Sheet diff, property detail | Hatched, dashed, no numeral, no badge — inference is not a value |
+| **Conditions table** | Sheets, sheet diff, export | Optional per sheet; match/differ per field; banner above any comparison claim |
 
 ---
 
-## 26. State matrix
+## 31. State matrix
 
 `●` primary state for that screen · `○` possible · `–` not applicable.
 
@@ -663,6 +890,11 @@ empty (no templates installed → "Restore built-in templates").
 | Measure group | ● | ● | ○ | ○ | ○ | – |
 | Measure field | ● | ○ | ● | ○ | ○ | – |
 | Field detail | ○ | ○ | ● | ○ | ○ | – |
+| Chassis card | ● | ○ | ● | – | ○ | – |
+| Mass & CG | ● | ○ | ● | – | ○ | – |
+| Setup sheet library | ● | ● | ● | ○ | ○ | ○ |
+| Sheet diff | ○ | ● | ● | ○ | ○ | – |
+| Exported sheet | – | ○ | ● | ○ | ○ | ○ |
 | Setup list | ● | ○ | ● | ○ | ○ | ○ |
 | New setup | ○ | ○ | ● | ○ | ○ | – |
 | Setup values | ○ | ○ | ● | ○ | ○ | ○ |
@@ -680,7 +912,7 @@ empty (no templates installed → "Restore built-in templates").
 
 ---
 
-## 27. Copy for the states that matter most
+## 32. Copy for the states that matter most
 
 Exact strings for the four situations the app must never paper over. Full deck in
 `glossary.md` §4.
@@ -690,7 +922,15 @@ Exact strings for the four situations the app must never paper over. Full deck i
 | Missing geometry | **Not computable yet** — Roll centre needs the front upper inner pivot height. `Add it ›` |
 | Missing setup value | **Not computable yet** — Wheel rate needs the front spring rate. `Add it ›` |
 | Degenerate geometry | **Undefined for this geometry** — The front upper and lower links are parallel in front view, so the instant centre is at infinity. `What to check ›` |
-| Estimated inputs | **Approximate** — 2 inputs are estimated (±15%). `See which ›` |
+| Estimated inputs | **Approximate** — 2 inputs are estimated. `See which ›` (each shows its own stored tolerance, or none) |
+| Inherited input | **Inherited** — this value uses the front upper inner pivot from *Mugen MTC2 template v2*, another car's measurement. `Measure mine ›` |
+| Not yet validated | **Computed, not yet validated** — every number here was computed from your model and the published equations; none has been checked against a bench measurement yet. |
+| Validated | **Validated against a bench measurement** — roll centre within 0.4 mm over five heights, 12 Mar 2026. |
+| Different conditions | **Different conditions — not like-for-like** — humidity 92% → 55% and a wet tyre to a dry one. The firm rows still hold; the balance inference and the grip strip do not. |
+| Conditions not recorded | **No conditions recorded** — this diff cannot say whether it is like-for-like. |
+| Grip inference | **Inference, not a value** — the load moved; what the tyre did with it is not modelled. |
+| Damping, no damper data | **Not computable yet** — damping ratio needs the shock's piston holes or a measured drop test. |
+| CG height, derived | **Derived, not measured** — component estimate, ±8 mm. Total transfer and roll angle move with it; the balance split does not. |
 | Beyond measured range | **Outside your measured range** — The solid line is within the travel you measured; the dashed line is an extrapolation. |
 | No baseline | **No baseline yet** — Mark a setup as baseline to see what changed. `Set baseline ›` |
 | Cross-car compare | **Different chassis geometry** — The deltas are real, but they are not like-for-like. |

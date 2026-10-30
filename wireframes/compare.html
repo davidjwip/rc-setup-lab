@@ -323,6 +323,11 @@ details.chg2[open] summary svg{transform:rotate(90deg)}
 details.chg2 ul{list-style:none;padding:0 0 10px}
 details.chg2 li{display:flex;justify-content:space-between;font-size:12.5px;line-height:19px;color:var(--on-surface-var);padding:3px 0}
 details.chg2 li b{color:var(--on-surface);font-weight:500;font-variant-numeric:tabular-nums}
+
+.bd{display:block;font-style:normal;font-size:9.5px;line-height:11px;color:var(--on-surface-var);font-weight:500;letter-spacing:0}
+
+.nvring{display:inline-block;width:7px;height:7px;border-radius:50%;border:1.2px solid var(--outline);vertical-align:2px;margin-left:3px;position:relative}
+.nvring::after{content:"";position:absolute;left:-1px;top:2.4px;width:8px;height:1px;background:var(--outline);transform:rotate(45deg)}
 </style>
 </head>
 <body class="">
@@ -372,21 +377,21 @@ details.chg2 li b{color:var(--on-surface);font-weight:500;font-variant-numeric:t
     <div class="badge"><span>A · baseline</span></div>
     <div>
       <div class="nm">Wed club</div>
-      <div class="mt">12 Aug · dry · 18 °C</div>
+      <div class="mt">12 Aug · asphalt · 18 °C</div>
     </div>
   </div>
   <div class="setup b" id="sb">
     <div class="badge"><span>B · working</span><span>unsaved</span></div>
     <div>
       <div class="nm">Softer front</div>
-      <div class="mt">12 Aug · dry · 18 °C</div>
+      <div class="mt">12 Aug · asphalt · 18 °C</div>
     </div>
   </div>
 </div>
 
 <div class="conseq">
   <span class="k">What this does</span>
-  <p>Two changes stiffen the front, one adds front camber. The result moves <b>1.5% of load transfer forward</b>, so the front tyres reach their limit earlier and the car pushes wide at steady state — understeer, mid-corner.</p>
+  <p>Two changes stiffen the front, one adds front camber. The result moves <b>1.5% of load transfer forward</b>, so the front tyres reach their limit earlier and the car understeers more mid-corner at steady state.</p>
   <div class="v"><span class="vtag"><svg><use href="#i-alert"/></svg>computed, not yet validated</span><span style="font-size:10.5px;color:var(--on-surface-var)">Both sheets · no bench check exists for these outputs</span></div>
 </div>
 
@@ -435,10 +440,10 @@ details.chg2 li b{color:var(--on-surface);font-weight:500;font-variant-numeric:t
     <span class="a num">0.62<span class="ring"></span></span>
     <span class="b num">0.62<span class="ring"></span></span>
     <span class="d num"></span>
-  </div>  <div class="tr changed" data-a="0.45" data-b="0.42" data-dec="2">
-    <span class="tl">Damping ratio<i>—</i></span>
-    <span class="a num">0.45<span class="ring"></span></span>
-    <span class="b num">0.42<span class="ring"></span></span>
+  </div>  <div class="tr changed" data-a="0.45" data-b="0.42" data-dec="2" data-pre="~" data-band-a="0.05" data-band-b="0.04">
+    <span class="tl">Damping ratio <span class="pbadge est">estimated</span><i>— · ▲ more rear oil → more damping · inferred, not validatable</i></span>
+    <span class="a num">0.45<i class="bd">±0.05</i><span class="nvring" title="Inferred — not a measured quantity"></span></span>
+    <span class="b num">0.42<i class="bd">±0.04</i><span class="nvring" title="Inferred — not a measured quantity"></span></span>
     <span class="d num"></span>
   </div>
   <h2>Whole car <span>per g</span></h2>
@@ -506,15 +511,21 @@ details.chg2 li b{color:var(--on-surface);font-weight:500;font-variant-numeric:t
   var rows=[].slice.call(document.querySelectorAll('.tr'));
   function paint(r){
     var a=parseFloat(r.dataset.a), b=parseFloat(r.dataset.b), dec=parseInt(r.dataset.dec,10);
-    // firstChild is the numeral text node; the validity ring span must survive repaint
-    r.querySelector('.a').firstChild.nodeValue=(a<0?'−':'')+Math.abs(a).toFixed(dec);
-    r.querySelector('.b').firstChild.nodeValue=(b<0?'−':'')+Math.abs(b).toFixed(dec);
+    // firstChild is the numeral text node; the ring and band spans must survive repaint
+    var pre=r.dataset.pre||'';
+    r.querySelector('.a').firstChild.nodeValue=pre+((a<0?'−':'')+Math.abs(a).toFixed(dec));
+    r.querySelector('.b').firstChild.nodeValue=pre+((b<0?'−':'')+Math.abs(b).toFixed(dec));
     var d=+(b-a).toFixed(dec), cell=r.querySelector('.d');
     if(Math.abs(d)<Math.pow(10,-dec)/2){
       cell.className='d num zero'; cell.textContent='—';
     } else {
       cell.className='d num '+(d>0?'up':'down');
       cell.innerHTML='<span class="arw">'+(d>0?'▲':'▼')+'</span>'+(d>0?'+':'−')+Math.abs(d).toFixed(dec);
+    }
+    if(r.dataset.bandA){
+      var ba=r.querySelector('.a .bd'), bb=r.querySelector('.b .bd');
+      if(ba) ba.textContent='±'+r.dataset.bandA;
+      if(bb) bb.textContent='±'+r.dataset.bandB;
     }
     r.classList.toggle('changed', Math.abs(d)>=Math.pow(10,-dec)/2);
   }
@@ -534,7 +545,9 @@ details.chg2 li b{color:var(--on-surface);font-weight:500;font-variant-numeric:t
   filt.addEventListener('click',function(){ onlyChanged=!onlyChanged; applyFilter(); });
 
   document.getElementById('swapBtn').addEventListener('click',function(){
-    rows.forEach(function(r){ var t=r.dataset.a; r.dataset.a=r.dataset.b; r.dataset.b=t; paint(r); });
+    rows.forEach(function(r){ var t=r.dataset.a; r.dataset.a=r.dataset.b; r.dataset.b=t;
+      if(r.dataset.bandA){ var t2=r.dataset.bandA; r.dataset.bandA=r.dataset.bandB; r.dataset.bandB=t2; }
+      paint(r); });
     var A=document.getElementById('sa'), B=document.getElementById('sb');
     var an=A.querySelector('.nm').textContent, bn=B.querySelector('.nm').textContent;
     A.querySelector('.nm').textContent=bn; B.querySelector('.nm').textContent=an;
