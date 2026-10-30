@@ -198,7 +198,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 
 /* ---------- bottom nav ---------- */
 .navbar{
-  flex:0 0 auto;height:72px;display:grid;grid-template-columns:repeat(4,1fr);
+  flex:0 0 auto;height:72px;display:grid;grid-template-columns:repeat(3,1fr);
   border-top:1px solid var(--outline-var);
   background:var(--nav-bg);backdrop-filter:blur(14px);padding-bottom:0;
 }
@@ -306,6 +306,45 @@ details[open] .chev{transform:rotate(90deg)}
 .whybox p{font-size:11.5px;line-height:16px;color:var(--warn);margin:0}
 .device.st-missing .whybox.m,.device.st-undefined .whybox.u{display:block}
 .device.st-missing .eq.m-hide,.device.st-undefined .eq.u-hide{display:none}
+
+/* ---------- frame provenance + provenance/validity badges (R1 revision) ---------- */
+.frametag{display:flex;gap:8px;align-items:baseline;margin:2px 16px 10px;padding:6px 10px;border:1px dashed var(--outline-var);border-radius:8px;font-size:11px;line-height:15px;color:var(--on-surface-var);letter-spacing:.2px}
+.frametag b{font-size:10px;letter-spacing:.7px;text-transform:uppercase;color:var(--on-surface);font-weight:600;flex:0 0 auto}
+.pbadge{display:inline-flex;align-items:center;gap:4px;height:17px;padding:0 5px;border-radius:4px;font-size:9.5px;letter-spacing:.5px;text-transform:uppercase;font-weight:600;border:1px solid var(--outline-var);color:var(--on-surface-var);white-space:nowrap;vertical-align:middle}
+.pbadge.inh{color:var(--secondary);border-color:color-mix(in srgb,var(--secondary) 45%,transparent)}
+.pbadge.est{color:var(--on-surface);border-style:dashed}
+.pbadge.inh b{color:var(--secondary);font-weight:600;letter-spacing:.4px}
+.prov{font-size:10.5px;line-height:15px;color:var(--on-surface-var);letter-spacing:.1px;display:block;margin-top:3px}
+.prov i{font-style:normal;color:var(--secondary)}
+.prov .tilde{color:var(--on-surface)}
+.vtag{display:inline-flex;align-items:center;gap:5px;padding:1px 6px;border-radius:4px;font-size:10px;letter-spacing:.3px;font-weight:500;color:var(--warn);border:1px solid color-mix(in srgb,var(--warn) 40%,transparent);background:color-mix(in srgb,var(--warn) 8%,transparent);white-space:nowrap}
+.vtag.ok{color:var(--on-surface-var);border-color:var(--outline);background:transparent}
+.vtag svg{width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:2}
+
+/* ---------- validity + provenance (R1: D-11, P-02, E3) ---------- */
+.vnote{margin:0 16px 14px;padding:10px 12px;border-radius:10px;border:1px solid color-mix(in srgb,var(--warn) 32%,transparent);background:color-mix(in srgb,var(--warn) 7%,transparent)}
+.vnote .hd{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.vnote p{font-size:11.5px;line-height:16px;color:var(--on-surface-var);margin:6px 0 0}
+.vnote a{color:var(--primary);text-decoration:none;border-bottom:1px solid color-mix(in srgb,var(--primary) 45%,transparent)}
+.ring{display:inline-block;width:7px;height:7px;border-radius:50%;border:1.2px solid var(--warn);vertical-align:2px;margin-left:3px;opacity:.85}
+.ring.ok{border-color:var(--outline);background:var(--outline)}
+.vfoot{display:flex;gap:8px;align-items:flex-start;margin-top:10px;padding-top:8px;border-top:1px dashed var(--outline-var)}
+.vfoot span.t{font-size:10.5px;line-height:15px;color:var(--on-surface-var)}
+.vfoot span.t b{color:var(--on-surface);font-weight:500}
+.inhnum{color:var(--secondary)}
+
+.cgline{font-size:10.5px;line-height:15px;color:var(--on-surface-var);margin-top:8px;padding-top:8px;border-top:1px dashed var(--outline-var)}
+.cgline b{color:var(--on-surface);font-weight:500}
+.dir{display:flex;align-items:center;gap:6px;font-size:11.5px;line-height:16px;color:var(--on-surface);margin-top:4px}
+.dir .ar{color:var(--primary);font-size:11px}
+.levers{margin-top:10px;border:1px solid var(--outline-var);border-radius:10px;overflow:hidden}
+.levers summary{display:flex;align-items:center;gap:8px;min-height:40px;padding:0 12px;cursor:pointer;list-style:none;font-size:12px;font-weight:500}
+.levers summary::-webkit-details-marker{display:none}
+.levers summary .sp{flex:1}
+.levers summary svg{width:14px;height:14px;stroke:var(--on-surface-var);fill:none;stroke-width:1.8;transition:transform .2s}
+.levers[open] summary svg{transform:rotate(90deg)}
+.levers .lv{display:flex;justify-content:space-between;gap:10px;padding:7px 12px;border-top:1px solid var(--outline-var);font-size:11.5px;line-height:16px;color:var(--on-surface-var)}
+.levers .lv b{color:var(--on-surface);font-weight:500;white-space:nowrap}
 </style>
 </head>
 <body class="">
@@ -349,6 +388,7 @@ details[open] .chev{transform:rotate(90deg)}
   <button class="iconbtn" aria-label="More"><svg><use href="#i-more"/></svg></button>
 </header>
 
+<div class="frametag" role="note"><b>Example data</b><span>synthetic values in this frame, chosen so the equations check out — not a real car, not a measured sheet</span></div>
 <div class="banner" role="status">
   <svg><use href="#i-alert"/></svg>
   <div>
@@ -373,6 +413,11 @@ details[open] .chev{transform:rotate(90deg)}
   </div>
 </div>
 
+<div class="vnote" role="note">
+  <div class="hd"><span class="vtag"><svg><use href="#i-alert"/></svg>Computed, not yet validated</span><span class="vtag ok">0 of 7 bench-checked</span></div>
+  <p>These numbers come from your measurements and the published equations. None has been checked against a bench test yet, so every value carries a hollow ring <span class="ring"></span> until it has. <a href="learn.html">How a number gets validated →</a></p>
+</div>
+
 <div class="hero">
   <div class="top"><h2>Load transfer</h2><span class="tag">front share</span></div>
   <div class="nums">
@@ -382,7 +427,8 @@ details[open] .chev{transform:rotate(90deg)}
   </div>
   <div class="split" role="img" aria-label="57.5 percent of load transfer happens at the front axle"><span class="f" style="width:57.5%"></span><span class="r" style="flex:1"></span></div>
   <div class="foot"><span><b>+1.5</b> vs baseline</span><span>4.05 N total at 1.0 g</span></div>
-  <p class="why">More of the sideways load moves at the front, so the front tyres reach their limit first and the car pushes wide before the rear lets go.</p>
+  <p class="cgline"><span class="pbadge est">inferred</span> CG height 26 mm, component estimate ±8 mm. Total transfer and roll angle move with it; the <b>share</b> above does not — the review measured ±0.13 on the split over h = 24–32 mm against ±14.5% on total transfer.</p>
+  <p class="why">More of the sideways load moves at the front, so the front tyres reach their limit first and the car understeers mid-corner before the rear lets go.</p>
 </div>
 
 <div class="sec"><h2>Geometry</h2><span>front · rear</span></div>
@@ -393,13 +439,14 @@ details[open] .chev{transform:rotate(90deg)}
     <span class="pair">
       <span class="pcol can-fail">
         <span class="k">FRONT</span>
-        <span class="pv"><span class="n">22</span><span class="u">mm</span></span>
+        <span class="pv"><span class="n inhnum">↳22</span><span class="u">mm</span><span class="ring" title="Not yet validated"></span></span>
         <span class="vmiss">Not computable</span><span class="vundef">Undefined</span>
         <span class="delta up"><span class="arw">▲</span>+3</span>
+        <span class="pbadge inh">inherited</span>
       </span>
       <span class="pcol">
         <span class="k">REAR</span>
-        <span class="pv"><span class="n">31</span><span class="u">mm</span></span>
+        <span class="pv"><span class="n">31</span><span class="u">mm</span><span class="ring" title="Not yet validated"></span></span>
         
       </span>
     </span>
@@ -411,6 +458,8 @@ details[open] .chev{transform:rotate(90deg)}
      = (46.0 / 188.0) × 90.0
      = 22.0 mm</div>
     <p class="note">Migration over ±10 mm of travel is <b>+1.2 mm</b>: the roll centre drifts up as the car rolls. The rear sits 9 mm higher, which is why it carries less of the transfer.</p>
+    <p class="prov"><span class="pbadge inh">inherited</span> The front upper inner point is <i>12.5 · 40.0 · 56.0</i> from the <i>Mugen MTC2 template, v2</i> — another car's measurement, not yours. <a href="hardpoints.html" style="color:var(--primary);text-decoration:none;border-bottom:1px solid color-mix(in srgb,var(--primary) 45%,transparent)">Measure it instead →</a></p>
+    <div class="vfoot"><span class="vtag"><svg><use href="#i-alert"/></svg>not validated</span><span class="t"><b>Computed, not yet validated.</b> The equation is the published one and the inputs are yours; no bench case exists for this output yet. <a href="learn.html" style="color:var(--primary);text-decoration:none">How a number gets validated →</a></span></div>
   </div>
 </details>
 <details class="pc" data-card="camber">
@@ -419,14 +468,14 @@ details[open] .chev{transform:rotate(90deg)}
     <span class="pair">
       <span class="pcol">
         <span class="k">FRONT</span>
-        <span class="pv"><span class="n">3.95</span><span class="u">°/10</span></span>
-        
+        <span class="pv"><span class="n">~3.95</span><span class="u">°/10</span><span class="ring" title="Not yet validated"></span></span>
+        <span class="prov" style="margin-top:0"><span class="pbadge est">estimated</span> ±0.12 <span style="opacity:.8">stored tolerance</span></span>
         <span class="delta down"><span class="arw">▼</span>−0.20</span>
       </span>
       <span class="pcol">
         <span class="k">REAR</span>
-        <span class="pv"><span class="n">3.50</span><span class="u">°/10</span></span>
-        
+        <span class="pv"><span class="n">~3.50</span><span class="u">°/10</span><span class="ring" title="Not yet validated"></span></span>
+        <span class="prov" style="margin-top:0"><span class="pbadge est">estimated</span> <span style="opacity:.8">no tolerance recorded</span></span>
       </span>
     </span>
     <svg class="chev"><use href="#i-chev"/></svg>
@@ -439,6 +488,8 @@ details[open] .chev{transform:rotate(90deg)}
            = 3.95 ° per 10 mm
     also    = 0.62 ° per degree of roll</div>
     <p class="note">Inside this card: the curve over bump, and camber at 1 g of roll. More gain than this and the tyre spends the corner on its inside edge.</p>
+    <p class="prov"><span class="pbadge est">estimated</span> Ride height was marked approximate; the sheet stored ±0.12 °/10 for it, so the band is shown. The rear estimate stored no tolerance, so it gets the <b>~</b> and nothing else — the app never invents one.</p>
+    <div class="vfoot"><span class="vtag"><svg><use href="#i-alert"/></svg>not validated</span><span class="t"><b>Computed, not yet validated.</b> The equation is the published one and the inputs are yours; no bench case exists for this output yet. <a href="learn.html" style="color:var(--primary);text-decoration:none">How a number gets validated →</a></span></div>
   </div>
 </details>
 <details class="pc" data-card="bump">
@@ -447,13 +498,13 @@ details[open] .chev{transform:rotate(90deg)}
     <span class="pair">
       <span class="pcol can-fail">
         <span class="k">FRONT</span>
-        <span class="pv"><span class="n">0.09</span><span class="u">mm</span></span>
+        <span class="pv"><span class="n">0.09</span><span class="u">mm</span><span class="ring" title="Not yet validated"></span></span>
         <span class="vmiss">Not computable</span><span class="vundef">Undefined</span>
         <span class="delta up"><span class="arw">▲</span>+0.01</span>
       </span>
       <span class="pcol">
         <span class="k">REAR</span>
-        <span class="pv"><span class="n">0.04</span><span class="u">mm</span></span>
+        <span class="pv"><span class="n">0.04</span><span class="u">mm</span><span class="ring" title="Not yet validated"></span></span>
         
       </span>
     </span>
@@ -466,6 +517,7 @@ details[open] .chev{transform:rotate(90deg)}
     = 0.09 mm per 10 mm
     (0.08° of steer per 10 mm)</div>
     <p class="note">Toe change as the suspension moves. Past about 0.3 mm it starts to be felt as the car steering itself over bumps.</p>
+    <div class="vfoot"><span class="vtag"><svg><use href="#i-alert"/></svg>not validated</span><span class="t"><b>Computed, not yet validated.</b> The equation is the published one and the inputs are yours; no bench case exists for this output yet. <a href="learn.html" style="color:var(--primary);text-decoration:none">How a number gets validated →</a></span></div>
   </div>
 </details>
 <div class="sec"><h2>Rates</h2><span>at the wheel</span></div>
@@ -476,13 +528,13 @@ details[open] .chev{transform:rotate(90deg)}
     <span class="pair">
       <span class="pcol">
         <span class="k">FRONT</span>
-        <span class="pv"><span class="n">0.124</span><span class="u">N·m/°</span></span>
+        <span class="pv"><span class="n">0.124</span><span class="u">N·m/°</span><span class="ring" title="Not yet validated"></span></span>
         
         <span class="delta up"><span class="arw">▲</span>+0.006</span>
       </span>
       <span class="pcol">
         <span class="k">REAR</span>
-        <span class="pv"><span class="n">0.091</span><span class="u">N·m/°</span></span>
+        <span class="pv"><span class="n">0.091</span><span class="u">N·m/°</span><span class="ring" title="Not yet validated"></span></span>
         
       </span>
     </span>
@@ -495,6 +547,7 @@ K<sub>f</sub> = 7.08 N·m/rad = 0.124 N·m/deg
 K<sub>r</sub> = 5.23 N·m/rad = 0.091 N·m/deg
 roll = m·g·h / (K<sub>f</sub> + K<sub>r</sub>) = 3.4 °/g</div>
     <p class="note">Springs and bars together. The front/rear split is the load-transfer share above; the total sets how far the car rolls.</p>
+    <div class="vfoot"><span class="vtag"><svg><use href="#i-alert"/></svg>not validated</span><span class="t"><b>Computed, not yet validated.</b> The equation is the published one and the inputs are yours; no bench case exists for this output yet. <a href="learn.html" style="color:var(--primary);text-decoration:none">How a number gets validated →</a></span></div>
   </div>
 </details>
 <details class="pc" data-card="wheel">
@@ -503,13 +556,13 @@ roll = m·g·h / (K<sub>f</sub> + K<sub>r</sub>) = 3.4 °/g</div>
     <span class="pair">
       <span class="pcol">
         <span class="k">FRONT</span>
-        <span class="pv"><span class="n">1.08</span><span class="u">lb/in</span></span>
+        <span class="pv"><span class="n">1.08</span><span class="u">lb/in</span><span class="ring" title="Not yet validated"></span></span>
         
         <span class="delta up"><span class="arw">▲</span>+0.15</span>
       </span>
       <span class="pcol">
         <span class="k">REAR</span>
-        <span class="pv"><span class="n">0.98</span><span class="u">lb/in</span></span>
+        <span class="pv"><span class="n">0.98</span><span class="u">lb/in</span><span class="ring" title="Not yet validated"></span></span>
         <span class="delta up"><span class="arw">▲</span>+0.10</span>
       </span>
     </span>
@@ -522,38 +575,49 @@ roll = m·g·h / (K<sub>f</sub> + K<sub>r</sub>) = 3.4 °/g</div>
     = 0.19 N/mm
 MR = 62.0 / 100.0 = 0.62</div>
     <p class="note">The rate the tyre actually feels. Motion ratio, ride frequency and the wheel-rate curve live inside this card.</p>
+    <div class="vfoot"><span class="vtag"><svg><use href="#i-alert"/></svg>not validated</span><span class="t"><b>Computed, not yet validated.</b> The equation is the published one and the inputs are yours; no bench case exists for this output yet. <a href="learn.html" style="color:var(--primary);text-decoration:none">How a number gets validated →</a></span></div>
   </div>
 </details>
 <details class="pc" data-card="damp">
   <summary>
-    <span class="pl"><b>Damping ratio</b><span>ζ</span></span>
+    <span class="pl"><b>Damping ratio</b><span>ζ · estimated · heavier oil 350→400</span></span>
     <span class="pair">
       <span class="pcol">
         <span class="k">FRONT</span>
-        <span class="pv"><span class="n">0.42</span><span class="u"></span></span>
-        
+        <span class="pv"><span class="n">~0.42</span><span class="u">±0.06</span><span class="ring" title="Not yet validated"></span></span>
+        <span class="prov" style="margin-top:0"><span class="pbadge est">estimated</span></span>
         <span class="delta down"><span class="arw">▼</span>−0.03</span>
       </span>
       <span class="pcol">
         <span class="k">REAR</span>
-        <span class="pv"><span class="n">0.38</span><span class="u"></span></span>
-        
+        <span class="pv"><span class="n">~0.38</span><span class="u">±0.05</span><span class="ring" title="Not yet validated"></span></span>
+        <span class="prov" style="margin-top:0"><span class="pbadge est">estimated</span></span>
       </span>
     </span>
     <svg class="chev"><use href="#i-chev"/></svg>
   </summary>
   <div class="mb">
-    
+    <p class="dir"><span class="ar">▲</span><b>Heavier oil → more damping at the wheel</b><span style="color:var(--on-surface-var)">· rear 350 → 400 cSt</span></p>
+    <p class="dir"><span class="ar" style="color:var(--delta-down)">▼</span><b>Shock laid down → less wheel damping</b><span style="color:var(--on-surface-var)">· front, 12° from vertical</span></p>
     <div class="eq">ζ = c / (2 × √(k<sub>w</sub> · m))
   = 7.2 / (2 × √(189 × 0.385))
-  = 0.42</div>
-    <p class="note">0.3–0.5 is the usable band for a 1/10 car. Above 0.6 the car skips over bumps instead of following them.</p>
+  = 0.42   band 0.36 – 0.48 (damper model range)</div>
+    <p class="note" style="color:var(--on-surface-var)">With no damper data at all this card reads <b style="color:var(--warn);font-weight:500">Not computable yet</b>, keeps the “what changes this” panel, and manufactures nothing from the spring rate alone.</p>
+    <p class="note">The direction is trustworthy; the absolute value is not. 0.3–0.5 is the usable band for a 1/10 car, and the estimate sits inside it with a band almost as wide as the band itself — which is exactly why the sentence above leads.</p>
+    <details class="levers">
+      <summary><span>What changes this</span><span class="sp"></span><svg><use href="#i-chev"/></svg></summary>
+      <div class="lv"><span>Oil viscosity</span><b>heavier → more</b></div>
+      <div class="lv"><span>Piston holes</span><b>more → less low-speed</b></div>
+      <div class="lv"><span>Spring rate</span><b>stiffer → lower ζ</b></div>
+      <div class="lv"><span>Shock angle</span><b>more laid down → less</b></div>
+    </details>
+    <div class="vfoot"><span class="vtag"><svg><use href="#i-alert"/></svg>not validated</span><span class="t"><b>Computed, not yet validated.</b> The equation is the published one and the inputs are yours; no bench case exists for this output yet. <a href="learn.html" style="color:var(--primary);text-decoration:none">How a number gets validated →</a></span></div>
   </div>
 </details>
 <div style="height:26px"></div>
 
   </div>
-  <nav class="navbar" aria-label="Primary"><a href="garage.html"><svg><use href="#index-car"/></svg><span>Garage</span></a><a href="setup-editor.html" aria-current="page"><svg><use href="#i-sliders"/></svg><span>Setup</span></a><a href="compare.html"><svg><use href="#i-compare"/></svg><span>Compare</span></a><a href="learn.html"><svg><use href="#i-book"/></svg><span>Learn</span></a></nav>
+  <nav class="navbar" aria-label="Primary"><a href="garage.html" aria-current="page"><svg><use href="#index-car"/></svg><span>Garage</span></a><a href="compare.html"><svg><use href="#i-compare"/></svg><span>Compare</span></a><a href="learn.html"><svg><use href="#i-book"/></svg><span>Learn</span></a></nav>
   <div class="homebar" aria-hidden="true"></div>
 </main>
 <aside class="rail">

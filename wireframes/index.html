@@ -256,11 +256,11 @@ h1{font-size:34px;line-height:40px;font-weight:500;letter-spacing:-.8px}
 <div class="top">
   <div>
     <div class="kick">Setup Lab · visual design</div>
-    <h1>Six screens, one language</h1>
+    <h1>Nine screens, one language</h1>
   </div>
   <button class="tg" id="themeBtn">☀ Light</button>
 </div>
-<p class="lede">Static, offline HTML wireframes at 390×844. Each file is self-contained — no build step, no CDN, no web fonts. Press <b>T</b> in any screen to flip between the dark and light themes.</p>
+<p class="lede">Nine self-contained HTML wireframes at 390×844 — no build step, no CDN, no web fonts. Press <b>T</b> in any screen to flip between the dark and light themes. Every frame that shows a number is labelled <b>example data</b> inside the frame; no screen is a real car's output.</p>
 <div class="grid">
 <a class="card" href="garage.html">
       <span class="k">A</span>
@@ -298,6 +298,24 @@ h1{font-size:34px;line-height:40px;font-weight:500;letter-spacing:-.8px}
       <span class="sub">Roll centre and camber gain</span>
       <span class="desc">One concept, one diagram, the user's own number at the end.</span>
     </a>
+<a class="card" href="sheets.html">
+      <span class="k">G</span>
+      <b>Setup sheets</b>
+      <span class="sub">The library: every sheet, its conditions, its note</span>
+      <span class="desc">Any two sheets can be compared; imported sheets are marked inherited.</span>
+    </a>
+<a class="card" href="sheet-diff.html">
+      <span class="k">H</span>
+      <b>Sheet diff</b>
+      <span class="sub">What changed, and the tiered reading of what it did</span>
+      <span class="desc">Firm / Inferred / Speculative, each labelled, each with its limits.</span>
+    </a>
+<a class="card" href="export-sheet.html">
+      <span class="k">I</span>
+      <b>Exported sheet</b>
+      <span class="sub">The printed page, with its validity state</span>
+      <span class="desc">Provenance and validation travel off the phone with the numbers.</span>
+    </a>
 <a class="card" href="design-notes.html">
   <span class="k">+</span>
   <b>Tokens</b>
@@ -305,7 +323,7 @@ h1{font-size:34px;line-height:40px;font-weight:500;letter-spacing:-.8px}
   <span class="desc">The palette with computed contrast ratios, and the type and spacing scales the Flutter theme is built from.</span>
 </a>
 </div>
-<div class="foot"><b>Read me first:</b> these are wireframes, not production code. Values are illustrative and internally consistent — every equation on the Analysis and Learn screens evaluates to the number shown. The app's physics lives in a pure Dart package; nothing here is a model of record.</div>
+<div class="foot"><b>Read me first:</b> these are wireframes, not production code. Values are example data, chosen so the equations check out — every equation shown on Analysis, Learn and Sheet diff evaluates to the number beside it, and none is a real car's output. Each number carries two independent marks: a <b>provenance badge</b> (measured-computed, estimated, inherited) and a <b>validity state</b> (computed, not yet validated). The app's physics lives in a pure Dart package; nothing here is a model of record.</div>
 <script>
 (function(){
   var b=document.getElementById('themeBtn'), root=document.documentElement;

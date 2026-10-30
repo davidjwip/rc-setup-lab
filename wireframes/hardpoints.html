@@ -198,7 +198,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 
 /* ---------- bottom nav ---------- */
 .navbar{
-  flex:0 0 auto;height:72px;display:grid;grid-template-columns:repeat(4,1fr);
+  flex:0 0 auto;height:72px;display:grid;grid-template-columns:repeat(3,1fr);
   border-top:1px solid var(--outline-var);
   background:var(--nav-bg);backdrop-filter:blur(14px);padding-bottom:0;
 }
@@ -292,6 +292,48 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .mini svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.8}
 .footnote{margin:16px 20px 0;font-size:12px;line-height:18px;color:var(--on-surface-var)}
 .footnote b{color:var(--on-surface);font-weight:500}
+
+/* ---------- frame provenance + provenance/validity badges (R1 revision) ---------- */
+.frametag{display:flex;gap:8px;align-items:baseline;margin:2px 16px 10px;padding:6px 10px;border:1px dashed var(--outline-var);border-radius:8px;font-size:11px;line-height:15px;color:var(--on-surface-var);letter-spacing:.2px}
+.frametag b{font-size:10px;letter-spacing:.7px;text-transform:uppercase;color:var(--on-surface);font-weight:600;flex:0 0 auto}
+.pbadge{display:inline-flex;align-items:center;gap:4px;height:17px;padding:0 5px;border-radius:4px;font-size:9.5px;letter-spacing:.5px;text-transform:uppercase;font-weight:600;border:1px solid var(--outline-var);color:var(--on-surface-var);white-space:nowrap;vertical-align:middle}
+.pbadge.inh{color:var(--secondary);border-color:color-mix(in srgb,var(--secondary) 45%,transparent)}
+.pbadge.est{color:var(--on-surface);border-style:dashed}
+.pbadge.inh b{color:var(--secondary);font-weight:600;letter-spacing:.4px}
+.prov{font-size:10.5px;line-height:15px;color:var(--on-surface-var);letter-spacing:.1px;display:block;margin-top:3px}
+.prov i{font-style:normal;color:var(--secondary)}
+.prov .tilde{color:var(--on-surface)}
+.vtag{display:inline-flex;align-items:center;gap:5px;padding:1px 6px;border-radius:4px;font-size:10px;letter-spacing:.3px;font-weight:500;color:var(--warn);border:1px solid color-mix(in srgb,var(--warn) 40%,transparent);background:color-mix(in srgb,var(--warn) 8%,transparent);white-space:nowrap}
+.vtag.ok{color:var(--on-surface-var);border-color:var(--outline);background:transparent}
+.vtag svg{width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:2}
+
+/* ---------- provenance + chassis card (R1: E3, issue #11) ---------- */
+.ring{display:inline-block;width:7px;height:7px;border-radius:50%;border:1.2px solid var(--warn);vertical-align:2px;margin-left:3px;opacity:.85}
+.pbadge{display:inline-flex;align-items:center;gap:4px;height:17px;padding:0 5px;border-radius:4px;font-size:9.5px;letter-spacing:.5px;text-transform:uppercase;font-weight:600;border:1px solid var(--outline-var);color:var(--on-surface-var);white-space:nowrap;vertical-align:middle}
+.pbadge.inh{color:var(--secondary);border-color:color-mix(in srgb,var(--secondary) 45%,transparent)}
+.pbadge.est{color:var(--on-surface);border-style:dashed}
+.vtag{display:inline-flex;align-items:center;gap:5px;padding:1px 6px;border-radius:4px;font-size:10px;letter-spacing:.3px;font-weight:500;color:var(--warn);border:1px solid color-mix(in srgb,var(--warn) 40%,transparent);background:color-mix(in srgb,var(--warn) 8%,transparent);white-space:nowrap}
+.vtag ok,.vtag.ok{color:var(--on-surface-var);border-color:var(--outline);background:transparent}
+.vtag svg{width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:2}
+.prov{display:block;font-size:10.5px;line-height:15px;color:var(--on-surface-var);margin-top:4px;letter-spacing:.1px}
+.prov i{font-style:normal;color:var(--secondary)}
+.prov a{color:var(--primary);text-decoration:none;border-bottom:1px solid color-mix(in srgb,var(--primary) 45%,transparent)}
+.xcard{margin:0 16px 8px;background:var(--s-cont);border:1px solid var(--outline-var);border-radius:14px;padding:14px}
+.xcard h3{font-size:16px;line-height:22px;font-weight:500;letter-spacing:-.1px}
+.xcard .cap{font-size:11.5px;line-height:16px;color:var(--on-surface-var);margin-top:2px}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.ch{min-height:36px;padding:0 12px;border-radius:8px;border:1px solid var(--outline-var);font-size:12.5px;color:var(--on-surface-var);background:transparent}
+.ch[aria-pressed="true"]{background:var(--primary-container);border-color:transparent;color:var(--on-primary-container);font-weight:500}
+.krow{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:9px 0;border-top:1px solid var(--outline-var);margin-top:10px;font-size:12.5px;color:var(--on-surface-var)}
+.krow b{color:var(--on-surface);font-weight:500;font-variant-numeric:tabular-nums}
+.krow .lab{flex:1}
+.krow .lab i{display:block;font-style:normal;font-size:10.5px;line-height:14px;opacity:.85}
+.xh{font-size:10px;letter-spacing:.9px;text-transform:uppercase;color:var(--on-surface-var);font-weight:600;margin:14px 0 2px}
+
+.unit{font-size:11px;color:var(--on-surface-var);margin-left:2px;font-weight:500}
+.hp .nm .pbadge{display:inline-flex;font-size:9.5px;line-height:1;margin-left:2px}
+.hp .nm .prov{display:block;font-size:10.5px;line-height:15px;color:var(--on-surface-var);letter-spacing:0}
+.hp .nm .prov i{color:var(--secondary);font-style:normal}
 </style>
 </head>
 <body class="">
@@ -335,15 +377,16 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
   <button class="iconbtn" aria-label="More"><svg><use href="#i-more"/></svg></button>
 </header>
 
+<div class="frametag" role="note"><b>Example data</b><span>synthetic values in this frame, chosen so the equations check out — not a real car, not a measured sheet</span></div>
 <div class="progress">
   <div class="prow"><b>31 of 42 hardpoints</b><span>about 8 minutes left</span></div>
   <div class="pbar" role="progressbar" aria-valuenow="31" aria-valuemin="0" aria-valuemax="42" aria-label="31 of 42 hardpoints measured"><i style="width:73.8%"></i></div>
 </div>
 
-<div class="seg" role="tablist">
-  <button role="tab" aria-selected="true">Front</button>
-  <button role="tab" aria-selected="false">Rear</button>
-  <button role="tab" aria-selected="false">Chassis</button>
+<div class="seg" role="tablist" id="viewtabs">
+  <button role="tab" aria-selected="true" data-v="front">Front</button>
+  <button role="tab" aria-selected="false" data-v="rear">Rear</button>
+  <button role="tab" aria-selected="false" data-v="chassis">Chassis</button>
 </div>
 
 <div class="diagram">
@@ -392,8 +435,8 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
   <button class="sw" role="switch" aria-checked="true" aria-label="Mirror measurements to the right side"></button>
 </div>
 
-<div class="grp">
-  <h2><span>Front left</span><span>5 of 6 measured</span></h2>
+<div class="grp" id="grp-front">
+  <h2><span>Front left</span><span>4 measured · 1 inherited</span></h2>
 
   <div class="hp" data-hp="a">
     <button class="hrow" aria-expanded="false">
@@ -423,7 +466,8 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
   <div class="hp" data-hp="c">
     <button class="hrow" aria-expanded="false">
       <span class="dot">C</span>
-      <span class="nm"><b>Upper arm · inner</b><span>12.5 · 40.0 · 56.0</span></span>
+      <span class="nm"><b>Upper arm · inner <span class="pbadge inh">inherited</span></b><span>↳12.5 · 40.0 · 56.0</span>
+        <span class="prov">From <i>Mugen MTC2 template, v2</i> — another car's measurement. <a href="#">Measure mine</a></span></span>
       <svg class="chev"><use href="#i-chev"/></svg>
     </button>
   </div>
@@ -452,11 +496,59 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
     </button>
   </div>
 
-  <p class="footnote"><b>X</b> forward from the front axle, <b>Y</b> outboard from the centreline, <b>Z</b> up from the ground. Values are stored in millimetres and converted to SI inside the physics engine.</p>
+  
+<div class="grp" id="grp-chassis" hidden>
+  <h2><span>Chassis</span><span>plate, not hardpoints</span></h2>
+
+  <div class="xcard">
+    <h3>Chassis plate</h3>
+    <p class="cap">Material and thickness never move the roll centre — that is fixed by the hardpoints above. They move ride height, mass, CG height and torsional stiffness, and those move what you feel.</p>
+
+    <div class="chips" role="group" aria-label="Chassis material">
+      <button class="ch" aria-pressed="true">Carbon</button>
+      <button class="ch" aria-pressed="false">Aluminium</button>
+      <button class="ch" aria-pressed="false">Steel</button>
+    </div>
+
+    <div class="krow">
+      <span class="lab">Thickness<i>measured with a caliper at the battery slot</i></span>
+      <b>2.0 <span class="unit">mm</span></b>
+      <span class="ring" title="Not yet validated"></span>
+    </div>
+
+    <div class="krow">
+      <span class="lab">Measured torsion<i>clamp one end, load the other through a known lever · N·m/deg</i></span>
+      <b style="color:var(--warn)">not measured</b>
+    </div>
+    <p class="prov">Optional, and the only number here that is a measurement rather than an estimate. Leave it empty and the estimate below is used, marked. <a href="#">How to bench-test it →</a></p>
+
+    <div class="krow">
+      <span class="lab">Torsional stiffness<i>from CFRP G ≈ 27 GPa and the plate section: a range, not a value</i></span>
+      <b>~2.9 <span class="unit">N·m/°</span></b>
+      <span class="ring" title="Not yet validated"></span>
+      <span class="pbadge est">estimated</span>
+    </div>
+    <p class="prov">Estimated from material and section. A carbon plate's shear modulus depends on weave and layup, so this is a band, not a measurement. Enter a measured torsion and this row stops being an estimate.</p>
+  </div>
+
+  <div class="xcard">
+    <h3>What the plate changed</h3>
+    <p class="cap">The card, not the badge, is the claim: these are the quantities this input moved, and by how much.</p>
+    <div class="krow"><span class="lab">Roll centre height<i>geometry only — the plate cannot move it</i></span><b>unchanged</b></div>
+    <div class="krow"><span class="lab">Ride height<i>5.5 mm measured → 6.0 mm unless a shim comes out</i></span><b>+0.5 <span class="unit">mm</span></b><span class="ring" title="Not yet validated"></span></div>
+    <div class="krow"><span class="lab">Mass, this plate<i>CFRP 1.55 g/cm³ at 2.0 mm</i></span><b>+8 <span class="unit">g</span></b><span class="ring" title="Not yet validated"></span></div>
+    <div class="krow"><span class="lab">CG height<i>via the mass it adds above the floor</i></span><b>+0.3 <span class="unit">mm</span></b><span class="ring" title="Not yet validated"></span></div>
+    <div class="krow"><span class="lab">Front share of roll-stiffness<i>chassis in series with springs and bars</i></span><b>+0.6 <span class="unit">% front</span></b><span class="ring" title="Not yet validated"></span></div>
+    <div style="margin-top:12px"><span class="vtag"><svg><use href="#i-alert"/></svg>computed, not yet validated</span></div>
+    <p class="prov">All five rows follow from the plate and the hardpoints. None has been checked against a bench measurement of this car, so each carries the ring; the sheet you export carries the same words.</p>
+  </div>
+</div>
+
+<p class="footnote"><b>X</b> forward from the front axle, <b>Y</b> outboard from the centreline, <b>Z</b> up from the ground. Values are stored in millimetres and converted to SI inside the physics engine.</p>
 </div>
 
   </div>
-  <nav class="navbar" aria-label="Primary"><a href="garage.html" aria-current="page"><svg><use href="#index-car"/></svg><span>Garage</span></a><a href="setup-editor.html"><svg><use href="#i-sliders"/></svg><span>Setup</span></a><a href="compare.html"><svg><use href="#i-compare"/></svg><span>Compare</span></a><a href="learn.html"><svg><use href="#i-book"/></svg><span>Learn</span></a></nav>
+  <nav class="navbar" aria-label="Primary"><a href="garage.html" aria-current="page"><svg><use href="#index-car"/></svg><span>Garage</span></a><a href="compare.html"><svg><use href="#i-compare"/></svg><span>Compare</span></a><a href="learn.html"><svg><use href="#i-book"/></svg><span>Learn</span></a></nav>
   <div class="homebar" aria-hidden="true"></div>
 </main>
 <aside class="rail">
@@ -484,6 +576,20 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
   if(btn) btn.addEventListener('click',function(){ setTheme(root.getAttribute('data-theme')==='dark'?'light':'dark'); });
   window.addEventListener('keydown',function(e){ if(e.key==='t') setTheme(root.getAttribute('data-theme')==='dark'?'light':'dark'); });
   window.slSetTheme=setTheme;
+})();
+
+(function(){
+  var tabs=[].slice.call(document.querySelectorAll('#viewtabs button'));
+  var front=document.getElementById('grp-front'), chassis=document.getElementById('grp-chassis');
+  var diag=document.querySelector('.diagram'), mirror=document.querySelector('.mirror');
+  tabs.forEach(function(b){
+    b.addEventListener('click',function(){
+      tabs.forEach(function(x){x.setAttribute('aria-selected', x===b?'true':'false');});
+      var c = b.dataset.v==='chassis';
+      chassis.hidden=!c; front.hidden=c;
+      if(diag) diag.style.display=c?'none':''; if(mirror) mirror.style.display=c?'none':'';
+    });
+  });
 })();
 
 (function(){

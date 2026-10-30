@@ -198,7 +198,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 
 /* ---------- bottom nav ---------- */
 .navbar{
-  flex:0 0 auto;height:72px;display:grid;grid-template-columns:repeat(4,1fr);
+  flex:0 0 auto;height:72px;display:grid;grid-template-columns:repeat(3,1fr);
   border-top:1px solid var(--outline-var);
   background:var(--nav-bg);backdrop-filter:blur(14px);padding-bottom:0;
 }
@@ -272,6 +272,25 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .next .k{font-size:10.5px;letter-spacing:.9px;text-transform:uppercase;color:var(--on-surface-var);font-weight:600}
 .next b{display:block;font-size:17px;line-height:23px;font-weight:500;margin-top:6px;letter-spacing:-.2px}
 .next span{display:block;font-size:12.5px;line-height:18px;color:var(--on-surface-var);margin-top:4px}
+
+/* ---------- frame provenance + provenance/validity badges (R1 revision) ---------- */
+.frametag{display:flex;gap:8px;align-items:baseline;margin:2px 16px 10px;padding:6px 10px;border:1px dashed var(--outline-var);border-radius:8px;font-size:11px;line-height:15px;color:var(--on-surface-var);letter-spacing:.2px}
+.frametag b{font-size:10px;letter-spacing:.7px;text-transform:uppercase;color:var(--on-surface);font-weight:600;flex:0 0 auto}
+.pbadge{display:inline-flex;align-items:center;gap:4px;height:17px;padding:0 5px;border-radius:4px;font-size:9.5px;letter-spacing:.5px;text-transform:uppercase;font-weight:600;border:1px solid var(--outline-var);color:var(--on-surface-var);white-space:nowrap;vertical-align:middle}
+.pbadge.inh{color:var(--secondary);border-color:color-mix(in srgb,var(--secondary) 45%,transparent)}
+.pbadge.est{color:var(--on-surface);border-style:dashed}
+.pbadge.inh b{color:var(--secondary);font-weight:600;letter-spacing:.4px}
+.prov{font-size:10.5px;line-height:15px;color:var(--on-surface-var);letter-spacing:.1px;display:block;margin-top:3px}
+.prov i{font-style:normal;color:var(--secondary)}
+.prov .tilde{color:var(--on-surface)}
+.vtag{display:inline-flex;align-items:center;gap:5px;padding:1px 6px;border-radius:4px;font-size:10px;letter-spacing:.3px;font-weight:500;color:var(--warn);border:1px solid color-mix(in srgb,var(--warn) 40%,transparent);background:color-mix(in srgb,var(--warn) 8%,transparent);white-space:nowrap}
+.vtag.ok{color:var(--on-surface-var);border-color:var(--outline);background:transparent}
+.vtag svg{width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:2}
+
+.ring{display:inline-block;width:7px;height:7px;border-radius:50%;border:1.2px solid var(--warn);vertical-align:2px;margin-left:3px;opacity:.85}
+.vtag{display:inline-flex;align-items:center;gap:5px;padding:1px 6px;border-radius:4px;font-size:10px;letter-spacing:.3px;font-weight:500;color:var(--warn);border:1px solid color-mix(in srgb,var(--warn) 40%,transparent);background:color-mix(in srgb,var(--warn) 8%,transparent);white-space:nowrap}
+.vtag svg{width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:2}
+.callout .vline2{font-size:10.5px;line-height:15px;opacity:.85;margin:0 0 8px}
 </style>
 </head>
 <body class="">
@@ -315,6 +334,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
   <button class="iconbtn" aria-label="Saved articles"><svg><use href="#i-book"/></svg></button>
 </header>
 
+<div class="frametag" role="note"><b>Example data</b><span>synthetic values in this frame, chosen so the equations check out — not a real car, not a measured sheet</span></div>
 <article class="article">
   <div class="kicker">Suspension geometry · 4 min</div>
   <h1>Where the car actually rolls</h1>
@@ -390,7 +410,8 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 
   <div class="callout">
     <div class="k">On your car</div>
-    <p>Front roll centre is sitting at <b>22 mm</b>, three millimetres higher than the saved setup. The rear is at 31 mm, so the car will lean on the front tyre first.</p>
+    <p>Front roll centre is sitting at <b>22 mm<span class="ring" style="border-color:currentColor"></span></b>, three millimetres higher than the saved setup. The rear is at 31 mm, so the car will lean on the front tyre first.</p>
+    <p class="vline2"><span class="vtag" style="border-color:currentColor;background:transparent;color:inherit">computed, not yet validated</span> Your number, not a textbook example — and not yet checked against a bench measurement.</p>
     <a class="go" href="analysis.html">Open the numbers <svg><use href="#i-chev"/></svg></a>
   </div>
 
@@ -416,7 +437,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 <div style="height:20px"></div>
 
   </div>
-  <nav class="navbar" aria-label="Primary"><a href="garage.html"><svg><use href="#index-car"/></svg><span>Garage</span></a><a href="setup-editor.html"><svg><use href="#i-sliders"/></svg><span>Setup</span></a><a href="compare.html"><svg><use href="#i-compare"/></svg><span>Compare</span></a><a href="learn.html" aria-current="page"><svg><use href="#i-book"/></svg><span>Learn</span></a></nav>
+  <nav class="navbar" aria-label="Primary"><a href="garage.html"><svg><use href="#index-car"/></svg><span>Garage</span></a><a href="compare.html"><svg><use href="#i-compare"/></svg><span>Compare</span></a><a href="learn.html" aria-current="page"><svg><use href="#i-book"/></svg><span>Learn</span></a></nav>
   <div class="homebar" aria-hidden="true"></div>
 </main>
 <aside class="rail">

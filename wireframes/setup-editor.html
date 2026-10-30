@@ -290,6 +290,30 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:9px;bac
 .savebar .rev{min-height:48px;padding:0 4px;font-size:13px;font-weight:500;color:var(--on-surface-var)}
 .savebar .cnt{flex:1;font-size:12px;line-height:16px;letter-spacing:.2px;color:var(--on-surface-var);padding-left:10px}
 .savebar .cnt b{color:var(--on-surface);font-weight:500}
+
+/* ---------- empty-by-default + provenance (R1: E1, E3) ---------- */
+.ring{display:inline-block;width:7px;height:7px;border-radius:50%;border:1.2px solid var(--warn);vertical-align:2px;margin-left:3px;opacity:.85}
+.pbadge{display:inline-flex;align-items:center;gap:4px;height:17px;padding:0 5px;border-radius:4px;font-size:9.5px;letter-spacing:.5px;text-transform:uppercase;font-weight:600;border:1px solid var(--outline-var);color:var(--on-surface-var);white-space:nowrap;vertical-align:middle}
+.pbadge.inh{color:var(--secondary);border-color:color-mix(in srgb,var(--secondary) 45%,transparent)}
+.vnote{margin:10px 16px 0;padding:9px 12px;border-radius:10px;border:1px solid color-mix(in srgb,var(--warn) 30%,transparent);background:color-mix(in srgb,var(--warn) 6%,transparent);font-size:11px;line-height:16px;color:var(--on-surface-var)}
+.vnote b{color:var(--warn);font-weight:500}
+#p-empty{display:none}
+.device.st-empty #p-empty{display:block}
+.device.st-empty .panel,.device.st-empty .savebar{display:none!important}
+.device.st-empty .seg{opacity:.4;pointer-events:none}
+.emptyhead{padding:18px 16px 4px}
+.emptyhead h2{font-size:20px;line-height:26px;font-weight:500;letter-spacing:-.1px}
+.emptyhead p{font-size:13px;line-height:19px;color:var(--on-surface-var);margin-top:6px}
+.erow{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid var(--outline-var);font-size:13.5px}
+.erow:last-of-type{border-bottom:0}
+.erow .l{flex:1}
+.erow .l i{display:block;font-style:normal;font-size:10.5px;line-height:14px;color:var(--on-surface-var);margin-top:2px}
+.erow .v{font-size:12px;color:var(--warn);font-weight:500;white-space:nowrap}
+.erow .v.set{color:var(--on-surface-var)}
+.eblock{margin:0 16px 12px;background:var(--s-cont);border:1px solid var(--outline-var);border-radius:14px;padding:4px 14px}
+.eaction{margin:16px 16px 0;display:flex;flex-direction:column;gap:8px}
+.eprov{margin:10px 16px 24px;font-size:11px;line-height:16px;color:var(--on-surface-var)}
+.eprov b{color:var(--secondary);font-weight:500}
 </style>
 </head>
 <body class="">
@@ -340,8 +364,40 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:9px;bac
   <button role="tab" aria-selected="false" data-t="align">Alignment</button>
 </div>
 
+
+<div id="p-empty">
+  <div class="emptyhead">
+    <h2>Nothing set yet</h2>
+    <p>A setup is what you ran, not a template. Every row starts empty, and any number the model cannot stand behind stays unsaid — the cards below name what they need.</p>
+  </div>
+
+  <div class="eblock">
+    <div class="erow"><span class="l">Ride height &amp; droop<i>4 values · measured at the car</i></span><span class="v">none set</span></div>
+    <div class="erow"><span class="l">Camber &amp; toe<i>8 values · per wheel</i></span><span class="v">none set</span></div>
+    <div class="erow"><span class="l">Springs &amp; bars<i>6 values · rate at the spring, bar diameter</i></span><span class="v">none set</span></div>
+    <div class="erow"><span class="l">Dampers<i>4 values · oil, piston holes</i></span><span class="v">none set</span></div>
+    <div class="erow"><span class="l">Mounts &amp; shims<i>3 values</i></span><span class="v">none set</span></div>
+    <div class="erow"><span class="l">Conditions &amp; notes<i>track, air, track temp, tyre, note</i></span><span class="v">none set</span></div>
+  </div>
+
+  <div class="eblock" style="padding:14px">
+    <div style="display:flex;gap:8px;align-items:baseline;justify-content:space-between">
+      <b style="font-size:14px;font-weight:500">Analysis with this sheet</b>
+      <span style="font-size:12px;color:var(--on-surface-var)">0 of 7 computed</span>
+    </div>
+    <p style="font-size:12px;line-height:17px;color:var(--on-surface-var);margin-top:6px">Every card reads <i style="font-style:normal;color:var(--warn)">Not computable yet</i> and names its first missing value. Nothing is guessed to fill the gap.</p>
+  </div>
+
+  <div class="eaction">
+    <button class="btn block"><svg><use href="#i-sliders"/></svg> Copy from a sheet…</button>
+    <button class="btn tonal block"><svg><use href="#i-plus"/></svg> Set values by hand</button>
+  </div>
+  <p class="eprov">A copy is an explicit act, not a default: every copied value is marked <b>inherited</b> and names the sheet it came from, and you can replace any of them one at a time.</p>
+</div>
+
 <div class="panel on" id="p-springs">
   <p class="lead">Rate at the spring. The wheel sees roughly a third of it, which is why a big spring change can feel small from the driver's seat.</p>
+  <div class="vnote"><b>Computed, not yet validated.</b> The wheel rate and damping ratio below are arithmetic from your values; no bench test has checked them, so each carries a ring and the exported sheet says so.</div>
   
   <div class="ctl">
     <div class="ctl-top">
@@ -355,7 +411,7 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:9px;bac
       <input type="range" min="2.0" max="4.5" step="0.05" value="2.8" style="--pct:34%" aria-label="Front">
       <div class="rng"><span>2.0</span><span>4.5 lb/in</span></div>
     </div>
-    <div class="derived">Wheel rate <b>1.08 lb/in</b> · motion ratio 0.62</div>
+    <div class="derived">Wheel rate <b>1.08 lb/in</b><span class="ring" title="Not yet validated"></span> · motion ratio 0.62</div>
   </div>
   <div class="ctl">
     <div class="ctl-top">
@@ -369,7 +425,7 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:9px;bac
       <input type="range" min="2.0" max="4.5" step="0.05" value="2.9" style="--pct:36%" aria-label="Rear">
       <div class="rng"><span>2.0</span><span>4.5 lb/in</span></div>
     </div>
-    <div class="derived">Wheel rate <b>0.98 lb/in</b> · motion ratio 0.58</div>
+    <div class="derived">Wheel rate <b>0.98 lb/in</b><span class="ring" title="Not yet validated"></span> · motion ratio 0.58</div>
   </div>
 </div>
 
@@ -393,13 +449,14 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:9px;bac
       <div><div class="ctl-l">Rear bar</div><div class="ctl-sub">Anti-roll bar diameter</div></div>
       <div class="ctl-v">
         <button class="vbtn"><span class="n">none</span></button>
+        <span class="pbadge inh">inherited</span>
       </div>
     </div>
     <div class="sld">
       <input type="range" min="0" max="1.6" step="0.05" value="0" style="--pct:0%" aria-label="Rear anti-roll bar diameter">
       <div class="rng"><span>none</span><span>1.6 mm</span></div>
     </div>
-    <div class="derived">No rear bar. Rear roll stiffness comes from springs alone.</div>
+    <div class="derived">No rear bar. Rear roll stiffness comes from springs alone. <span style="color:var(--secondary)">Copied from S02 · Dan's sheet</span> — not this car's measurement.</div>
   </div>
   <p class="lead" style="padding-top:4px">A bar is a spring that only works in roll. It moves load across the axle without changing how the car sits.</p>
 </div>
@@ -496,7 +553,7 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:9px;bac
   <ul><li>The number is the control. Drag the rail or tap the number to type; there is no duplicate stepper next to every slider.</li><li>Every rate row carries its own consequence underneath: wheel rate, motion ratio, share of roll stiffness.</li><li>Discrete values (oil, piston holes) are chips, not sliders. Continuous values are sliders. Never mix.</li><li>Units are always visible next to the number, at 12 px, and never inside the input.</li><li>The save bar states how many changes are pending; nothing is auto-saved silently over a baseline setup.</li></ul>
   <div class="ctrl">
     <button class="tg" id="themeBtn" aria-pressed="false">☾ Dark</button>
-    
+    <button class="tg" data-state="empty" aria-pressed="false">New sheet (empty)</button>
   </div>
   <div class="meta">Tabs switch groups in place — no nested navigation, no page push. The four groups are the whole editor.<br><a class="link" href="index.html">All screens →</a> &nbsp; <a class="link" href="design-notes.html">Token check →</a></div>
 </aside>
@@ -514,6 +571,16 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:9px;bac
   if(btn) btn.addEventListener('click',function(){ setTheme(root.getAttribute('data-theme')==='dark'?'light':'dark'); });
   window.addEventListener('keydown',function(e){ if(e.key==='t') setTheme(root.getAttribute('data-theme')==='dark'?'light':'dark'); });
   window.slSetTheme=setTheme;
+})();
+
+(function(){
+  var dev=document.getElementById('device');
+  document.querySelectorAll('[data-state]').forEach(function(b){
+    b.addEventListener('click',function(){
+      var on=dev.classList.toggle('st-empty');
+      b.setAttribute('aria-pressed', on?'true':'false');
+    });
+  });
 })();
 
 (function(){

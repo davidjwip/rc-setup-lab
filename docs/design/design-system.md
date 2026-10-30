@@ -12,15 +12,18 @@ This is a specification, not a mood board. Every value here is meant to be typed
 
 ### 1.1 What each screen is
 
-Design decisions are inherited from what the screen does, not from a house style. Six screens, four surface archetypes:
+Design decisions are inherited from what the screen does, not from a house style. Nine screens, five surface archetypes:
 
 | Screen | Surface | The user is… | What wins |
 |---|---|---|---|
 | Garage | Explore / Operate | picking a car | recognition, completeness at a glance |
-| Car model (hardpoints) | Configure | measuring | order, recoverability, one thing at a time |
+| Car model (hardpoints) + chassis card | Configure | measuring | order, recoverability, one thing at a time |
 | Setup editor | Configure | changing a value | one gesture per change, consequence on the same row |
 | Analysis | Monitor | reading state | density, glanceable hierarchy, no decoration |
 | Compare A/B | Compare | weighing two options | aligned columns, parity, one emphasised difference |
+| Setup sheets (library) | Browse | finding what was run | chronology, conditions, provenance |
+| Sheet diff | Read / Interpret | asking what a change did | claim tier before claim, limits beside the claim |
+| Exported sheet | Export | handing the number to someone else | the caveat travels with the number |
 | Learn | Decide / Learn | understanding | one idea per section, reading comfort |
 
 The failure mode this section exists to prevent: giving the Analysis screen a hero and three feature cards. It is a **Monitor** surface. Density and glanceability beat drama, and the biggest number on the screen is the one the racer acts on (load-transfer balance), not a badge.
@@ -313,7 +316,9 @@ Rules:
 - Unit strings sit in `labelMedium`/`onSurfaceVariant` with a non-breaking space from the number, so "22 mm" never wraps to "22 / mm".
 - Precision is **fixed per property**, never "significant figures" and never trailing-zero trimming: `1.10` stays `1.10` so a column of values lines up.
 - Deltas use the same precision as the value, always signed (`+0.15`, `−0.05`), and show `—` when the change is below half the last decimal.
-- A value with no answer renders one of the four variants in §10.13 — never `--`, `n/a`, `0` or an empty string.
+- A value with no answer renders one of the five variants in §10.13 — never `--`, `n/a`, `0` or an empty string.
+- **A tolerance is data, never a default.** If the source record carries `tolerance_pct` or `tolerance_abs`, an estimated value prints it in the value's own unit (`~2.8 lb/in ±0.2`). If it carries neither, the value prints the `~` and nothing else. There is no blanket ±15%, no ±10%, no "approx." — the UI adds no number the document did not store. Where the tolerance is a band the physics derives from a published material range (a chassis torsion estimate), the band is shown as `~` plus the range in the provenance line, not as a ± on the numeral.
+- **Every number carries a validation state**, independent of its badge (§10.16). Badge = where it came from; ring = whether anyone has checked the answer. Neither substitutes for the other.
 
 ---
 
@@ -325,7 +330,9 @@ Height 56. Back (44) · title block · overflow (44). The title is `headlineMedi
 
 ### 10.2 Navigation bar
 
-Material 3 `NavigationBar`, height 72 + safe area, four destinations (Garage, Setup, Compare, Learn). Active: icon and label in `primary`, `labelMedium`. Inactive: `onSurfaceVariant`. No pill indicator behind the icon — the colour change plus the label is enough at this size, and a second active-state signal competes with the numbers on screen.
+Material 3 `NavigationBar`, height 72 + safe area, **three destinations: Garage · Compare · Learn** (decision D-01). Active: icon and label in `primary`, `labelMedium`. Inactive: `onSurfaceVariant`. No pill indicator behind the icon — the colour change plus the label is enough at this size, and a second active-state signal competes with the numbers on screen.
+
+There is no Setup destination. Setup, analysis, the chassis card, the sheet library and the sheet diff are **pushes inside the Garage branch**, because they have no subject until a car is chosen; a Setup tab would reintroduce "which car is this tab showing?". Detail screens under a push (setup editor, hardpoints) drop the navigation bar and carry a bottom action bar instead (§4.2). Consequence for the wireframes: every tab bar draws three items, and the current destination for the whole car-and-setup subtree is garage.
 
 ### 10.3 Card
 
@@ -404,20 +411,25 @@ A `ExpansionTile`-shaped disclosure, collapsed by default, attached to the row i
 
 Centred, max 270 px of text, one drawn diagram at 180 × 130, headline `headlineMedium`, one sentence of `bodyMedium` that explains the premise, one filled primary button, one text link for the secondary path. No illustration of a sad car, no "Oops".
 
-### 10.13 Value variants: computed, estimated, missing, undefined
+### 10.13 Value badges: computed, estimated, inherited, missing, undefined
 
-One component renders every number in the app, in four variants. These names and strings are the contract with `docs/design/screens.md` — do not invent a fifth.
+One component renders every number in the app, in **five** variants. The badge answers *where did this number come from*; it does not answer *has anyone checked it* — that is §10.16, and the two marks are always set together. These names and strings are the contract with `docs/design/screens.md` §0.2.
 
 | Variant | Looks like | Used when | Tap goes to |
 |---|---|---|---|
-| `computed` | solid value + unit | every input measured or library-sourced | property detail |
-| `estimated` | `~` prefix, dotted underline, value in `onSurface` | any contributing input is an estimate | the estimate's provenance |
+| `computed` | solid value + unit | every input is present and was measured **on this car** | property detail |
+| `estimated` | `~` prefix, dotted underline, value in `onSurface` | at least one contributing input is an estimate the user marked | the estimate's provenance |
+| `inherited` | `↳` prefix in `secondary`, dotted underline | at least one contributing input came from **another car's model, a template, or another user's sheet** | the source car or sheet |
 | `missing` | no numeral; **Not computable yet** in `warning` + the first missing input | an input is absent | the measure task for that input |
 | `undefined` | no numeral; **Undefined for this geometry** in `warning` | all inputs present, maths has no answer (parallel links, coincident points, zero-length link) | the two fields involved, and what to check |
 
 Rules:
 
-- The variant replaces the numeral **in place**. The unit, the delta chip and the label column do not move, so a scan down a column of cards still lines up.
+- **Precedence when several apply:** `missing` / `undefined` (no numeral at all) → `estimated` → `inherited` → `computed`. The most cautious provenance wins the badge; the provenance line beneath names every contributing source, so nothing is hidden by the ranking.
+- **Inherited is not computed.** A library or template value is another car's measurement and is never rendered as a solid numeral — that was the whole point of the fifth variant. It carries the source name on a second line: `Inherited · Mugen MTC2 template v2` or `Inherited · Dan's sheet (S02)`. The line is part of the component, not a footnote elsewhere on the screen.
+- **Estimated shows the stored tolerance or nothing.** `~2.8 lb/in ±0.2` when the source record has one; `~2.8 lb/in` when it does not. See §9. The tolerance is never a system-wide default.
+- **Both marks, one value:** an inherited estimate reads `↳~22 mm` with a provenance line naming both ("estimated from the MTC2 template, ±0.3 mm"). The glyph order is fixed: `↳` then `~`.
+- The variant replaces the numeral **in place**. The unit, the validation ring, the delta chip and the label column do not move, so a scan down a column of cards still lines up.
 - Only the affected column changes. In a front/rear card, a missing front hardpoint leaves the rear value intact and computed.
 - Every affected card carries a one-sentence reason in its expanded body, naming the input or the geometric condition — never "calculation error".
 - A banner appears at the top of the screen when **two or more** values are affected, because at that point the model is not trustworthy and the user needs to know before reading anything else. The banner is `warning` at 9% fill, 1 px 45% border, a 20 px icon, a `titleSmall` headline, two lines of `bodySmall`, and one 44 px text action.
@@ -426,11 +438,109 @@ Rules:
 
 A parallel-link geometry is `undefined`, not `0 mm`. The front-view construction does have a limiting height as the instant centre recedes, but that limit is numerically fragile and stops responding to ride height — reporting it as a tunable number would teach the user something false. The app refuses to report a limit it cannot defend, and says so in those words.
 
-### 10.14 Save / action bar
+### 10.14 Validation state — the ring
+
+The second, independent mark on every number (owner decision D-11). **v1 ships entirely in the first state.**
+
+| State | Marker | Short string | Full string |
+|---|---|---|---|
+| `unvalidated` | hollow 7 px ring, 1.2 px `warning` at 85%, baseline-aligned immediately after the unit | `computed, not yet validated` | **Computed, not yet validated.** Every number here was computed from your model and the published equations; none has been checked against a bench measurement yet. |
+| `validated` | filled 7 px ring, `outline` | `validated · bench` | **Validated against a bench measurement** — roll centre within 0.4 mm over five heights, 12 Mar 2026. |
+
+Rules:
+
+- **The ring is on every number, always.** A numeral with no ring is a bug, including numbers quoted inside prose ("your 22 mm"), in a comparison cell, in a maths panel and on an exported page.
+- **The words appear once per surface**, in this order of preference: the maths panel footer, the property-detail block, the export foot, the screen strip. Repeating "not yet validated" after seven values is noise; the ring is the per-value carrier.
+- **Degradation is a data change, not a layout change.** When an output's evidence record exists, the same slot swaps: the marker fills, the chip reads `validated · bench`, and the full sentence gains the evidence. Nothing moves, so a sheet exported last month stays comparable with today's.
+- **Evidence is per output, per model version.** A validated output returns to `unvalidated` when the model version changes, because the bench case proved the old arithmetic. Copy: **Not yet re-validated for model 0.2** — same ring, same position.
+- **What does not count as validation:** a golden test comparing two copies of the same equation, a second implementation agreeing, a user saying it "feels right", a textbook value. Only a bench or on-car measurement with a stated tolerance.
+- **Where each surface states it:**
+
+| Surface | Per-value mark | Where the words go |
+|---|---|---|
+| Analysis card | ring after each value | one strip under the header, naming the count (`0 of 7 bench-checked`) |
+| Property detail | ring after the value | a block directly under the value: state chip, full sentence, *What would validate this* link, evidence line when present |
+| Compare row | ring after each cell | one footnote under the table, and once in the "what this does" block |
+| Maths panel | — | footer line inside the panel: **Computed, not yet validated.** The equation is the published one and the inputs are yours; no bench case exists for this output yet. |
+| Export / setup sheet | ring after each value | foot block: the words in full, the input-provenance counts, app version, generation date, "a record of what was run, not a validation certificate" |
+| Sheet diff | ring on the firm rows | one statement above the tier panel; the tiers answer a different question and never absorb it |
+| Garage card / Learn callout | ring after the value | one line per screen naming the state |
+
+- **A sheet that leaves the phone cannot outlive its caveat.** If the export omits the state, the whole feature is theatre: a printed sheet is the artefact most likely to be pinned to a pit table for a season.
+- Semantics: the value's accessible label appends the state — "Roll centre, front, 22 millimetres, up 3 from saved, computed, not yet validated".
+
+### 10.15 Chassis card
+
+The model input that is not a hardpoint (GitHub #11). Material and thickness do **not** move the roll centre — the card says so, because the intuitive claim is the wrong one.
+
+- **Where:** the Chassis tab of the car-model screen, and referenced (one line, not a duplicate card) from the Analysis roll-stiffness card.
+- **Order:** material chips (carbon · aluminium · steel) → thickness (number field, caliper, `K · 2.0`) → measured torsion (optional, empty by default, N·m/deg) → estimated torsion (only while measured is empty) → **What the plate changed**.
+- **Measured torsion is the primary input.** When present it replaces the estimate entirely; the estimate row is not shown greyed or "for reference". The card is the one place in the app where a user-supplied measurement overrides a model estimate without argument.
+- **Estimated torsion** is a thin-plate estimate from material G and section. Carbon's G depends on weave and layup, so it prints as `~2.9 N·m/°` with the range in the provenance line — never as a ± on the numeral (§9).
+- **What the plate changed** is a mandatory block of rows: roll-centre height (**unchanged** — fixed by hardpoints), ride height (a thicker plate lifts the car unless a shim comes out), mass, CG height, front share of roll stiffness (the chassis is a spring in series with springs and bars). Each row carries its direction, its number, and a validation ring. This is the "statement of which quantities it changed" the feature exists for; without it the card is a form.
+- No separate "chassis flex" handling read-out in v1: flex folds into the balance number (§ issue #11 open question 1).
+
+### 10.16 Sheet row and diff row
+
+**Sheet row** (setup-sheet library, `/car/:carId/sheets`):
+
+```
+12 Aug   Wed club                        [baseline]
+19:40    "Q2 — 1.2 bar, 400 rear oil."
+         dry · air 18 °C · track 24 °C · 32R
+         4 changes vs Sat open · 8 of 8 set · 7 of 7 computed      ›
+```
+
+- Date in a fixed 44 px column, day and time stacked; the list is chronological and that is the only sort in v1.
+- Name row carries at most two chips: `baseline` (accent) and `draft` (dot + chip). An imported sheet carries `inherited` and the source name in the meta row.
+- Note is one line of the user's own words, truncated with `…` at two lines — the only place in the app where truncation of prose is allowed.
+- Conditions row is always present, even when empty ("no conditions recorded"), because a diff is meaningless without it.
+- The row is one tap target, whole width, and goes to the sheet's diff against the previous sheet.
+
+**Diff row** (`sheet-diff`): grouped under `Geometry` / `Springs & bars` / `Dampers` / `Alignment`. Changed rows read `A → B` with A in `onSurfaceVariant` and B in `onSurface`; unchanged rows exist but sit behind the changed-only filter. Computed diff values carry the ring; a value that arrived with an imported sheet carries `inherited` and the source.
+
+### 10.17 Tiered interpreter panel
+
+The "what this did" panel on the sheet diff (GitHub #10). **Three tiers, and the tier is the honesty mechanism.**
+
+| Tier | Backing | Wording contract |
+|---|---|---|
+| **Firm** | v1 physics: geometry, rates, stiffness split and their arithmetic | States direction and magnitude. Numbers carry the validation ring. |
+| **Inferred** | steady-state reasoning from the firm rows | Must contain the words **all else equal** on screen, plus two fields: *Reverses if* and *What it does not claim*. |
+| **Speculative** | needs a transient model or a measurement the app does not hold | Names the question and refuses it: `not answered`. Never an estimate, never greyed-out pseudo-data. |
+
+- **Vocabulary: understeer / oversteer, never push / loose.** Phases are `entry` / `mid` / `exit`. One vocabulary in the app, the export and the Learn copy, so a claim cannot be read two ways (owner decision, 30 Oct 2026).
+- **Grip is never measured or computed — it is inference, and it looks different.** A grip sentence never carries a numeral, a unit, a value badge or a validation ring, because there is no value. It renders as an inference strip: hatched 9% `surfaceContainerHigh` fill, 1 px dashed `outline`, the word `inference` in `labelSmall`, the sentence in `bodyMedium`, and a single qualifier line naming what would be needed to make it a claim (tyre data or a measured test). It sits inside the Inferred tier but is visually distinct from every computed number on the screen. A grip claim inside a Firm block is a bug.
+- **Not colour-coded.** Tiers differ by border style (solid / dotted / dashed) and by the word. Colour would read as a quality scale; the tiers are epistemic, not evaluative.
+- **A rule with no tier does not ship.** The panel has no unlabelled sentence, including the summary line.
+- **Phase is a tag, not a tier.** `entry` / `mid` / `exit` sits on the rule. Firm rules are steady-state and therefore mid-corner; entry and exit only ever appear on Speculative rules in v1.
+- **Why not four tiers, or a percentage:** a confidence number would claim a measurand the inference does not have (nobody can state ±12% on "understeers more"), and a fourth band would repeat Speculative under a new name. Three tiers plus two per-claim limits ("reverses if", "does not claim") is the most the model can honestly carry.
+- **The conditions gate sits above the tiers, not below.** Sheets record **optional** conditions — surface (carpet / asphalt / other), temperature, humidity, plus free text for tyres and motor. If the two sheets differ in surface, tyre or temperature, the panel says **Different day — not like-for-like** before the first claim and dims the Inferred tier and greys the grip strip; Firm rows survive, because they do not depend on the tyre. If every recorded field matches, it says **Comparable** with what was compared. If nothing is recorded, it says **No conditions recorded — this diff cannot say whether it is like-for-like**, which is neither a pass nor a warning.
+
+### 10.18 Damping-ratio card
+
+ζ is an **estimate in v1** (owner decision; `CONSOLIDATED` §3, option 2). The card leads with direction, not magnitude, because the direction is robust and the absolute value is not.
+
+- **Leading line is the direction of change**: `Heavier oil → more damping at the wheel`, `Shock laid down → less wheel damping`, `More holes in the piston → less low-speed damping`. It is a sentence with an arrow, in `onSurface`, above the number. Between two sheets the direction sentence names the change that caused it.
+- **The value is secondary and hedged**: `~0.42 ±0.06` with the `estimated` badge and a dotted underline. The band comes from the damper model's own stated range — never a blanket percentage (§9).
+- **What changes this panel**, inside the card, collapsed by default: four levers with the direction and the relative size of their effect — oil viscosity (heavier → more), piston holes (more → less low-speed), spring rate (stiffer → lower ζ at the same damper), motion ratio / shock angle (laying the shock down → less wheel damping). Each row is a sentence, not a slider.
+- **Absent gracefully.** No damper data → the card is `missing` (no numeral), the direction line is replaced by *Not computable yet*, and the "what changes this" panel still opens — teaching without pretending. No estimate is manufactured from a spring rate alone.
+- **Validation ring is always present**; in v1 the card is unvalidated like every other.
+
+### 10.19 Mass and CG card
+
+CG height is **inferred, never fetched from a scale session** — corner scales weigh the car and cannot locate its centre of gravity (review P-06; the spec's own example claiming "corner scales" is the defect this card exists to prevent).
+
+- **Route is the headline, not the number.** The card shows which route produced h: `plumb-line` (four corner weights at two ride heights — a real measurement of h), `component estimate` (massed parts and their heights — an inference), or `inherited` (another car's value).
+- **Badge by route:** plumb-line → `estimated` with the stored ± on the numeral and the words *measured by plumb-line*; component estimate → `estimated` with the range and *derived from component masses, ±8 mm*; another car → `inherited` with the source. **CG height never carries `computed`** — there is no instrument in the app's tool list that measures it directly, so a solid numeral would be a lie.
+- **What it makes uncertain, stated on the card and on the analysis:** *Absolute load transfer and roll angle move with h; the front/rear balance split is robust to it* (the review measured ±0.13 on balance across h = 24–32 mm, against ±14.5% on total transfer). The card prints both columns so the user knows which numbers to distrust.
+- **Editable but not fetchable:** no "import from scales" affordance exists anywhere in the app. A scale session can supply corner masses; it cannot supply h, and the UI says so in one line under the field.
+
+### 10.20 Save / action bar
 
 Sticky at the bottom of an editor: `Revert` (text, 44 px) · "1 change not saved" (`bodySmall`, flex) · `Save setup` (filled, min 148 px). It appears when the first change is made; it does not animate in from off-screen — it fades over 160 ms in place.
 
-### 10.15 Banner
+### 10.21 Banner
 
 See §10.13. Banners never stack. If two conditions are true, the more severe one wins and the second is a row-level state.
 
@@ -441,7 +551,8 @@ See §10.13. Banners never stack. If two conditions are true, the more severe on
 - **Touch targets:** 44 × 44 minimum everywhere; 48 × 48 for primary actions and steppers. Visual size may be smaller than the target (icons 20–24 inside a 44 box). Sliders get a 44 px hit area regardless of track thickness.
 - **Contrast:** every text pair in §2.4 clears AA. Numerals clear AAA. Non-text UI (borders, tracks) clears 3:1.
 - **Not colour alone:** every delta carries an arrow glyph and a sign; every state change carries a word ("Not computable yet", "Undefined for this geometry") or an icon.
-- **Semantics:** compound values are one semantic node with a spoken sentence — "Roll centre, front, 22 millimetres, up 3 from saved". The visual split into number + unit must not become two reads.
+- **Semantics:** compound values are one semantic node with a spoken sentence — "Roll centre, front, 22 millimetres, up 3 from saved, inherited from the MTC2 template, computed, not yet validated". The visual split into number + unit + ring must not become three reads; the provenance and validity suffixes are appended in a fixed order (provenance, then validity).
+- **The ring is never the only carrier of its meaning:** it has a label ("not yet validated") and the surface's own sentence repeats it, so a screen-reader user is not asked to interpret a glyph.
 - **Focus order** follows the visual order top-to-bottom; the app bar's overflow is last. Expanded panels are `Expanded`/`Collapsed` in the accessibility tree, not just visually hidden.
 - **Dynamic type** up to 1.3 with no truncation of values (§3.4).
 - **Reduced motion** shortens every transition to 1 ms and removes slides (§7).
@@ -496,6 +607,32 @@ class SetupLabColors extends ThemeExtension<SetupLabColors> {
 - **Sheets:** `showModalBottomSheet` with `useSafeArea: true`, `isScrollControlled: true`, radius `xl`, scrim 32%.
 - **State:** a change is a `SetupDraft` diffed against the saved `Setup`; the save bar reads the diff length. Uncomputable values are modelled as `Result<T>` with `MissingInputs(fieldIds)` and `UndefinedGeometry(reason, fieldIds)` — **not** `double?`. The physics package returns those; the UI never invents a zero.
 
+```dart
+// Two orthogonal axes on every formatted value. Neither is derivable from the other.
+enum Provenance { computed, estimated, inherited, missing, undefined }
+enum Validity   { unvalidated, validated }          // + modelVersion on the evidence record
+
+class FormattedValue {
+  final double? value;        // null for missing / undefined
+  final String unit;
+  final int decimals;
+  final Provenance provenance;
+  final Validity validity;
+  final Tolerance? tolerance;  // null means: print the ~ and nothing else
+  final ProvenanceSource? source; // named for estimated / inherited, null for computed
+}
+
+// A claim that is not a number. Grip and every inferred sentence use this, never FormattedValue.
+class Inference {
+  final String sentence;      // contains "all else equal" when tier == inferred
+  final ClaimTier tier;       // firm | inferred | speculative
+  final Phase? phase;         // entry | mid | exit
+  final String? reversesIf;
+  final String? doesNotClaim;
+}
+```
+- **The formatter never fills a tolerance.** `Tolerance?` is nullable on purpose; a null prints the `~` alone. A build check asserts no call site constructs a `Tolerance` outside the document decoder.
+
 ---
 
 ## 13. Do not
@@ -510,4 +647,11 @@ class SetupLabColors extends ThemeExtension<SetupLabColors> {
 - Do not stack two banners.
 - Do not add a navigation bar to a detail screen that has a save bar.
 - Do not use a shadow where a hairline will do.
+- Do not print a tolerance the source document did not record. No ±15%, no ±10%, no "approx".
+- Do not render an inherited value as a solid numeral, and do not hide its source in a footnote.
+- Do not let a grip claim look like a computed number: no numeral, no unit, no badge, no ring — it is inference.
+- Do not use "push" or "loose". The vocabulary is understeer / oversteer, entry / mid / exit.
+- Do not show a damping-ratio magnitude as the card's leading line; the direction leads.
+- Do not offer corner scales as a source for CG height, and do not give CG height a `computed` badge.
+- Do not colour-code the interpreter tiers; border style and the word carry the tier.
 - Do not copy RC3's screens, wording or icons — the vocabulary in this document is the app's own.

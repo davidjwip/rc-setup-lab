@@ -255,6 +255,18 @@ td.sw i{display:inline-block;width:16px;height:16px;border-radius:4px;vertical-a
 .scale div{border:1px solid var(--outline-var);border-radius:8px;padding:8px 10px;font-size:11px;color:var(--on-surface-var);text-align:center}
 .scale b{display:block;font-size:13px;color:var(--on-surface);font-weight:500;margin-bottom:2px;font-variant-numeric:tabular-nums}
 .tg{height:36px;padding:0 14px;border-radius:9px;border:1px solid var(--outline-var);color:var(--on-surface);font-size:12px;float:right}
+
+/* ---------- value badge taxonomy (five) ---------- */
+.badges5{display:grid;grid-template-columns:1fr;gap:8px}
+.brow{display:flex;align-items:baseline;gap:12px;padding:10px 14px;border:1px solid var(--outline-var);border-radius:12px;background:var(--s-cont);font-size:12.5px;color:var(--on-surface-var)}
+.brow .demo{flex:0 0 132px;font-size:16px;color:var(--on-surface);font-variant-numeric:tabular-nums;display:flex;align-items:baseline;gap:5px}
+.brow .demo .u{font-size:10.5px;color:var(--on-surface-var);font-weight:500;letter-spacing:.3px}
+.brow .nm{flex:0 0 92px;font-size:11px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:var(--on-surface)}
+.brow .use{flex:1;line-height:17px}
+.est{color:var(--on-surface);border-bottom:1px dotted var(--outline)}
+.inhnum{color:var(--secondary)}
+.miss{color:var(--warn);font-size:11.5px;font-weight:500;letter-spacing:0}
+.ring{display:inline-block;width:7px;height:7px;border-radius:50%;border:1.2px solid var(--warn);vertical-align:2px;margin-left:2px;opacity:.85}
 </style>
 </head>
 <body>
@@ -289,6 +301,17 @@ td.sw i{display:inline-block;width:16px;height:16px;border-radius:4px;vertical-a
   <div><b>16</b>screen margin</div><div><b>20</b>reading margin</div><div><b>24</b>section gap</div>
   <div><b>32</b>block gap</div><div><b>48</b>touch target</div>
 </div>
+
+
+<h2>Value badge taxonomy <span>five variants · the contract with screens.md §0.2</span></h2>
+<div class="badges5">
+  <div class="brow"><span class="demo">22<span class="u">mm</span><span class="ring" title="not yet validated"></span></span><span class="nm">computed</span><span class="use">Every input present and measured <b>on this car</b>. Solid numeral — and still only as validated as the ring says.</span></div>
+  <div class="brow"><span class="demo"><span class="est">~2.8</span><span class="u">lb/in ±0.2</span></span><span class="nm">estimated</span><span class="use">An input you marked approximate. Shows the stored tolerance when the source has one, and the <b>~</b> alone when it does not. The app never invents a tolerance.</span></div>
+  <div class="brow"><span class="demo"><span class="inhnum">↳22</span><span class="u">mm</span></span><span class="nm">inherited</span><span class="use">At least one input came from another car's model, a template, or another user's sheet. The source is named next to it. Never rendered as a solid numeral.</span></div>
+  <div class="brow"><span class="demo"><span class="miss">Not computable yet</span></span><span class="nm">missing</span><span class="use">An input is absent. No numeral, and the first missing input is named with a route to measure it.</span></div>
+  <div class="brow"><span class="demo"><span class="miss">Undefined for this geometry</span></span><span class="nm">undefined</span><span class="use">All inputs present, the maths has no answer (parallel links, coincident points). No numeral, and what to check.</span></div>
+</div>
+<p style="font-size:11.5px;line-height:17px;color:var(--on-surface-var);margin:10px 2px 0">Precedence when several apply: <b>missing</b> / <b>undefined</b> (no number) → <b>estimated</b> → <b>inherited</b> → <b>computed</b>. The badge is provenance; the <b>ring</b> is validation state (D-11). They are set together and read independently.</p>
 
 <h2>Radii <span>4 · 8 · 12 · 16 · 24 · pill</span></h2>
 <div class="scale">

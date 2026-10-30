@@ -27,6 +27,28 @@ damper data, not a full curve fit.
 
 ---
 
+**D-13 — Damping ratio ships in v1 as an estimate, and the trend is the product.** Dave, 2026-10-30.
+ζ is computed with a stated band and an `estimated` badge; the absolute value is explicitly not
+accurate. What must be trustworthy is the *direction*: heavier oil damps more, laying a shock down
+reduces the motion ratio and therefore the wheel-level damping, a stiffer spring raises ζ for the
+same damper. The app leads with the change between two sheets and the reason, not with the numeral.
+Forecloses: nothing — the drop-test workflow (§3 option 3 of `docs/reviews/round1/CONSOLIDATED.md`)
+remains the route to a measured ζ later, and upgrades this badge when it lands.
+
+**D-14 — CG height is inferred, never measured.** Dave, 2026-10-30: "we can't really work out CG."
+Two derivation routes: a component-mass estimate (motor, battery, electronics, plate, corner
+unsprung masses, with positions) and a two-hang plumb-line procedure for a user who wants a real
+number. The app must state which outputs are robust to CG error — the front/rear balance split,
+because both axles share the same *h* — and which are not: absolute load transfer and roll angle.
+Forecloses: any claim of measured accuracy on absolute load-transfer magnitudes.
+
+**D-15 — Interpreter vocabulary and inputs.** Dave, 2026-10-30. Understeer / oversteer, not
+push/loose; phases entry / mid / exit. Sheets record optional conditions — carpet or asphalt,
+temperature, humidity, plus room for tyres and motor — and a diff spanning different conditions
+says so. **Grip is never measured or computed: it is inference**, and carries its own tier.
+
+---
+
 ## Proposals awaiting a decision
 
 - **Setup-sheet library with a change interpreter.** Compare not only two setups but a *sequence*

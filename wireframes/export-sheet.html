@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="en-GB" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark light">
+<title>Exported setup sheet — Setup Lab wireframe</title>
+<style>
+/* ---------- tokens (single source: docs/design/design-system.md §2) ---------- */
+:root{
+  color-scheme: dark;
+  --bg:#0B0C09; --surface:#121410; --s-low:#171A14; --s-cont:#1C1F18; --s-high:#24281F; --s-highest:#2D3127;
+  --on-surface:#E8EADF; --on-surface-var:#A8AD9C; --outline:#767C69; --outline-var:#3C4034;
+  --primary:#C6EF6E; --on-primary:#1A2100; --primary-container:#38480C; --on-primary-container:#DCF9A4;
+  --secondary:#A9C9BC; --tertiary:#E4B78C; --error:#FFB4A2; --on-error:#5C1600; --warn:#E9C46A;
+  --delta-up:#C6EF6E; --delta-down:#9FC8C0; --grid:#2A2E24; --ink-dim:#6E7462; --desk:#050604; --rail:#8D937F;
+  --shadow:0 24px 60px rgba(0,0,0,.55); --nav-bg:#121410E6;
+}
+[data-theme="light"]{
+  color-scheme: light;
+  --bg:#F5F5ED; --surface:#FBFBF4; --s-low:#FFFFFF; --s-cont:#EFEFE6; --s-high:#E8E9DE; --s-highest:#E1E2D6;
+  --on-surface:#1A1C14; --on-surface-var:#4B5041; --outline:#767C68; --outline-var:#C7CBBA;
+  --primary:#445E06; --on-primary:#FFFFFF; --primary-container:#D3F190; --on-primary-container:#182200;
+  --secondary:#3D6156; --tertiary:#7A5530; --error:#B3261E; --on-error:#FFFFFF; --warn:#7A5000;
+  --delta-up:#3F5A05; --delta-down:#2F5A50; --grid:#D5D8C8; --ink-dim:#767C68; --desk:#E7E7DC; --rail:#5D6353;
+  --shadow:0 24px 60px rgba(30,32,24,.18); --nav-bg:#FBFBF4E6;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:'Roboto','Inter',system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;background:var(--desk);color:var(--on-surface);
+  -webkit-font-smoothing:antialiased;display:flex;align-items:flex-start;justify-content:center;gap:40px;padding:40px 32px 64px;min-height:100%;
+  font-size:16px;line-height:1.5;font-variant-numeric:tabular-nums}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+:focus-visible{outline:2px solid var(--primary);outline-offset:2px;border-radius:4px}
+
+/* ---------- phone shell ---------- */
+.device{width:390px;height:844px;flex:0 0 auto;background:var(--surface);border:1px solid var(--outline-var);border-radius:44px;
+  box-shadow:var(--shadow);position:relative;overflow:hidden;display:flex;flex-direction:column}
+.status{height:46px;flex:0 0 auto;display:flex;align-items:flex-end;justify-content:space-between;padding:0 26px 6px;font-size:13px;font-weight:600;letter-spacing:.2px}
+.status .right{display:flex;align-items:center;gap:6px}
+.status svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.8}
+.batt{width:22px;height:11px;border:1.4px solid currentColor;border-radius:3px;position:relative;opacity:.9}
+.batt::after{content:"";position:absolute;left:1.5px;top:1.5px;bottom:1.5px;width:13px;background:currentColor;border-radius:1px}
+.homebar{position:absolute;bottom:7px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:var(--on-surface);opacity:.22;z-index:60}
+.screen{flex:1 1 auto;overflow-y:auto;overflow-x:hidden;scrollbar-width:none;padding-bottom:8px;position:relative}
+.screen::-webkit-scrollbar{display:none}
+
+/* ---------- app bar ---------- */
+.appbar{position:sticky;top:0;z-index:40;background:color-mix(in srgb,var(--surface) 92%,transparent);backdrop-filter:blur(12px);
+  display:flex;align-items:center;gap:4px;padding:4px 8px;min-height:56px}
+.appbar .title{font-size:20px;line-height:26px;font-weight:500;letter-spacing:-.1px;flex:1;padding-left:8px}
+.appbar .sub{display:block;font-size:12px;line-height:16px;font-weight:400;color:var(--on-surface-var);letter-spacing:0}
+.iconbtn{width:44px;height:44px;display:grid;place-items:center;border-radius:22px;color:var(--on-surface);flex:0 0 auto}
+.iconbtn:hover{background:var(--s-high)}
+.iconbtn svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+
+/* ---------- type ---------- */
+.num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1,"lnum" 1}
+.num-hero{font-size:34px;line-height:38px;font-weight:400;letter-spacing:-.6px}
+.num-lg{font-size:24px;line-height:28px;font-weight:500;letter-spacing:-.3px}
+.num-md{font-size:18px;line-height:22px;font-weight:500;letter-spacing:-.2px}
+.num-sm{font-size:14px;line-height:18px;font-weight:500;letter-spacing:-.2px}
+.unit{font-size:11px;line-height:16px;font-weight:500;letter-spacing:.3px;color:var(--on-surface-var);margin-left:3px}
+.eyebrow{font-size:10px;line-height:14px;font-weight:600;letter-spacing:.9px;text-transform:uppercase;color:var(--on-surface-var)}
+h1{font-size:30px;line-height:36px;font-weight:500;letter-spacing:-.5px}
+h2.sec{font-size:20px;line-height:26px;font-weight:500;letter-spacing:-.1px}
+.head{padding:6px 16px 4px}
+.head .meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:11.5px;color:var(--on-surface-var);margin-top:4px}
+.head .meta .sep{width:1px;height:10px;background:var(--outline-var)}
+
+/* ---------- containers ---------- */
+.body-pad{padding:0 16px}
+.card{background:var(--s-cont);border:1px solid var(--outline-var);border-radius:16px;padding:16px}
+.flat{background:var(--s-low);border-color:transparent}
+.row{display:flex;align-items:center}
+.between{justify-content:space-between}
+.muted{color:var(--on-surface-var)}
+.divider{height:1px;background:var(--outline-var);border:0}
+
+/* ---------- chips + badges ---------- */
+.chip{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:8px;border:1px solid var(--outline-var);
+  font-size:11.5px;font-weight:500;letter-spacing:.3px;color:var(--on-surface-var);white-space:nowrap}
+.chip.accent{background:var(--primary-container);border-color:transparent;color:var(--on-primary-container)}
+.chip.solid{background:var(--s-high);border-color:transparent;color:var(--on-surface)}
+.chip svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:1.8}
+.pbadge{display:inline-flex;align-items:center;gap:4px;height:17px;padding:0 5px;border-radius:4px;font-size:9.5px;letter-spacing:.5px;
+  text-transform:uppercase;font-weight:600;border:1px solid var(--outline-var);color:var(--on-surface-var);white-space:nowrap;vertical-align:middle}
+.pbadge.inh{color:var(--secondary);border-color:color-mix(in srgb,var(--secondary) 45%,transparent)}
+.pbadge.est{color:var(--on-surface);border-style:dashed}
+.delta{display:inline-flex;align-items:center;gap:2px;height:22px;padding:0 7px;border-radius:6px;background:var(--s-high);
+  font-size:11.5px;font-weight:500;letter-spacing:.2px;color:var(--on-surface);white-space:nowrap}
+.delta .arw{font-size:10px}
+.delta.up .arw{color:var(--delta-up)}
+.delta.down .arw{color:var(--delta-down)}
+.ring{display:inline-block;width:7px;height:7px;border-radius:50%;border:1.2px solid var(--warn);vertical-align:2px;margin-left:3px;opacity:.85}
+.ring.ok{border-color:var(--outline);background:var(--outline)}
+.vtag{display:inline-flex;align-items:center;gap:5px;padding:1px 6px;border-radius:4px;font-size:10px;letter-spacing:.3px;font-weight:500;
+  color:var(--warn);border:1px solid color-mix(in srgb,var(--warn) 40%,transparent);background:color-mix(in srgb,var(--warn) 8%,transparent);white-space:nowrap}
+.vtag.ok{color:var(--on-surface-var);border-color:var(--outline);background:transparent}
+.vtag svg{width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:2}
+.prov{display:block;font-size:10.5px;line-height:15px;color:var(--on-surface-var);margin-top:4px;letter-spacing:.1px}
+.prov i{font-style:normal;color:var(--secondary)}
+
+/* ---------- buttons ---------- */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:0 20px;border-radius:12px;
+  font-size:14px;font-weight:500;letter-spacing:.1px;border:1px solid transparent;background:var(--primary);color:var(--on-primary)}
+.btn:hover{filter:brightness(1.06)}
+.btn.outline{background:transparent;color:var(--primary);border-color:color-mix(in srgb,var(--primary) 45%,transparent)}
+.btn.tonal{background:var(--s-high);color:var(--on-surface)}
+.btn.block{display:flex;width:100%}
+.btn svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+
+/* ---------- bottom nav: three destinations (D-01) ---------- */
+.navbar{flex:0 0 auto;height:72px;display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--outline-var);background:var(--nav-bg);backdrop-filter:blur(14px)}
+.navbar a{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:var(--on-surface-var);font-size:11px;font-weight:500;letter-spacing:.3px}
+.navbar a svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.navbar a[aria-current="page"]{color:var(--primary)}
+
+/* ---------- frame provenance ---------- */
+.frametag{display:flex;gap:8px;align-items:baseline;margin:2px 16px 10px;padding:6px 10px;border:1px dashed var(--outline-var);border-radius:8px;
+  font-size:11px;line-height:15px;color:var(--on-surface-var);letter-spacing:.2px}
+.frametag b{font-size:10px;letter-spacing:.7px;text-transform:uppercase;color:var(--on-surface);font-weight:600;flex:0 0 auto}
+
+/* ---------- annotation rail ---------- */
+.rail{width:300px;flex:0 0 auto;padding-top:8px;color:var(--rail)}
+.rail .kicker{font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:var(--rail);opacity:.7}
+.rail h1{font-size:22px;line-height:28px;font-weight:500;color:var(--on-surface);margin:6px 0 4px;letter-spacing:-.2px}
+.rail p{font-size:13px;line-height:20px;color:var(--rail);margin-bottom:16px}
+.rail ul{list-style:none;display:flex;flex-direction:column;gap:10px;margin:0 0 20px}
+.rail li{font-size:12.5px;line-height:18px;color:var(--rail);padding-left:14px;position:relative}
+.rail li::before{content:"";position:absolute;left:0;top:7px;width:5px;height:5px;border-radius:1px;background:var(--primary);opacity:.8}
+.rail .ctrl{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}
+.tg{height:34px;padding:0 12px;border-radius:8px;border:1px solid var(--outline-var);color:var(--rail);font-size:12px;display:inline-flex;align-items:center;gap:6px;background:transparent}
+.tg[aria-pressed="true"]{background:var(--s-high);color:var(--on-surface);border-color:transparent}
+.rail .meta{font-size:11px;line-height:16px;color:var(--rail);opacity:.75;border-top:1px solid var(--outline-var);padding-top:12px;margin-top:4px}
+.rail a.link{color:var(--on-surface);border-bottom:1px solid var(--outline);font-size:12px}
+
+@media (max-width:780px){
+  body{padding:0;display:block;background:var(--surface)}
+  .device{width:100vw;height:100dvh;border-radius:0;border:0;box-shadow:none}
+  .rail{display:none}
+  .homebar{display:none}
+}
+@media (prefers-reduced-motion: reduce){*{transition-duration:.001ms !important;animation-duration:.001ms !important}}
+
+/* ---------- printable setup sheet ---------- */
+.paper{margin:0 16px;background:var(--s-low);border:1px solid var(--outline-var);border-radius:12px;padding:16px 14px}
+.paper .brand{font-size:9.5px;letter-spacing:1.4px;text-transform:uppercase;color:var(--on-surface-var);font-weight:600}
+.paper .car{font-size:18px;line-height:24px;font-weight:500;letter-spacing:-.1px;margin-top:4px}
+.paper .sub{font-size:11.5px;line-height:16px;color:var(--on-surface-var);margin-top:1px}
+.paper hr{border:0;border-top:1px solid var(--outline-var);margin:10px 0}
+.cond{display:grid;grid-template-columns:1fr 1fr;gap:2px 10px;font-size:10.5px;line-height:15px;color:var(--on-surface-var)}
+.cond b{color:var(--on-surface);font-weight:500}
+.shgrp{font-size:9.5px;letter-spacing:.9px;text-transform:uppercase;color:var(--on-surface-var);font-weight:600;margin:12px 0 2px}
+.shrow{display:flex;align-items:baseline;gap:8px;padding:3.5px 0;font-size:11.5px;border-bottom:1px solid color-mix(in srgb,var(--outline-var) 55%,transparent)}
+.shrow:last-child{border-bottom:0}
+.shrow .l{flex:1;color:var(--on-surface-var)}
+.shrow .v{font-weight:500;color:var(--on-surface);font-variant-numeric:tabular-nums;white-space:nowrap}
+.vblock{margin-top:12px;padding-top:10px;border-top:1px solid var(--outline)}
+.vblock p{font-size:10px;line-height:14.5px;color:var(--on-surface-var);margin-top:6px}
+.vblock p b{color:var(--on-surface);font-weight:500}
+.counts{font-size:9.5px;line-height:14px;color:var(--on-surface-var);margin-top:7px}
+.gen{font-size:9px;line-height:13px;color:var(--on-surface-var);opacity:.85;margin-top:6px}
+.val,.vu{display:inline-flex}
+.vv{display:none}
+.device.st-valid .vu{display:none}
+.device.st-valid .vv{display:inline-flex}
+.device.st-valid p.vu{display:none}
+.device.st-valid p.vv{display:block}
+.device.st-valid .ring{border-color:var(--outline);background:var(--outline)}
+.actions{display:flex;gap:8px;margin:12px 16px 0}
+.actions .btn{flex:1;min-height:44px}
+.note{margin:12px 20px 20px;font-size:10.5px;line-height:15px;color:var(--on-surface-var);display:flex;gap:8px}
+.note .ring{margin-top:3px;flex:0 0 auto}
+
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+ <symbol id="i-car" viewBox="0 0 24 24"><path d="M4 16.2v-3.4l1.8-4.4A2 2 0 0 1 7.7 7h8.6a2 2 0 0 1 1.9 1.4L20 12.8v3.4"/><path d="M4 13h16"/><circle cx="7.6" cy="17.6" r="1.7"/><circle cx="16.4" cy="17.6" r="1.7"/></symbol>
+ <symbol id="i-compare" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="7" height="15" rx="1.6"/><rect x="13.5" y="4.5" width="7" height="15" rx="1.6"/><path d="M6 9h2M6 13h2M16 9h2M16 13h2"/></symbol>
+ <symbol id="i-book" viewBox="0 0 24 24"><path d="M12 6.6C10.4 5.1 7.9 4.6 4 4.6v13.6c3.9 0 6.4.5 8 2 1.6-1.5 4.1-2 8-2V4.6c-3.9 0-6.4.5-8 2z"/><path d="M12 6.6v13.6"/></symbol>
+ <symbol id="i-back" viewBox="0 0 24 24"><path d="M19 12H5.5M11 6l-6 6 6 6"/></symbol>
+ <symbol id="i-chev" viewBox="0 0 24 24"><path d="M9.5 6l6 6-6 6"/></symbol>
+ <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 4.4L20.6 19.6H3.4z"/><path d="M12 10v4.1M12 16.9v.2"/></symbol>
+ <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6.5L9.3 17.2 4 11.9"/></symbol>
+ <symbol id="i-more" viewBox="0 0 24 24"><circle cx="12" cy="6" r="1.1" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.1" fill="currentColor" stroke="none"/><circle cx="12" cy="18" r="1.1" fill="currentColor" stroke="none"/></symbol>
+ <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5.2v13.6M5.2 12h13.6"/></symbol>
+ <symbol id="i-share" viewBox="0 0 24 24"><path d="M12 15V4.5M8 8l4-3.5L16 8"/><path d="M5.5 13.5v5A1.5 1.5 0 0 0 7 20h10a1.5 1.5 0 0 0 1.5-1.5v-5"/></symbol>
+ <symbol id="i-doc" viewBox="0 0 24 24"><path d="M6.5 3.5h7l5 5v12h-12z"/><path d="M13.5 3.5v5h5"/></symbol>
+</defs></svg>
+
+<main class="device" id="device">
+<div class="status" aria-hidden="true"><span>9:41</span><span class="right">
+  <svg viewBox="0 0 24 24"><path d="M3 17h3v3H3zM9 13h3v7H9zM15 9h3v11h-3z" fill="currentColor" stroke="none"/></svg>
+  <svg viewBox="0 0 24 24"><path d="M2.5 9.2a14 14 0 0 1 19 0M6 12.4a9 9 0 0 1 12 0M9.4 15.6a4.2 4.2 0 0 1 5.2 0"/><circle cx="12" cy="18.6" r="1" fill="currentColor" stroke="none"/></svg>
+  <span class="batt"></span></span></div>
+<div class="screen">
+<header class="appbar">
+  <a class="iconbtn" href="setup-editor.html" aria-label="Back"><svg><use href="#i-back"/></svg></a>
+  <div class="title">Setup sheet<span class="sub">Export · PDF or plain text</span></div>
+  <button class="iconbtn" aria-label="More options"><svg><use href="#i-more"/></svg></button>
+</header>
+<div class="frametag" role="note"><b>Example data</b><span>a synthetic sheet, printed to show where the validity state sits — not a real export</span></div>
+<div class="head">
+  <h1>Setup sheet</h1>
+  <div class="meta"><span>A4 portrait · 1 page</span><span class="sep"></span><span>what a printed sheet carries</span></div>
+</div>
+
+<div class="paper">
+  <div class="brand">Setup Lab · setup sheet</div>
+  <div class="car">Xray T4 '24</div>
+  <div class="sub">Wed club · S05 · 12 Aug 2026 · baseline</div>
+  <hr>
+  <div class="cond">
+    <span>Track <b>dry</b></span><span>Tyres <b>32R</b></span>
+    <span>Air <b>18 °C</b></span><span>Track temp <b>24 °C</b></span>
+  </div>
+
+  <div class="shgrp">Ride height &amp; droop</div>
+  <div class="shrow"><span class="l">Ride height, front</span><span class="v">5.5 mm<span class="ring"></span></span></div>
+  <div class="shrow"><span class="l">Ride height, rear</span><span class="v">6.0 mm<span class="ring"></span></span></div>
+  <div class="shrow"><span class="l">Droop, front / rear</span><span class="v">4.0 / 5.0 mm<span class="ring"></span></span></div>
+
+  <div class="shgrp">Camber &amp; toe <span style="text-transform:none;letter-spacing:0">· ° per side</span></div>
+  <div class="shrow"><span class="l">Camber, front</span><span class="v">−1.5<span class="ring"></span></span></div>
+  <div class="shrow"><span class="l">Camber, rear</span><span class="v">−2.0<span class="ring"></span></span></div>
+  <div class="shrow"><span class="l">Toe, front</span><span class="v">0.5 out<span class="ring"></span></span></div>
+  <div class="shrow"><span class="l">Toe, rear</span><span class="v">2.0 in</span></div>
+
+  <div class="shgrp">Springs &amp; bars</div>
+  <div class="shrow"><span class="l">Spring rate, front / rear</span><span class="v">2.8 / 2.9 lb/in<span class="ring"></span></span></div>
+  <div class="shrow"><span class="l">Wheel rate, front / rear</span><span class="v">1.08 / 0.98 lb/in<span class="ring"></span></span></div>
+  <div class="shrow"><span class="l">Bar diameter, front / rear</span><span class="v">1.2 / none mm<span class="ring"></span></span></div>
+
+  <div class="shgrp">Dampers</div>
+  <div class="shrow"><span class="l">Oil, front / rear</span><span class="v">350 / 400 cSt<span class="ring"></span></span></div>
+  <div class="shrow"><span class="l">Piston holes, front / rear</span><span class="v">2 / 2<span class="ring"></span></span></div>
+
+  <div class="shgrp">Computed</div>
+  <div class="shrow"><span class="l">Roll centre, front / rear</span><span class="v">22 / 31 mm<span class="ring"></span></span></div>
+  <div class="shrow"><span class="l">Load-transfer share</span><span class="v">57.5% front<span class="ring"></span></span></div>
+
+  <div class="vblock">
+    <span class="vtag vu"><svg><use href="#i-alert"/></svg>computed, not yet validated</span>
+    <span class="vtag ok vv"><svg><use href="#i-check"/></svg>validated · bench</span>
+    <p class="vu"><b>Computed, not yet validated.</b> Every number above was computed by Setup Lab 0.1 from this car's model and the published equations. None has been checked against a bench measurement, so no figure here is evidence — the second digit is arithmetic and the third is decoration.</p>
+    <p class="vv"><b>Validated against a bench measurement.</b> Every output above carries a passing bench case: roll centre ±0.4 mm, camber gain ±0.06 °/10, wheel rate ±3% against a measured corner. Evidence and date are recorded per output in the app.</p>
+    <div class="counts">Inputs · <b>32 measured</b> · 2 estimated (front ride height ±0.12 °/10; rear spring rate, no tolerance recorded) · 2 inherited from Mugen MTC2 template v2</div>
+    <div class="gen">Generated 30 Oct 2026 · app 0.1 · schema 1 · sheet hash 4f2a…c91 · a record of what was run, not a validation certificate</div>
+  </div>
+</div>
+
+<div class="actions">
+  <button class="btn"><svg><use href="#i-share"/></svg> Share PDF</button>
+  <button class="btn tonal"><svg><use href="#i-doc"/></svg> Copy text</button>
+</div>
+
+<p class="note"><span class="ring"></span><span>The validity state is printed per value and stated once in words at the foot. A sheet that leaves the phone cannot outlive its caveat — this is the surface most likely to be pinned to a pit table for a season.</span></p>
+
+</div>
+<nav class="navbar" aria-label="Primary">
+  <a href="garage.html" aria-current="page"><svg><use href="#i-car"/></svg><span>Garage</span></a>
+  <a href="compare.html"><svg><use href="#i-compare"/></svg><span>Compare</span></a>
+  <a href="learn.html"><svg><use href="#i-book"/></svg><span>Learn</span></a>
+</nav>
+<div class="homebar" aria-hidden="true"></div>
+</main>
+
+<aside class="rail">
+  <div class="kicker">Setup Lab · wireframe I</div>
+  <h1>Exported sheet</h1>
+  <p>The surface that leaves the phone. Whatever the screen says about evidence, the paper has to say too — otherwise the caveat dies at the printer.</p>
+  <ul><li>One validity state per value, as the same hollow ring used in the app, plus one sentence in words at the foot.</li><li>Provenance travels: measured, estimated (with its stored tolerance), inherited (with the source).</li><li>No tolerance is invented on the way out. An estimate with no recorded tolerance prints with <b>~</b> and nothing else.</li><li>When bench evidence exists the same slot reads <b>validated</b> and names the case — the layout does not change, so old sheets stay comparable.</li></ul>
+  <div class="ctrl"><button class="tg" id="themeBtn" aria-pressed="false">☾ Dark</button><button class="tg" data-state="valid" aria-pressed="false">Validated variant</button></div>
+  <div class="meta">Toggle <b>Validated variant</b> to see the same sheet once a bench case exists. Only two things change: the marker and the sentence.<br><a class="link" href="index.html">All screens →</a> &nbsp; <a class="link" href="design-notes.html">Token check →</a></div>
+</aside>
+
+<script>
+(function(){
+  var root=document.documentElement, btn=document.getElementById('themeBtn');
+  function setTheme(t){ root.setAttribute('data-theme',t);
+    if(btn){ btn.textContent = t==='dark' ? '☀ Light' : '☾ Dark'; btn.setAttribute('aria-pressed', t==='light'?'true':'false'); }
+    try{localStorage.setItem('sl-theme',t)}catch(e){} }
+  var saved='dark'; try{saved=localStorage.getItem('sl-theme')||'dark'}catch(e){}
+  setTheme(saved);
+  if(btn) btn.addEventListener('click',function(){ setTheme(root.getAttribute('data-theme')==='dark'?'light':'dark'); });
+  window.addEventListener('keydown',function(e){ if(e.key==='t') setTheme(root.getAttribute('data-theme')==='dark'?'light':'dark'); });
+})();
+
+(function(){
+  var dev=document.getElementById('device'), b=document.querySelector('[data-state]');
+  if(b) b.addEventListener('click',function(){ var on=dev.classList.toggle('st-valid'); b.setAttribute('aria-pressed', on?'true':'false'); });
+})();
+
+</script>
+</body>
+</html>
