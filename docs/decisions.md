@@ -45,6 +45,25 @@ wheel-level damping; more or larger piston holes reduce low-speed force; hotter 
 Forecloses: nothing — the drop-test workflow (§3 option 3 of `docs/reviews/round1/CONSOLIDATED.md`)
 remains the route to a measured ζ later, and upgrades this badge per property when it lands.
 
+**D-16 — One machine-readable schema, and provenance is structural.** Dave's project, ruled
+2026-10-31 after the round-2 verifier found two normative car-model files (spec §4.2 and
+physics/01 §5) that disagree on schema_version, on nesting and on how a value carries its source.
+`docs/specs/fields.yaml` is the single normative definition of every field: type, unit, requiredness,
+`on_absence`, plausible range, and which outputs consume it. Prose tables and the generated Dart
+table are *views* of it, and the gate fails if they diverge. On disk, every **measured** field is a
+`{ "value": …, "source": … }` object rather than a bare number: a value without a source becomes a
+schema error instead of a review note. Cost: files are more verbose and a hand-written model is
+slower to type. Accepted — the alternative is a silent unsourced number, which is the one thing
+this project must never ship.
+
+**D-17 — Camber and toe are per-wheel signed, and mirroring does not negate them.** Ruled
+2026-10-31. "Positive camber = top outboard" and "positive toe = toe-in" are statements about the
+wheel, not about the car's axes, so a symmetric car has identical stored values left and right, and
+`mirror_of` copies them unchanged. Negating on mirror (as the requirements and architecture said)
+would put 1.0° of toe on a straight car; leaving them unchanged while the *formula* works in global
+coordinates (as physics/01 does, with an explicit side factor s = ±1) is the correct pairing.
+Conversion to a global-frame angle happens inside the solver, once, and never in the document.
+
 **D-14 — CG height is inferred, never measured.** Dave, 2026-10-30: "we can't really work out CG."
 Two derivation routes: a component-mass estimate (motor, battery, electronics, plate, corner
 unsprung masses, with positions) and a two-hang plumb-line procedure for a user who wants a real
