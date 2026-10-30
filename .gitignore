@@ -19,3 +19,9 @@ docs/research/**/*.vtt
 docs/research/**/*.en.srt
 tmp/
 *.log
+
+# Raw third-party corpus: kept locally for research, never redistributed.
+# (Forum posts and video transcripts are other people's words — see docs/research/README.md)
+docs/research/forum/
+docs/research/transcripts/
+docs/research/handbook/
