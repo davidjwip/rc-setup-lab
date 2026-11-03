@@ -1,0 +1,30 @@
+{
+  "carModel": [
+    "schema_version",
+    "kind",
+    "frame",
+    "units",
+    "symmetry",
+    "sources",
+    "body.reference_ride_height",
+    "body.wheelbase",
+    "axles.<axle>.track",
+    "axles.<axle>.tyre_radius",
+    "axles.<axle>.droop_limit_wheel",
+    "axles.<axle>.bump_limit_wheel",
+    "corners.<corner>.arm_type.lower",
+    "corners.<corner>.arm_type.upper",
+    "corners.<corner>.points.lca_in_a",
+    "corners.<corner>.points.lca_in_b",
+    "corners.<corner>.points.lca_out",
+    "corners.<corner>.points.uca_in",
+    "corners.<corner>.points.uca_in_a",
+    "corners.<corner>.points.uca_in_b",
+    "corners.<corner>.points.uca_out",
+    "corners.<corner>.points.wc"
+  ],
+  "outputs": [
+    "roll_centre_height",
+    "camber_gain"
+  ]
+}
