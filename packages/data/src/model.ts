@@ -54,6 +54,7 @@ export type ArbTypeDocument = 'torsion_bar' | 'blade' | 'fixed' | 'none';
 export interface ArbDocument {
   readonly type: ArbTypeDocument;
   readonly rateAtLink: MeasuredValue<number> | null;
+  readonly blades: MeasuredValue<number> | null;
   readonly barDiameter: MeasuredValue<number> | null;
   readonly span: MeasuredValue<number> | null;
   readonly armLength: MeasuredValue<number> | null;
