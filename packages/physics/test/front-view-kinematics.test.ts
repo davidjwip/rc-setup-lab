@@ -120,6 +120,43 @@ describe('front-view kinematics goldens', () => {
     expect(right.rollCentreHeight.value).toBeCloseTo(mm(9.9749), 4);
   });
 
+  it('derived rear geometry is inferred and flagged, never presented as measured', () => {
+    const rear = referenceCorner(1);
+    const derived: FrontViewInput = {
+      ...rear,
+      corner: 'LR',
+      lcaIn_m: { ...rear.lcaIn_m, confidence: 'derived' },
+      lcaOut_m: { ...rear.lcaOut_m, confidence: 'derived' },
+      ucaIn_m: { ...rear.ucaIn_m, confidence: 'derived' },
+      ucaOut_m: { ...rear.ucaOut_m, confidence: 'derived' },
+      wheelCentre_m: { ...rear.wheelCentre_m, confidence: 'derived' },
+    };
+
+    const result = solveFrontView(derived);
+    const outputs = [
+      result.instantCentre,
+      result.rollCentreHeight,
+      result.rollCentreLateral,
+      result.camberGain,
+      result.camberGainGlobal,
+      result.staticState,
+    ];
+
+    for (const output of outputs) {
+      expect(output.kind).toBe('defined');
+      if (output.kind !== 'defined') continue;
+      expect(output.tier).toBe('inferred');
+      expect(output.flags.has('derivedGeometry')).toBe(true);
+      expect(output.provenance.has('lca_in_a')).toBe(true);
+    }
+
+    const measured = solveFrontView(referenceCorner());
+    expect(measured.rollCentreHeight.kind).toBe('defined');
+    if (measured.rollCentreHeight.kind !== 'defined') return;
+    expect(measured.rollCentreHeight.tier).toBe('firm');
+    expect(measured.rollCentreHeight.flags.has('derivedGeometry')).toBe(false);
+  });
+
   it('parallel arms return a typed undefined instant centre and a finite limit roll centre', () => {
     const result = solveFrontView(parallelCorner(false));
     expect(result.instantCentre.kind).toBe('undefined');

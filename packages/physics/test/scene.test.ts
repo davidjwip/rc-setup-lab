@@ -35,6 +35,19 @@ function referenceCorner(side: 1 | -1 = 1): FrontViewInput {
   };
 }
 
+function derivedCorner(): FrontViewInput {
+  const base = referenceCorner();
+  return {
+    ...base,
+    corner: 'LR',
+    lcaIn_m: { ...base.lcaIn_m, confidence: 'derived' },
+    lcaOut_m: { ...base.lcaOut_m, confidence: 'derived' },
+    ucaIn_m: { ...base.ucaIn_m, confidence: 'derived' },
+    ucaOut_m: { ...base.ucaOut_m, confidence: 'derived' },
+    wheelCentre_m: { ...base.wheelCentre_m, confidence: 'derived' },
+  };
+}
+
 function parallelCorner(vertical = false): FrontViewInput {
   return {
     corner: 'LF',
@@ -154,6 +167,18 @@ describe('front-view scene geometry', () => {
     if (scene.rollCentre.kind !== 'defined') return;
     expect(scene.rollCentre.y).toBeCloseTo(0, 12);
     expect(scene.rollCentre.x).toBeCloseTo(0, 12);
+  });
+
+  it('marks a derived rear scene so the drawing can say it is not measured', () => {
+    const input = derivedCorner();
+    const result = solveFrontView(input);
+    const scene = buildFrontViewScene(input, result);
+
+    expect(scene.derivedGeometry).toBe(true);
+    expect(scene.corner).toBe('LR');
+
+    const measured = buildFrontViewScene(referenceCorner(), solveFrontView(referenceCorner()));
+    expect(measured.derivedGeometry).toBe(false);
   });
 
   it('clips a far instant centre and marks the ray as clipped', () => {
