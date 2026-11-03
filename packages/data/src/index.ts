@@ -9,10 +9,12 @@ export {
 export {
   degreesToRadians,
   gramsToKilograms,
+  gravitiesToMetresPerSecondSquared,
   kilogramsToGrams,
   metresToMillimetres,
   millimetresToMetres,
   newtonsPerMillimetreToNewtonsPerMetre,
+  percentToFraction,
   radiansToDegrees,
 } from './units.js';
 export type {
@@ -21,6 +23,8 @@ export type {
   ArmTypeDocument,
   AxleDocument,
   CarModelDocument,
+  CgComponentDocument,
+  CgDocument,
   CornerDocument,
   CornerKey,
   CornerPointKey,
@@ -38,6 +42,7 @@ export {
   SIDE_SIGN,
   buildAntiRollBarInput,
   buildFrontViewInput,
+  buildLoadTransferInput,
   buildRatesInput,
   buildRollStiffnessInput,
   cornerFor,

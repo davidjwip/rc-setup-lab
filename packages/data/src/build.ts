@@ -1,9 +1,13 @@
 import {
   notMeasured,
+  solveFrontView,
   solveRates,
   solveRatesFromRatio,
+  solveRollStiffness,
   type AntiRollBarInput,
+  type CgComponentInput,
   type FrontViewInput,
+  type LoadTransferInput,
   type RatesInput,
   type RollStiffnessInput,
   type Solved,
@@ -25,6 +29,7 @@ import {
   gramsToKilograms,
   millimetresToMetres,
   newtonsPerMillimetreToNewtonsPerMetre,
+  percentToFraction,
 } from './units.js';
 
 /**
@@ -46,6 +51,19 @@ const ARB_MOTION_RATIO_ASSUMED = 0.8;
 /** fields.yaml `axles.<axle>.arb.shear_modulus`: steel is the stated default. */
 const STEEL_SHEAR_MODULUS_GPA = 79.3;
 const GIGAPASCALS_TO_PASCALS = 1e9;
+
+/**
+ * 06 §6.1 / 01 §8.4: the reference car has no rear hardpoints, so its rear
+ * roll-centre height is an assumed input. TODO(spec 01 §8.4): derive it once a
+ * rear corner is measured; the schema has no field for the assumption yet.
+ */
+const REAR_ROLL_CENTRE_HEIGHT_ASSUMED_M = 0.006;
+
+/** fields.yaml `body.mass.unsprung_*`: ESTIMATE default, grams per axle. */
+const DEFAULT_UNSPRUNG_AXLE_KG = 0.12;
+
+/** fields.yaml `body.cg.unsprung_height`: ASSUME(0.625 × tyre radius). */
+const UNSPRUNG_HEIGHT_TYRE_RADIUS_FACTOR = 0.625;
 
 function sourcedNumber(
   measured: MeasuredValue<number> | null,
@@ -435,5 +453,198 @@ export function buildRollStiffnessInput(model: CarModelDocument): DataResult<Rol
         confidence: rearTrack.confidence,
       },
     },
+  });
+}
+
+/**
+ * Build the SI load-transfer input at one lateral acceleration. Lengths are
+ * converted once (mm → m), masses once (g → kg), and the front mass share once
+ * (% → fraction). The CG height is not read as a measurement: the physics
+ * package infers it from `body.cg.components[]`, or uses the stated default.
+ */
+export function buildLoadTransferInput(
+  model: CarModelDocument,
+  lateralAcceleration_mps2: number,
+): DataResult<LoadTransferInput> {
+  const errors: DataError[] = [];
+
+  const total = model.mass.total;
+  if (total === null) {
+    errors.push(dataError('missingField', 'body.mass.total', 'load transfer needs the total mass'));
+  }
+  const frontShare = model.cg.frontMassShare;
+  if (frontShare === null) {
+    errors.push(
+      dataError(
+        'missingField',
+        'body.cg.front_mass_share',
+        'load transfer needs the front mass share',
+      ),
+    );
+  }
+  const wheelbase = model.wheelbase;
+  if (wheelbase === null) {
+    errors.push(dataError('missingField', 'body.wheelbase', 'load transfer needs the wheelbase'));
+  }
+
+  const rear = model.axles.rear;
+  if (rear === null) {
+    errors.push(
+      dataError('missingField', 'axles.rear', 'load transfer needs a rear axle block'),
+    );
+  }
+
+  const frontView = buildFrontViewInput(model, 'LF');
+  if (!frontView.ok) return frontView;
+  const frontSolved = solveFrontView(frontView.value);
+  const rollCentreFront = frontSolved.rollCentreHeight;
+  if (rollCentreFront.kind !== 'defined') {
+    errors.push(
+      dataError(
+        'missingField',
+        'front.roll_centre_height',
+        'load transfer needs the front roll-centre height from module 2',
+      ),
+    );
+  }
+
+  const rollInput = buildRollStiffnessInput(model);
+  if (!rollInput.ok) return rollInput;
+  const rollResult = solveRollStiffness(rollInput.value);
+
+  const unsprungFrontMeasured = model.mass.unsprungFront;
+  const unsprungRearMeasured = model.mass.unsprungRear;
+  const unsprungFront: Sourced<number> =
+    unsprungFrontMeasured === null
+      ? {
+          value: DEFAULT_UNSPRUNG_AXLE_KG,
+          ref: 'body.mass.unsprung_front',
+          confidence: 'estimated',
+        }
+      : {
+          value: gramsToKilograms(unsprungFrontMeasured.value),
+          ref: 'body.mass.unsprung_front',
+          confidence: unsprungFrontMeasured.confidence,
+        };
+  const unsprungRear: Sourced<number> =
+    unsprungRearMeasured === null
+      ? {
+          value: DEFAULT_UNSPRUNG_AXLE_KG,
+          ref: 'body.mass.unsprung_rear',
+          confidence: 'estimated',
+        }
+      : {
+          value: gramsToKilograms(unsprungRearMeasured.value),
+          ref: 'body.mass.unsprung_rear',
+          confidence: unsprungRearMeasured.confidence,
+        };
+
+  let unsprungHeight: Sourced<number> | null = null;
+  if (model.cg.unsprungHeight !== null) {
+    unsprungHeight = {
+      value: millimetresToMetres(model.cg.unsprungHeight.value),
+      ref: 'body.cg.unsprung_height',
+      confidence: model.cg.unsprungHeight.confidence,
+    };
+  } else if (model.axles.front.tyreRadius !== null) {
+    unsprungHeight = {
+      value:
+        UNSPRUNG_HEIGHT_TYRE_RADIUS_FACTOR *
+        millimetresToMetres(model.axles.front.tyreRadius.value),
+      ref: 'body.cg.unsprung_height',
+      confidence: 'assumed',
+    };
+  } else {
+    errors.push(
+      dataError(
+        'missingField',
+        'body.cg.unsprung_height',
+        'no unsprung height and no tyre radius to assume it from',
+      ),
+    );
+  }
+
+  if (
+    errors.length > 0 ||
+    total === null ||
+    frontShare === null ||
+    wheelbase === null ||
+    rear === null ||
+    rollCentreFront.kind !== 'defined' ||
+    unsprungHeight === null
+  ) {
+    return fail(errors);
+  }
+
+  const components: readonly CgComponentInput[] | null =
+    model.cg.components === null || model.cg.components.length === 0
+      ? null
+      : model.cg.components.map((component, index) => ({
+          mass_kg: {
+            value: gramsToKilograms(component.mass.value),
+            ref: `body.cg.components[${index}].mass`,
+            confidence: component.mass.confidence,
+          },
+          height_m: {
+            value: millimetresToMetres(component.height.value),
+            ref: `body.cg.components[${index}].z`,
+            confidence: component.height.confidence,
+          },
+        }));
+
+  const cgHeight = model.cg.height;
+  const cgDefaultHeight: Sourced<number> | null =
+    cgHeight === null
+      ? null
+      : {
+          value: millimetresToMetres(cgHeight.value),
+          ref: 'body.cg.height',
+          confidence: cgHeight.confidence,
+        };
+
+  return ok({
+    totalMass_kg: {
+      value: gramsToKilograms(total.value),
+      ref: 'body.mass.total',
+      confidence: total.confidence,
+    },
+    frontMassShare: {
+      value: percentToFraction(frontShare.value),
+      ref: 'body.cg.front_mass_share',
+      confidence: frontShare.confidence,
+    },
+    unsprungFront_kg: unsprungFront,
+    unsprungRear_kg: unsprungRear,
+    unsprungHeight_m: unsprungHeight,
+    cgComponents: components,
+    ...(cgDefaultHeight === null ? {} : { cgDefaultHeight_m: cgDefaultHeight }),
+    wheelbase_m: {
+      value: millimetresToMetres(wheelbase.value),
+      ref: 'body.wheelbase',
+      confidence: wheelbase.confidence,
+    },
+    trackFront_m: {
+      value: millimetresToMetres(model.axles.front.track.value),
+      ref: 'axles.front.track',
+      confidence: model.axles.front.track.confidence,
+    },
+    trackRear_m: {
+      value: millimetresToMetres(rear.track.value),
+      ref: 'axles.rear.track',
+      confidence: rear.track.confidence,
+    },
+    rollCentreFront_m: {
+      value: rollCentreFront.value,
+      ref: 'front.roll_centre_height',
+      confidence: rollCentreFront.tier === 'firm' ? 'derived' : 'estimated',
+    },
+    rollCentreRear_m: {
+      value: REAR_ROLL_CENTRE_HEIGHT_ASSUMED_M,
+      ref: 'assumed.rear_roll_centre_height',
+      confidence: 'assumed',
+    },
+    rollStiffnessFront_NmPerRad: rollResult.front.rollStiffness,
+    rollStiffnessRear_NmPerRad: rollResult.rear.rollStiffness,
+    lateralAcceleration_mps2,
   });
 }

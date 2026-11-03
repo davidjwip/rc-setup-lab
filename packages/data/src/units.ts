@@ -1,3 +1,5 @@
+import { GRAVITY_MPS2 } from '@setuplab/physics';
+
 export function millimetresToMetres(millimetres: number): number {
   return millimetres / 1000;
 }
@@ -24,4 +26,12 @@ export function radiansToDegrees(radians: number): number {
 
 export function newtonsPerMillimetreToNewtonsPerMetre(value: number): number {
   return value * 1000;
+}
+
+export function percentToFraction(value: number): number {
+  return value / 100;
+}
+
+export function gravitiesToMetresPerSecondSquared(value: number): number {
+  return value * GRAVITY_MPS2;
 }

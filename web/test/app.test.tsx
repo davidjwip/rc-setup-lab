@@ -45,4 +45,23 @@ describe('R0 screen', () => {
     expect(html).toContain('0.438 N·m/rad');
     expect(html).toContain('IR_arm');
   });
+
+  it('renders the balance card with the front share, TLLT, per-wheel loads and CG route', () => {
+    const html = renderToStaticMarkup(createElement(App));
+    expect(html).toContain('Balance');
+    expect(html).toContain('Lateral acceleration');
+    expect(html).toContain('56.15 %');
+    expect(html).toContain('2.143 N');
+    expect(html).toContain('120.2 %');
+    expect(html).toContain('79.8 %');
+    expect(html).toContain('stated default (D-18)');
+    expect(html).toContain('±0.13 pp');
+    expect(html).toContain('front share moves more');
+  });
+
+  it('prints the substituted TLLT arithmetic in the maths', () => {
+    const html = renderToStaticMarkup(createElement(App));
+    expect(html).toContain('TLLT = m·a_y·h / t̄');
+    expect(html).toContain('balance = ΔW_f/(ΔW_f + ΔW_r)');
+  });
 });

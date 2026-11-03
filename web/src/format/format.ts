@@ -6,6 +6,9 @@ export const WHEEL_RATE_UNIT = 'N/mm';
 export const RIDE_FREQUENCY_UNIT = 'Hz';
 export const ROLL_STIFFNESS_UNIT = 'N·m/deg';
 export const FRONT_SHARE_UNIT = '%';
+export const FORCE_UNIT = 'N';
+export const LATERAL_G_UNIT = 'g';
+export const ANGLE_UNIT = '°';
 
 const RADIANS_PER_DEGREE = Math.PI / 180;
 
@@ -82,4 +85,37 @@ export function formatTorsionalStiffness(newtonMetresPerRadian: number, digits =
 
 export function formatFrontShare(fraction: number, digits = 1): string {
   return `${(fraction * 100).toFixed(digits)} ${FRONT_SHARE_UNIT}`;
+}
+
+export function formatForce(newtons: number, digits = 3): string {
+  return `${newtons.toFixed(digits)} ${FORCE_UNIT}`;
+}
+
+export function formatForceBand(band: Band, digits = 2): string {
+  const halfWidth = (band.high - band.low) / 2;
+  return `±${halfWidth.toFixed(digits)} ${FORCE_UNIT}`;
+}
+
+export function formatPercent(fraction: number, digits = 1): string {
+  return `${(fraction * 100).toFixed(digits)} ${FRONT_SHARE_UNIT}`;
+}
+
+export function formatPercentagePointBand(band: Band, digits = 2): string {
+  const halfWidth = ((band.high - band.low) / 2) * 100;
+  return `±${halfWidth.toFixed(digits)} pp`;
+}
+
+/** The solver stores the roll angle in radians; the UI reads degrees. */
+export function formatAngleDegrees(radians: number, digits = 2): string {
+  return `${((radians * 180) / Math.PI).toFixed(digits)} ${ANGLE_UNIT}`;
+}
+
+export function formatLateralG(value: number, digits = 1): string {
+  return `${value.toFixed(digits)} ${LATERAL_G_UNIT}`;
+}
+
+export function formatCgRoute(route: 'component_mass_moment' | 'stated_default'): string {
+  return route === 'component_mass_moment'
+    ? 'component-mass estimate'
+    : 'stated default (D-18)';
 }
