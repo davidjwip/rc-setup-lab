@@ -1,0 +1,7 @@
+# The shell must never be cached: a stale shell references asset hashes that no
+# longer exist, and the browser then refuses to execute the fallback response.
+# Hashed assets keep the default long cache — their names change with content.
+/
+  Cache-Control: no-store
+/index.html
+  Cache-Control: no-store
