@@ -1,32 +1,50 @@
 import { Fragment, useMemo, useState } from 'react';
 import {
   buildFrontViewInput,
+  buildLoadTransferInput,
   buildRatesInput,
   buildRollStiffnessInput,
+  gravitiesToMetresPerSecondSquared,
   parseCarModel,
   updateCornerPointMm,
   type CarModelDocument,
   type CornerPointKey,
   type DataError,
 } from '@setuplab/data';
-import { solveFrontView, solveRates, solveRollStiffness, type Solved } from '@setuplab/physics';
+import {
+  solveFrontView,
+  solveLoadTransfer,
+  solveRates,
+  solveRollStiffness,
+  type Solved,
+} from '@setuplab/physics';
 import rawModel from '../../assets/models/reference-touring-car.json';
 import {
+  ANGLE_UNIT,
   CAMBER_GAIN_UNIT,
+  FORCE_UNIT,
   FRONT_SHARE_UNIT,
+  LATERAL_G_UNIT,
   LENGTH_UNIT,
   RIDE_FREQUENCY_UNIT,
   ROLL_STIFFNESS_UNIT,
   WHEEL_RATE_UNIT,
+  formatAngleDegrees,
   formatBandFromMetres,
   formatBandFromNpm,
   formatCamberGain,
+  formatCgRoute,
   formatCriticalDamping,
+  formatForce,
+  formatForceBand,
   formatFrontShare,
   formatInstallationRatio,
+  formatLateralG,
   formatLengthFromMetres,
   formatLengthMm,
   formatNumber,
+  formatPercent,
+  formatPercentagePointBand,
   formatRideFrequency,
   formatRollCentreHeight,
   formatRollStiffness,
@@ -90,6 +108,7 @@ export function App() {
   const [model, setModel] = useState<CarModelDocument | null>(
     initialParse.ok ? initialParse.value : null,
   );
+  const [lateralG, setLateralG] = useState(1.0);
 
   const inputResult = useMemo(
     () => (model === null ? null : buildFrontViewInput(model, 'LF')),
@@ -118,6 +137,23 @@ export function App() {
         ? solveRollStiffness(rollInputResult.value)
         : null,
     [rollInputResult],
+  );
+  const transferInputResult = useMemo(
+    () =>
+      model === null
+        ? null
+        : buildLoadTransferInput(
+            model,
+            gravitiesToMetresPerSecondSquared(lateralG),
+          ),
+    [model, lateralG],
+  );
+  const transferResult = useMemo(
+    () =>
+      transferInputResult !== null && transferInputResult.ok
+        ? solveLoadTransfer(transferInputResult.value)
+        : null,
+    [transferInputResult],
   );
 
   if (!initialParse.ok) return <ParseErrors errors={initialParse.errors} />;
@@ -365,6 +401,103 @@ export function App() {
             </p>
           </article>
 
+          <article className="card result-card">
+            <div className="card-heading">
+              <h2>Balance</h2>
+              <span className="pill">
+                {transferResult === null ? 'not computable' : stateLabel(transferResult.balance)}
+              </span>
+            </div>
+            <label className="slider-row">
+              <span>Lateral acceleration</span>
+              <input
+                aria-label="Lateral acceleration in g"
+                type="range"
+                min="0.1"
+                max="2.5"
+                step="0.1"
+                value={lateralG}
+                onChange={(event) => setLateralG(Number.parseFloat(event.target.value))}
+              />
+              <output>{formatLateralG(lateralG)}</output>
+            </label>
+            {transferResult !== null && transferResult.balance.kind === 'defined' ? (
+              <>
+                <div className="value-row">
+                  <span className="value">
+                    {formatFrontShare(transferResult.balance.value, 2)}
+                  </span>
+                  <span className="band">
+                    {transferResult.balance.band === null
+                      ? 'no band'
+                      : formatPercentagePointBand(transferResult.balance.band)}
+                  </span>
+                </div>
+                <p className="hint">
+                  Total lateral load transfer{' '}
+                  {transferResult.totalLateralLoadTransfer.kind === 'defined'
+                    ? formatForce(transferResult.totalLateralLoadTransfer.value)
+                    : stateLabel(transferResult.totalLateralLoadTransfer)}{' '}
+                  at {formatLateralG(lateralG)}
+                  {transferResult.totalLateralLoadTransfer.kind === 'defined' &&
+                  transferResult.totalLateralLoadTransfer.band !== null
+                    ? ` (${formatForceBand(transferResult.totalLateralLoadTransfer.band)})`
+                    : ''}
+                  ; roll angle{' '}
+                  {transferResult.rollAngle.kind === 'defined'
+                    ? formatAngleDegrees(transferResult.rollAngle.value)
+                    : stateLabel(transferResult.rollAngle)}
+                  .
+                </p>
+                <p className="hint">
+                  Front outer{' '}
+                  {transferResult.frontWheel.outerShareOfStatic.kind === 'defined'
+                    ? formatPercent(transferResult.frontWheel.outerShareOfStatic.value)
+                    : stateLabel(transferResult.frontWheel.outerShareOfStatic)}{' '}
+                  / inner{' '}
+                  {transferResult.frontWheel.innerShareOfStatic.kind === 'defined'
+                    ? formatPercent(transferResult.frontWheel.innerShareOfStatic.value)
+                    : stateLabel(transferResult.frontWheel.innerShareOfStatic)}{' '}
+                  · rear outer{' '}
+                  {transferResult.rearWheel.outerShareOfStatic.kind === 'defined'
+                    ? formatPercent(transferResult.rearWheel.outerShareOfStatic.value)
+                    : stateLabel(transferResult.rearWheel.outerShareOfStatic)}{' '}
+                  / inner{' '}
+                  {transferResult.rearWheel.innerShareOfStatic.kind === 'defined'
+                    ? formatPercent(transferResult.rearWheel.innerShareOfStatic.value)
+                    : stateLabel(transferResult.rearWheel.innerShareOfStatic)}
+                  .
+                </p>
+                <p className="hint">
+                  CG height{' '}
+                  {transferResult.working.cgHeight_m === null
+                    ? 'not established'
+                    : `${formatLengthFromMetres(transferResult.working.cgHeight_m, 1)} via ${formatCgRoute(transferResult.cgRoute)}`}
+                  . The TLLT and roll-angle bands are the CG-height uncertainty; the balance band
+                  is ±0.13 pp because both axles share the same h.
+                </p>
+              </>
+            ) : (
+              <p className="no-answer">
+                {transferResult === null
+                  ? transferInputResult !== null && !transferInputResult.ok
+                    ? transferInputResult.errors.map((error) => error.path).join(', ')
+                    : 'no model'
+                  : stateLabel(transferResult.balance)}
+              </p>
+            )}
+            <p className="hint">
+              A higher front share moves more of the load change onto the front tyres, which biases
+              the car toward understeer — all else equal. The lateral-g input changes the loads,
+              not the balance: the front share is invariant to a_y.
+            </p>
+            <p className="footnote">
+              Total transfer is mass × CG height ÷ mean track. Springs and bars do not change it;
+              they move it between the axles, and the split is reported as elastic, geometric and
+              unsprung contributions.
+            </p>
+          </article>
+
           <article className="card maths-card">
             <details>
               <summary>Show the maths</summary>
@@ -553,6 +686,34 @@ export function App() {
                       })}
                     </>
                   ) : null}
+                  {transferResult !== null &&
+                  transferResult.working.cgHeight_m !== null &&
+                  transferResult.working.meanTrack_m !== null &&
+                  transferResult.totalLateralLoadTransfer.kind === 'defined' ? (
+                    <li>
+                      <span>
+                        TLLT = m·a_y·h / t̄ = {transferResult.working.totalMass_kg.toFixed(3)} kg ×{' '}
+                        {transferResult.working.lateralAcceleration_mps2.toFixed(3)} m/s² ×{' '}
+                        {transferResult.working.cgHeight_m.toFixed(3)} m ÷{' '}
+                        {transferResult.working.meanTrack_m.toFixed(3)} m ={' '}
+                        {formatForce(transferResult.totalLateralLoadTransfer.value)}
+                      </span>
+                    </li>
+                  ) : null}
+                  {transferResult !== null &&
+                  transferResult.front.total.kind === 'defined' &&
+                  transferResult.rear.total.kind === 'defined' &&
+                  transferResult.balance.kind === 'defined' ? (
+                    <li>
+                      <span>
+                        balance = ΔW_f/(ΔW_f + ΔW_r) ={' '}
+                        {formatForce(transferResult.front.total.value)} / (
+                        {formatForce(transferResult.front.total.value)} +{' '}
+                        {formatForce(transferResult.rear.total.value)}) ={' '}
+                        {formatFrontShare(transferResult.balance.value, 2)}
+                      </span>
+                    </li>
+                  ) : null}
                 </ol>
               ) : (
                 <p className="no-answer">The maths is unavailable while a hardpoint is missing.</p>
@@ -570,7 +731,8 @@ export function App() {
       <footer className="footer">
         <span>
           Units: {LENGTH_UNIT}, {CAMBER_GAIN_UNIT}, {WHEEL_RATE_UNIT}, {RIDE_FREQUENCY_UNIT},{' '}
-          {ROLL_STIFFNESS_UNIT}, {FRONT_SHARE_UNIT}, degrees.
+          {ROLL_STIFFNESS_UNIT}, {FRONT_SHARE_UNIT}, {FORCE_UNIT}, {LATERAL_G_UNIT},{' '}
+          {ANGLE_UNIT}.
         </span>
         <span>Pure TypeScript physics · no DOM in the solver · one conversion site.</span>
       </footer>
