@@ -645,6 +645,16 @@ fields:
       consumed_by: [camber_gain, bump_steer]
       notes: "Wheel travel, not shaft travel."
 
+    - path: axles.rear.derived_from
+      type: enum
+      values: [front]
+      unit: null
+      req: "no"
+      on_absence: OMIT
+      plausible: null
+      consumed_by: []
+      notes: "Declares that the rear corner geometry was derived by symmetry from the front, not measured. The corner points carry the matching `derived` source record, whose `method` says exactly what was done; this field is the axle-level declaration. Absent means the rear geometry, if any, is not declared derived."
+
     - path: axles.<axle>.spring.location
       type: enum
       values: [coilover_at_damper, separate_seat, inboard_rocker]

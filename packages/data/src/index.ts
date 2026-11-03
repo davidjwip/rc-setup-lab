@@ -21,6 +21,7 @@ export type {
   ArbDocument,
   ArbTypeDocument,
   ArmTypeDocument,
+  AxleDerivedFrom,
   AxleDocument,
   CarModelDocument,
   CgComponentDocument,

@@ -4,6 +4,7 @@ import type {
   ArbDocument,
   ArbTypeDocument,
   ArmTypeDocument,
+  AxleDerivedFrom,
   AxleDocument,
   CarModelDocument,
   CgComponentDocument,
@@ -302,8 +303,24 @@ function readAxle(
       : readOptionalMeasuredNumber(spring, `${path}.spring`, 'rate', errors, sources);
   const arb = readArb(raw, path, errors, sources);
 
+  const rawDerivedFrom = raw['derived_from'];
+  let derivedFrom: AxleDerivedFrom | null = null;
+  if (rawDerivedFrom !== undefined) {
+    if (rawDerivedFrom === 'front') {
+      derivedFrom = rawDerivedFrom;
+    } else {
+      errors.push(
+        dataError(
+          'invalidValue',
+          `${path}.derived_from`,
+          'derived_from must be "front" when present',
+        ),
+      );
+    }
+  }
+
   if (track === null) return null;
-  return { track, tyreRadius, bumpLimit, droopLimit, springRate, arb };
+  return { derivedFrom, track, tyreRadius, bumpLimit, droopLimit, springRate, arb };
 }
 
 function readArmType(
