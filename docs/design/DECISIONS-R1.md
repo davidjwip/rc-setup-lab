@@ -1,3 +1,9 @@
+> **Historical record — round 1.** This file documents how the round-1 design conflicts were
+> resolved *for a Flutter app*. **D-19 superseded the stack**: the project is a React + TypeScript
+> PWA, and where this file says "Flutter", "pubspec", `flutter analyze` or `dart run`, read the
+> web equivalents in `docs/specs/architecture.md`. The *reasoning* below still stands; the
+> mechanism names do not.
+
 # Round 1 reconciliation — where the independent drafts disagree
 
 Five agents worked blind of each other: requirements, physics, visual design, UX flows,
@@ -70,11 +76,22 @@ what the design still disagrees with.
 - **Cost of getting it wrong:** a gate that silently skips a package, i.e. green CI over
   untested physics. This one is worth Dave's explicit yes.
 
+> **Superseded in form by D-19 (2026-10-31).** The debate above is kept as the record of *why*
+> one command exists. The command is now `npm run gate` (typecheck + unit + schema/field drift),
+> and the platforms it replaces — `flutter analyze`, `flutter test`, `dart run tool/gate.dart` —
+> are gone with the stack. The argument transfers unchanged: three workspaces, two of which an
+> app-scoped command cannot see.
+
 ## D-07 Two pure packages or one — decided: **two**
 
 `setup_physics` (no Flutter, no JSON, no I/O) and `setup_data` (document model, schema,
 migrations, the single unit-conversion site). Two pubspecs make the "no Flutter" wall a build
 error rather than a review note, and make schema-migration tests fast.
+
+> **Still decided, differently enforced (D-19).** The two packages are now `packages/physics` and
+> `packages/data` in an npm workspace, and the wall is *stronger* than a pubspec assertion: the
+> physics package's `tsconfig.json` omits the `DOM` lib, so a browser API is a compile error. The
+> reasoning below the fold — no UI in the maths, fast migration tests — is unchanged.
 
 ## D-08 The wireframe's camber-gain figure is suspect — **open, verify before quoting**
 
@@ -91,8 +108,9 @@ wireframe is marked illustrative and no number from it goes into a store listing
    name on the listing; organisation needs a D-U-N-S number and weeks, and the choice cannot be
    retrofitted to the same account. This decides whether the store shows "Setup Lab" or
    "Dave Ip" as the seller.
-2. **Mac access for iOS builds.** A used Mac mini, or macOS CI minutes per release. Android can
-   ship without either.
+2. **Mac access for iOS builds.** ~~A used Mac mini, or macOS CI minutes per release. Android can
+   ship without either.~~ **Closed by D-19:** iOS is served by the same URL as Android, so no Mac is
+   needed for any build.
 3. **Validation depth before first release.** Does a number need bench evidence (L2) before v1
    ships, or does the app launch with an explicit "computed, not yet validated" chip? This is
    open question 1 in `docs/specs/physics/99-validation.md` and it changes both schedule and

@@ -5,9 +5,9 @@ different provenance.
 
 | Content | Licence | Why |
 |---|---|---|
-| Code (`app/`, `scripts/`) | **MIT** | Maximum reuse; no reason to restrict a calculator. |
+| Code (`web/`, `packages/`, `scripts/`) | **MIT** | Maximum reuse; no reason to restrict a calculator. |
 | Documentation, design, wireframes (`docs/`, `wireframes/`) | **CC BY 4.0** | Share and adapt with attribution. |
-| Chassis / damper / motor model data (`app/assets/models/`) | **CC BY 4.0**, contributor-attributed | Data outlives code; attribution travels with it. |
+| Chassis / damper / motor model data (`assets/models/`) | **CC BY 4.0**, contributor-attributed | Data outlives code; attribution travels with it. |
 
 ## Provenance rules for model data
 

@@ -170,8 +170,10 @@ last month stays comparable with today's.
 
 ## What these wireframes deliberately do not do
 
-- **No Flutter code.** Layout, tokens and component behaviour are specified in
+- **No application code.** Layout, tokens and component behaviour are specified in
   `docs/design/design-system.md`; these files are the visual reference, not the implementation.
+  (They happen to be HTML, which under D-19 makes them closer to the product than they were — but
+  they are not the product, and they carry invented data.)
 - **No real data layer.** Values are chosen so the equations check out, and every frame says so.
 - **No RC3 resemblance.** No borrowed screens, wording, help text or icons. The vocabulary
   (hardpoint, droop, roll centre, motion ratio, load-transfer split) is the community's, not any one

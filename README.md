@@ -2,7 +2,8 @@
 
 **Setup physics for RC cars — calculated, drawn, explained.**
 
-Setup Lab is a free, cross-platform (Flutter) workbench for RC car setup: suspension
+Setup Lab is a free, cross-platform **web app** for RC car setup — React + TypeScript, installable
+to a home screen and fully offline: suspension
 geometry, roll centres, camber gain, wheel rates, load transfer and damping — the numbers
 behind "why does the car do that", with the maths visible instead of hidden.
 
@@ -28,7 +29,7 @@ requirements/design work in progress. Nothing is shippable yet.
 | Spec | `docs/specs/spec.md` | not started |
 | Design system + wireframes | `docs/design/`, `wireframes/` | not started |
 | Plan | `docs/specs/plan.md` | not started |
-| Flutter app | `app/` | not started |
+| Web app (React + TS, PWA) | `web/` | not started |
 
 ## Principles
 
@@ -48,7 +49,10 @@ docs/specs/           spec.md, plan.md (spec-first, reviewed in rounds)
 docs/research/        corpus: forum thread, transcripts, handbook (read-only source material)
 docs/design/          design language, screen inventory, flows
 wireframes/           HTML wireframes / visual prototypes
-app/                  Flutter application (analyze + test are the gates)
+package.json          workspace root: web/ + packages/*, one lockfile
+web/                  React + TypeScript app (Vite, PWA); `npm run gate` is the gate
+packages/physics/     pure TS, SI only, no DOM and no React
+packages/data/        schema, migrations, canonical hash, the one unit conversion
 scripts/              research + tooling helpers
 AGENTS.md             the brief a coding agent must read first
 ```

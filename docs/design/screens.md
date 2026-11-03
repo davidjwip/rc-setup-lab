@@ -162,7 +162,8 @@ Settings → About → "Show welcome again" (useful for demos, harmless for user
 
 **Purpose.** The home. Every car the user owns, with just enough status to choose one.
 **Primary.** Open a car.
-**Secondary.** *Add a car* (FAB, bottom-right); overflow: *Import*, *Settings*.
+**Secondary.** *Add a car* (the primary action button, bottom-right — a floating action button by
+position and weight, not a Material widget); overflow: *Import*, *Settings*.
 
 **Data per car card.** Name · class/scale chip · geometry completeness (ring + "Front 9/13" on
 tap) · setup count · last-opened setup name and date · baseline name · a "Sample" badge and

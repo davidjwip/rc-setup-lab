@@ -367,7 +367,7 @@ precondition of shipping, and the results log below starts empty on purpose.
 A release may ship when:
 
 1. Every golden test in modules 1–10 passes, and every ID in the specs has a matching test
-   (`dart run tool/spec_audit.dart` is clean).
+   (`npm run spec:audit` is clean).
 2. The identity checks I1–I14 pass, including the property test that no `NaN` or `Infinity` escapes a
    public API over 10 000 randomised geometries.
 3. **Every shipped property carries its evidence state**, in the data and in the UI: `computed` (L0+L1

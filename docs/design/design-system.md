@@ -1,10 +1,10 @@
 # Setup Lab — design system
 
 **Status:** v1, design-complete, implementation-ready.
-**Applies to:** the Flutter app (`app/`), the wireframes in `wireframes/`, and any future store/print material.
+**Applies to:** the React app (`web/`), the wireframes in `wireframes/`, and any print or share material. The stack is D-19; where a rule below names a mechanism it names a web one, and §12 maps the tokens to CSS custom properties. Every colour, type size, spacing value, badge, value state and tier in this document is stack-neutral and unchanged by that decision.
 **Companion documents:** `docs/design/wireframe-notes.md` (what each screen is for), `wireframes/design-notes.html` (live token board with computed contrast ratios), `docs/intent.md` (why the app exists).
 
-This is a specification, not a mood board. Every value here is meant to be typed into `ThemeData` without a judgement call. Where a decision could plausibly go two ways, the wrong way is named.
+This is a specification, not a mood board. Every value here is meant to be typed into a CSS custom-properties block (or a Tailwind theme, or a native port) without a judgement call. Where a decision could plausibly go two ways, the wrong way is named.
 
 ---
 
@@ -49,7 +49,7 @@ Warm graphite neutrals, near-black but never `#000`, with a single high-chroma l
 
 ### 2.2 Dark scheme (default)
 
-| Material 3 role | Hex | Used for |
+| Token (Material 3 role name, kept for continuity) | Hex | Used for |
 |---|---|---|
 | `surface` (background) | `#121410` | screen background |
 | `surfaceContainerLowest` | `#0B0C09` | inset wells, diagram canvas |
@@ -75,7 +75,7 @@ Warm graphite neutrals, near-black but never `#000`, with a single high-chroma l
 
 ### 2.3 Light scheme
 
-| Material 3 role | Hex | Notes |
+| Token (Material 3 role name, kept for continuity) | Hex | Notes |
 |---|---|---|
 | `surface` | `#FBFBF4` | warm paper, not `#FFF` |
 | `surfaceContainerLowest` | `#FFFFFF` | inset wells (the only pure white) |
@@ -133,13 +133,24 @@ All text pairs clear AA (4.5:1); all large numerals clear AAA. `outline` is a **
 
 ### 3.1 Family
 
-**Roboto** (the platform default on Android), delegated through `Typography.material2021()` so iOS gets SF Pro and desktop gets the platform UI face. No web fonts, no bundled display face. This is deliberate: the app ships one typeface and spends its weight budget on scale and spacing instead of novelty.
+**The platform UI face**, expressed as the system stack
+`ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif`.
+No web fonts, no bundled display face, no `@font-face` at all. This is deliberate and it got
+simpler with D-19: the old rule delegated to the platform through a Flutter typography API, which
+meant a Material default on Android and SF Pro on iOS by way of the framework. A system stack states
+the same intent in one line, works on every engine, and adds **zero bytes** to the first-load budget
+(E8.11) — a bundled font family would be the single largest asset in the app.
 
-**Equations and tabular data** use the platform monospace through `fontFamilyFallback: ['Roboto Mono', 'Menlo', 'Consolas', 'monospace']`. Do not bundle a mono face for v1; if the fallback proves inconsistent in review, bundle Roboto Mono (Apache-2.0) and change one token.
+**Equations and tabular data** use the platform monospace through the stack
+`ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace`. Do not bundle a mono
+face for v1; if the fallback proves inconsistent in review, bundle one (Apache-2.0 or OFL) and
+change one token — but only if E8.11's budget still holds afterwards, because a mono face on top of
+a system sans is the first thing that would blow it.
 
-**Every number in the app uses tabular figures**: `fontFeatures: [FontFeature.tabularFigures()]`. This is not cosmetic — a live-updating value that reflows its own width while you drag a slider is the single most common "this feels cheap" bug in a data app.
+**Every number in the app uses tabular figures**: `font-variant-numeric: tabular-nums` on the numeric
+tokens. This is not cosmetic — a live-updating value that reflows its own width while you drag a slider is the single most common "this feels cheap" bug in a data app.
 
-### 3.2 Scale (logical px at textScale 1.0)
+### 3.2 Scale (CSS px at a 100% root font size)
 
 | M3 slot | Size / line | Weight | Tracking | Used for |
 |---|---|---|---|---|
@@ -161,7 +172,7 @@ All text pairs clear AA (4.5:1); all large numerals clear AAA. `outline` is a **
 
 Three slots are deliberately unused. Do not fill them "for completeness" — a 48 px display style has no job in a trackside app.
 
-### 3.3 Numeric styles (ThemeExtension, not TextTheme)
+### 3.3 Numeric styles (their own tokens, not the type scale)
 
 | Token | Size / line | Weight | Tracking | Used for |
 |---|---|---|---|---|
@@ -170,18 +181,30 @@ Three slots are deliberately unused. Do not fill them "for completeness" — a 4
 | `numMedium` | 18 / 22 | 500 | −0.2 | alignment steppers, compare cells |
 | `numSmall` | 14 / 18 | 500 | −0.2 | table cells, meta numbers |
 
-`unit` is `labelMedium` in `onSurfaceVariant`, baseline-aligned to the number with 3 px of leading space. Units are never inside the number string and never part of the same `Text` widget — they are a separate span so they can be styled and so the screen reader can say "22 millimetres".
+Each is a CSS custom property (`--fs-num-large: 1.375rem; --lh-num-large: 1.625rem; …`) with
+`font-variant-numeric: tabular-nums` and `letter-spacing` from the tracking column; the tracking
+value is the CSS `letter-spacing`, in `em`. They are *not* part of the M3-named type scale above,
+because a numeric token has to carry tabular figures and the `~`/`↳` glyph order with it (§10.13).
+
+`unit` is `labelMedium` in `onSurfaceVariant`, baseline-aligned to the number with 3 px of leading space. Units are never inside the number string and never inside the same text node as the number — they are a separate `<span>` inside one labelled group, so they can be styled and so the accessibility name can say "22 millimetres".
 
 ### 3.4 Dynamic type
 
-- The app honours `textScaler` up to **1.3** everywhere and does not clamp it. Layouts must survive 1.3 with no truncation: rows grow, cards grow, nothing is fixed-height except the 44 px touch target (which grows to 48 at scale ≥ 1.15).
-- The only layout that may scale a number down is `numHero` inside its card, via `FittedBox(fit: BoxFit.scaleDown)` — and only down to 0.85.
+- The app honours the user's text size up to **1.3** everywhere and does not clamp it — on the web
+  that means both mechanisms at once: the browser's page zoom (which scales everything, including
+  layout) and a larger root font size (which scales type in `rem` while boxes stay put). Layouts must
+  survive 1.3 with no truncation: rows grow, cards grow, nothing is fixed-height except the 44 px
+  touch target (which grows to 48 at 1.15 and above). Every type size and spacing token is in `rem`
+  so the second mechanism works; a token written in `px` is a bug in the token file.
+- The only layout that may scale a number down is `numHero` inside its card, and only down to 0.85 —
+  on the web that is `font-size: clamp(...)` or a one-off transform, decided per card, never a global
+  rule.
 - Two-line wrapping is allowed for labels. Ellipsis is only allowed on setup and car *names* in a card, never on a value, a unit or a property name.
-- At 1.3, the compare table's four columns stop fitting. Specification: below 350 logical px of content width, the compare table switches from side-by-side A/B to **stacked A / B rows** (label, then two indented value lines). Do not shrink the type.
+- At 1.3, the compare table's four columns stop fitting. Specification: below 350 CSS px of content width, the compare table switches from side-by-side A/B to **stacked A / B rows** (label, then two indented value lines). Do not shrink the type.
 
 ### 3.5 Measure
 
-Article prose is capped at 62 characters (≈ 360 logical px at 15.5 px). UI body copy is never justified, never hyphenated, and uses `TextAlign.start`.
+Article prose is capped at 62 characters (≈ 360 CSS px at 15.5 px). UI body copy is never justified, never hyphenated, and is always `text-align: start` (never `left` — the app is externalised for RTL, E8.9b).
 
 ---
 
@@ -194,7 +217,7 @@ Article prose is capped at 62 characters (≈ 360 logical px at 15.5 px). UI bod
 ### 4.2 Screen anatomy (390 × 844 reference)
 
 ```
-safe area (44 top / 34 bottom)
+safe area (env(safe-area-inset-*): 44 top / 34 bottom on the reference phone)
 ├─ status bar                46
 ├─ app bar                   56   (large titles live in the body, not the bar)
 ├─ content                   flex, scrolls
@@ -225,13 +248,13 @@ No column grid. A single column of full-bleed cards with a 16 px margin is the w
 | `xl` | 24 | modal bottom sheet |
 | `full` | 999 | switches, slider thumb, circular icon buttons |
 
-`ShapeTheme`: buttons `md`, cards `lg`, dialogs `xl`, chips `sm`, inputs `sm`. A card is never a pill; a button is never a card.
+Token map: buttons `md`, cards `lg`, dialogs `xl`, chips `sm`, inputs `sm` — one `--radius-*` per token, consumed by component classes. A card is never a pill; a button is never a card.
 
 ---
 
 ## 6. Elevation
 
-Material 3 tonal elevation only, levels 0–3, no `BoxShadow` except the sheet scrim.
+Tonal elevation only, levels 0–3, expressed as background-colour steps; no `box-shadow` anywhere except the sheet scrim. (This was a Material 3 rule about shadows; on the web it is simply "no shadows", and the reason is unchanged — a shadow on a warm neutral looks like a 2014 Android app and smears on OLED.)
 
 | Level | Use | Dark | Light |
 |---|---|---|---|
@@ -248,27 +271,39 @@ Depth is communicated by the tonal step **plus** a 1 px `outlineVariant` hairlin
 
 | Duration | Curve | Used for |
 |---|---|---|
-| 100 ms | linear | ripple / press feedback |
-| 160 ms | `Cubic(0.2, 0, 0, 1)` | colour, opacity, delta chip fade-in |
-| 220 ms | `Cubic(0.2, 0, 0, 1)` | expand/collapse of the maths panel, chevron rotation, tab underline |
-| 300 ms | `Cubic(0.05, 0.7, 0.1, 1)` (emphasised) | bottom sheet, page transition |
-| 400 ms | `Cubic(0.2, 0, 0, 1)` | number change when it comes from somewhere other than the user's finger |
+| 100 ms | `linear` | press feedback (background step; there is no Material ripple on the web) |
+| 160 ms | `cubic-bezier(0.2, 0, 0, 1)` | colour, opacity, delta chip fade-in |
+| 220 ms | `cubic-bezier(0.2, 0, 0, 1)` | expand/collapse of the maths panel, chevron rotation, tab underline |
+| 300 ms | `cubic-bezier(0.05, 0.7, 0.1, 1)` (emphasised) | bottom sheet, page transition |
+| 400 ms | `cubic-bezier(0.2, 0, 0, 1)` | number change when it comes from somewhere other than the user's finger |
 
 Rules:
 
 - **While a finger is on a slider, there is no animation at all.** The number tracks the drag frame-for-frame. Animating a value under a moving thumb feels broken.
 - A value that changes because of a *remote* cause (recalculation after a hardpoint edit) cross-fades old→new over 160 ms with a 2 px vertical slide. No counting/odometer animation — it is theatre, and it lies about intermediate values.
-- The maths panel expands with `AnimatedSize` + a 220 ms chevron rotation. It never pushes the row it belongs to off-screen.
-- `prefers-reduced-motion` / `MediaQuery.disableAnimations` sets every duration to 1 ms and removes the slide, but keeps the state change.
-- Haptics: `selectionClick` on slider tick crossings (discrete values only), `lightImpact` on save, nothing else.
+- The maths panel expands with a 220 ms height transition (`grid-template-rows: 0fr → 1fr`, which
+  animates without measuring the content) plus the chevron rotation. It never pushes the row it
+  belongs to off-screen.
+- `@media (prefers-reduced-motion: reduce)` sets every duration to 1 ms and removes the slide, but
+  keeps the state change (E8.16c).
+- **Haptics: dropped, and deliberately.** The Flutter design used a selection click on slider ticks
+  and a light impact on save. On the web there is no equivalent that works where it matters: iOS
+  Safari exposes no vibration API at all, and `navigator.vibrate` exists only in some Android
+  browsers, fires only from a user gesture, and is ignored when the user has system haptics off. A
+  save that sometimes buzzes on one platform is worse than a save that never does, so **v1 ships no
+  haptics** and the save bar's own 160 ms colour change carries the confirmation. If a wrapper
+  (Capacitor) ever lands, this line is the one to revisit — not the design.
 
 ---
 
 ## 8. Iconography
 
-- **Set:** Material Symbols Rounded, outlined, weight 300, 24 dp optical size.
-- **Sizes:** 24 in app bars and navigation, 20 in list rows, 16 in chips and inline links, 14 in dense table cells. Icon stroke never goes below 16 dp.
-- **Touch target:** every icon is wrapped in a 44 × 44 (or 48 × 48) target, even at 20 dp visual size.
+- **Set:** Material Symbols Rounded, outlined, weight 300, 24 px optical size — shipped as an inline
+  SVG sprite (the paths only), **not** as the Material Symbols webfont: the font is a few hundred
+  kilobytes for a dozen glyphs and would break E8.11's first-load budget on its own. The *set* is a
+  design decision and is unchanged; the delivery mechanism is the web's.
+- **Sizes:** 24 in app bars and navigation, 20 in list rows, 16 in chips and inline links, 14 in dense table cells. Icon stroke never goes below 16 px.
+- **Touch target:** every icon is wrapped in a 44 × 44 (or 48 × 48) target, even at a 20 px visual size.
 - **Vocabulary** (fixed, so screens stay consistent):
 
 | Concept | Icon |
@@ -293,7 +328,7 @@ Rules:
 
 ## 9. Numbers, units and formatting
 
-This is where a port of a physics app usually goes wrong, so it is specified rather than left to the widget layer.
+This is where a port of a physics app usually goes wrong, so it is specified rather than left to the component layer.
 
 | Property | Unit (display) | Decimals | Sign shown | Uncomputable when |
 |---|---|---|---|---|
@@ -311,7 +346,7 @@ This is where a port of a physics app usually goes wrong, so it is specified rat
 
 Rules:
 
-- The **physics package works in SI** (m, N, kg, rad). Conversion happens once, in a UI-layer formatter. No widget does arithmetic.
+- The **physics package works in SI** (m, N, kg, rad). Conversion happens once, in `packages/data`'s adapter, and formatting once, in `web/src/format/`. No component does arithmetic and no component calls `toFixed`.
 - Display units are a **per-car preference**, stored with the car, not a global toggle: a club racer who buys springs in lb/in should never see N/mm.
 - The minus sign is **U+2212 (−)**, not a hyphen. It is set with a hair of extra tracking; a hyphen next to a tabular digit reads as a dash.
 - Unit strings sit in `labelMedium`/`onSurfaceVariant` with a non-breaking space from the number, so "22 mm" never wraps to "22 / mm".
@@ -327,11 +362,11 @@ Rules:
 
 ### 10.1 App bar
 
-Height 56. Back (44) · title block · overflow (44). The title is `headlineMedium`; when a subtitle is present it is `labelMedium`/`onSurfaceVariant` on a second line and the block is vertically centred. Background is `surface` at 92% opacity with a 12 px blur when content scrolls under it; no divider. Large titles (30 px) live in the scrolling body as an H1, not in the bar — a bar that grows and shrinks on scroll is motion for its own sake.
+Height 56. Back (44) · title block · overflow (44). The title is `headlineMedium`; when a subtitle is present it is `labelMedium`/`onSurfaceVariant` on a second line and the block is vertically centred. Background is `surface` at 92% opacity with `backdrop-filter: blur(12px)` when content scrolls under it (and an opaque `surface` where `backdrop-filter` is unsupported — iOS Safari has supported it for years, but a bar that goes transparent when it is not is a readable fallback); no divider. Large titles (30 px) live in the scrolling body as an H1, not in the bar — a bar that grows and shrinks on scroll is motion for its own sake.
 
 ### 10.2 Navigation bar
 
-Material 3 `NavigationBar`, height 72 + safe area, **three destinations: Garage · Compare · Learn** (decision D-01). Active: icon and label in `primary`, `labelMedium`. Inactive: `onSurfaceVariant`. No pill indicator behind the icon — the colour change plus the label is enough at this size, and a second active-state signal competes with the numbers on screen.
+A bottom navigation bar built to the tokens below — one `<nav>` with three `<a>`s and `aria-current`, not a framework component — height 72 + safe area, **three destinations: Garage · Compare · Learn** (decision D-01, and the URLs are real URLs so each one is a link, §3 of the architecture). Active: icon and label in `primary`, `labelMedium`. Inactive: `onSurfaceVariant`. No pill indicator behind the icon — the colour change plus the label is enough at this size, and a second active-state signal competes with the numbers on screen.
 
 There is no Setup destination. Setup, analysis, the chassis card, the sheet library and the sheet diff are **pushes inside the Garage branch**, because they have no subject until a car is chosen; a Setup tab would reintroduce "which car is this tab showing?". Detail screens under a push (setup editor, hardpoints) drop the navigation bar and carry a bottom action bar instead (§4.2). Consequence for the wireframes: every tab bar draws three items, and the current destination for the whole car-and-setup subtree is garage.
 
@@ -345,7 +380,9 @@ Analysis is **seven cards, front and rear, and never an eighth** — motion rati
 
 A card with one value (compare rows, setup rows) uses the single-column version at 72 minimum: label left, value + delta right.
 
-The row is the whole tap target. A row with an expandable body is a `summary` (web) / `ExpansionTile` (Flutter) so the expanded state is announced, not a `GestureDetector`.
+The row is the whole tap target. A row with an expandable body is a `<details>`/`<summary>` pair, so
+the expanded state is announced and keyboard-operable for free — not a `div` with a click handler.
+Where the disclosure must animate, keep the `<details>` and drive the height with CSS (§7).
 
 ### 10.5 Delta chip
 
@@ -381,7 +418,10 @@ Used inside the hardpoint editor and the keypad sheet.
 
 - Height 52, radius 8, `surfaceContainerLow` fill, 1 px `outlineVariant`.
 - Label above the value inside the field: 10 px uppercase, `onSurfaceVariant` (`X · FWD`). The unit is a 10 px suffix pinned bottom-right inside the field.
-- `inputFormatters` limit to `-?\d{0,3}(\.\d{0,2})?`; keyboard is `TextInputType.numberWithOptions(decimal: true, signed: true)`.
+- Input is `<input type="text" inputmode="decimal" pattern="-?\d{0,3}(\.\d{0,2})?">`: a text input
+  with a decimal keypad hint, because `type="number"` brings spinners, scroll-wheel changes and a
+  locale-dependent decimal separator that has broken more measurement forms than it has fixed.
+  Validation still happens on blur, not on keystroke.
 - Missing state: dashed `warning` border, value `—` in `warning`, helper line below naming what to measure. A missing field is never empty and never shows a placeholder `0.0` — a zero is a legitimate measurement and must not be confused with an absence.
 - Validation is on blur, not on keystroke.
 
@@ -392,7 +432,7 @@ Used inside the hardpoint editor and the keypad sheet.
 
 ### 10.10 "Show the maths" panel
 
-A `ExpansionTile`-shaped disclosure, collapsed by default, attached to the row it explains (never a separate screen).
+A disclosure, collapsed by default, attached to the row it explains (never a separate screen) — the same `<details>`/`<summary>` component as §10.4.
 
 - On phones this **replaces the "Why sheet"** named in `screens.md`. Same content, one tap, no context loss — a sheet that covers the number you are asking about is worse on a 390-wide screen. The desktop and tablet builds may open the same content as a sheet.
 - Collapsed: chevron + the row. Expanded: chevron rotated, card background steps to `surfaceContainerLow`, and a body appears separated by a hairline.
@@ -471,7 +511,7 @@ Rules:
 | Garage card / Learn callout | ring after the value | one line per screen naming the state |
 
 - **A sheet that leaves the phone cannot outlive its caveat.** If the export omits the state, the whole feature is theatre: a printed sheet is the artefact most likely to be pinned to a pit table for a season.
-- Semantics: the value's accessible label appends the state — "Roll centre, front, 22 millimetres, up 3 from saved, computed, not yet validated".
+- Accessibility name: the value's label appends the state — "Roll centre, front, 22 millimetres, up 3 from saved, computed, not yet validated".
 
 ### 10.15 Chassis card
 
@@ -557,94 +597,147 @@ See §10.13. Banners never stack. If two conditions are true, the more severe on
 - **Touch targets:** 44 × 44 minimum everywhere; 48 × 48 for primary actions and steppers. Visual size may be smaller than the target (icons 20–24 inside a 44 box). Sliders get a 44 px hit area regardless of track thickness.
 - **Contrast:** every text pair in §2.4 clears AA. Numerals clear AAA. Non-text UI (borders, tracks) clears 3:1.
 - **Not colour alone:** every delta carries an arrow glyph and a sign; every state change carries a word ("Not computable yet", "Undefined for this geometry") or an icon.
-- **Semantics:** compound values are one semantic node with a spoken sentence — "Roll centre, front, 22 millimetres, up 3 from saved, inherited from the MTC2 template, computed, not yet validated". The visual split into number + unit + ring must not become three reads; the provenance and validity suffixes are appended in a fixed order (provenance, then validity).
+- **Accessibility name:** a compound value is one accessible node — the group carries the `aria-label`,
+  its visual children are `aria-hidden` — with a spoken sentence: "Roll centre, front, 22 millimetres, up 3 from saved, inherited from the MTC2 template, computed, not yet validated". The visual split into number + unit + ring must not become three reads; the provenance and validity suffixes are appended in a fixed order (provenance, then validity).
 - **The ring is never the only carrier of its meaning:** it has a label ("not yet validated") and the surface's own sentence repeats it, so a screen-reader user is not asked to interpret a glyph.
-- **Focus order** follows the visual order top-to-bottom; the app bar's overflow is last. Expanded panels are `Expanded`/`Collapsed` in the accessibility tree, not just visually hidden.
+- **Focus order** follows the visual order top-to-bottom; the app bar's overflow is last. Expanded
+  panels carry `aria-expanded` and `aria-controls`, and collapsed content is genuinely not rendered
+  (or `hidden`), not merely visually hidden — `display: none` and the accessibility tree agree, which
+  they do not when a panel is faded to zero opacity or pushed off-screen.
 - **Dynamic type** up to 1.3 with no truncation of values (§3.4).
 - **Reduced motion** shortens every transition to 1 ms and removes slides (§7).
 - **Landscape / tablet:** the phone layout is the product. On widths above 600, the content column is centred at 600 max; the compare table may show both A and B side by side indefinitely. No two-pane master-detail in v1.
 
 ---
 
-## 12. Flutter implementation map
+## 12. Web implementation map
 
-```dart
-// 1. Colour — explicit, never fromSeed.
-const darkScheme = ColorScheme(
-  brightness: Brightness.dark,
-  surface: Color(0xFF121410),
-  onSurface: Color(0xFFE8EADF),
-  primary: Color(0xFFC6EF6E),
-  onPrimary: Color(0xFF1A2100),
-  primaryContainer: Color(0xFF38480C),
-  onPrimaryContainer: Color(0xFFDCF9A4),
-  secondary: Color(0xFFA9C9BC),
-  tertiary: Color(0xFFE4B78C),
-  error: Color(0xFFFFB4A2),
-  onError: Color(0xFF5C1600),
-  outline: Color(0xFF767C69),
-  outlineVariant: Color(0xFF3C4034),
-  surfaceContainerLowest: Color(0xFF0B0C09),
-  surfaceContainerLow: Color(0xFF171A14),
-  surfaceContainer: Color(0xFF1C1F18),
-  surfaceContainerHigh: Color(0xFF24281F),
-  surfaceContainerHighest: Color(0xFF2D3127),
-  // remaining roles: derive from the table, do not leave null
-);
-```
+Every value in §2–§9 is a CSS custom property in `web/src/theme/tokens.css`, declared once for the
+dark theme (the default) and overridden for the light theme. The M3 role **names** are kept, because
+every table above uses them and renaming them would churn the whole document for no gain; what is
+gone is Material as a *mechanism* — there is no `ThemeData`, no `ColorScheme`, no component theme.
 
-- **Domain colours** that Material has no role for go in a `ThemeExtension`:
+```css
+:root {
+  color-scheme: dark;
 
-```dart
-@immutable
-class SetupLabColors extends ThemeExtension<SetupLabColors> {
-  final Color deltaUp;      // #C6EF6E / #3F5A05
-  final Color deltaDown;    // #9FC8C0 / #2F5A50
-  final Color warning;      // #E9C46A / #7A5000
-  final Color geometryLine; // onSurfaceVariant
-  final Color geometryGuide;// warning
-  final Color gridLine;     // 12% of outline
+  /* Surface — dark (default) */
+  --surface:                    #121410;
+  --surface-container-lowest:   #0B0C09;
+  --surface-container-low:      #171A14;
+  --surface-container:          #1C1F18;
+  --surface-container-high:     #24281F;
+  --surface-container-highest:  #2D3127;
+  --on-surface:                 #E8EADF;
+  --on-surface-variant:         #A8AD9C;
+  --outline:                    #767C69;
+  --outline-variant:            #3C4034;
+  --primary:                    #C6EF6E;
+  --on-primary:                 #1A2100;
+  --primary-container:          #38480C;
+  --on-primary-container:       #DCF9A4;
+  --secondary:                  #A9C9BC;
+  --tertiary:                   #E4B78C;
+  --error:                      #FFB4A2;
+  --on-error:                   #5C1600;
+
+  /* Domain colours the palette has no role for */
+  --delta-up:        #C6EF6E;
+  --delta-down:      #9FC8C0;
+  --warning:         #E9C46A;
+  --geometry-line:   var(--on-surface-variant);
+  --geometry-guide:  var(--warning);
+  --grid-line:       color-mix(in srgb, var(--outline) 12%, transparent);
+
+  /* Type: system faces, no @font-face, no webfont */
+  --font-ui:   ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+               "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas,
+               "Liberation Mono", monospace;
+  --fs-display-small: 1.875rem;  --lh-display-small: 2.25rem;
+  --fs-headline-medium: 1.25rem; --lh-headline-medium: 1.625rem;
+  /* …one pair per row of §3.2 and §3.3, in rem */
+
+  /* Space, radius, motion */
+  --s-1: 0.25rem; --s-2: 0.5rem; --s-3: 0.75rem; --s-4: 1rem;
+  --s-5: 1.25rem; --s-6: 1.5rem; --s-8: 2rem; --s-10: 2.5rem;
+  --s-12: 3rem; --s-16: 4rem;
+  --radius-xs: 4px; --radius-sm: 8px; --radius-md: 12px;
+  --radius-lg: 16px; --radius-xl: 24px; --radius-full: 999px;
+  --dur-press: 100ms; --dur-quick: 160ms; --dur-standard: 220ms;
+  --dur-emphasised: 300ms; --dur-settle: 400ms;
+  --ease-standard:   cubic-bezier(0.2, 0, 0, 1);
+  --ease-emphasised: cubic-bezier(0.05, 0.7, 0.1, 1);
 }
+
+@media (prefers-color-scheme: light) { :root { /* light overrides from §2.3 */ } }
+[data-theme="light"] { /* the user's explicit choice wins over the system default */ }
+[data-theme="dark"]  { /* …and back */ }
 ```
 
-- **Text**: build from `Typography.material2021().black/white` and `copyWith` the sizes in §3.2, so the platform font is preserved. Do not `fontFamily: 'Roboto'` — that hard-codes Android's face onto iOS.
-- **Numbers**: one `NumericText` widget that takes a `FormattedValue` (value, unit, precision, delta) and applies `FontFeature.tabularFigures()`, the unit span, and the semantic label. No screen formats a number itself.
-- **Component themes to set once:** `CardTheme` (elevation 0, `surfaceContainer`, `outlineVariant` side, radius 16), `NavigationBarTheme` (height 72, no indicator), `SliderTheme` (track 5, thumb 22, overlay 22), `ChipTheme` (32/8), `InputDecorationTheme` (52/8), `DividerTheme` (1, `outlineVariant`), `SnackBarTheme` (floating, `surfaceContainerHigh`).
-- **Sheets:** `showModalBottomSheet` with `useSafeArea: true`, `isScrollControlled: true`, radius `xl`, scrim 32%.
-- **State:** a change is a `SetupDraft` diffed against the saved `Setup`; the save bar reads the diff length. Uncomputable values are modelled as `Result<T>` with `MissingInputs(fieldIds)` and `UndefinedGeometry(reason, fieldIds)` — **not** `double?`. The physics package returns those; the UI never invents a zero.
+- **Colour is explicit, never generated from a seed.** There is no `color-mix` (or equivalent) in the
+  palette itself — the tonal steps are chosen, not computed — except for two derived overlays where
+  the derivation *is* the rule: the banner's 9 % warning fill and the 12 % grid line. A generated
+  palette is the single fastest way to lose the contrast ratios in §2.4, which E8.7c tests.
+- **Both themes exist as a data attribute as well as a media query**, because the theme is a stored
+  preference (§3 of `flows.md`): the media query is the default, and the attribute is the override.
+  `color-scheme` is set on each so form controls and scrollbars follow.
+- **Type is `rem` throughout**, so a larger root font grows type without moving boxes (§3.4); a `px`
+  font size in the token file is a bug, and the reason is E8.7b's second mechanism.
+- **Numbers**: one `<Number>` component takes a `PropertyView` (architecture §8) — never a bare
+  number — and renders the value span, the unit span, the ring and the accessible name, applying
+  `font-variant-numeric: tabular-nums`. No screen formats a number itself; the formatter is
+  `web/src/format/`.
+- **Component classes to set once:** `.card` (background `--surface-container`, 1 px
+  `--outline-variant` border, `--radius-lg`, padding `--s-4`, no shadow), `.nav` (height 72 + safe
+  area, no indicator), `.slider` (track 5, thumb 22, 44 px hit area via padding, `accent-color` not
+  used — the track and thumb are styled explicitly), `.chip` (32/`--radius-sm`), `.input` (52/
+  `--radius-sm`), `.divider` (1 px `--outline-variant`), `.banner`.
+- **Sheets** are `<dialog>` with `::backdrop` at the 32 % scrim: `<dialog>.showModal()` gives focus
+  trapping, Escape, inert background and the top layer for free — three things the Flutter design
+  had to build, and three things a `div` sheet gets wrong. The swipe/edge-gesture caution in
+  architecture §3.1 applies: the scrim tap and a close button are both mandatory.
+- **Press feedback** is a background step (`.active`), 100 ms linear. There is no ripple; a scaled
+  Material ripple is one of the few things the web has no faithful equivalent for, and importing one
+  costs more code than the feedback is worth.
+- **State:** a change is a `SetupDraft` diffed against the saved setup; the save bar reads the diff
+  length. Uncomputable values are the `Solved<T>` union (`notMeasured` / `undefined`), **never**
+  `number | null` — the physics package returns those and the UI never invents a zero.
 
-```dart
+```ts
 // Two orthogonal axes on every formatted value. Neither is derivable from the other.
-enum Provenance { computed, estimated, inherited, missing, undefined }
-enum Validity   { unvalidated, validated }          // + modelVersion on the evidence record
+export type Provenance = 'computed' | 'estimated' | 'inherited' | 'missing' | 'undefined';
+export type Validity   = 'unvalidated' | 'validated';   // + the evidence record's model version
 
-class FormattedValue {
-  final double? value;        // null for missing / undefined
-  final String unit;
-  final int decimals;
-  final Provenance provenance;
-  final Validity validity;
-  final Tolerance? tolerance;  // null means: print the ~ and nothing else
-  final ProvenanceSource? source; // named for estimated / inherited, null for computed
+export interface FormattedValue {
+  value: number | null;        // null for missing / undefined
+  unit: string;
+  decimals: number;
+  provenance: Provenance;
+  validity: Validity;
+  tolerance: Tolerance | null; // null means: print the ~ and nothing else
+  source: ProvenanceSource | null; // named for estimated / inherited, null for computed
 }
 
 // A claim that is not a number. Grip and every inferred sentence use this, never FormattedValue.
-class Inference {
-  final String sentence;      // contains "all else equal" when tier == inferred
-  final ClaimTier tier;       // firm | inferred | speculative
-  final Phase? phase;         // entry | mid | exit
-  final String? reversesIf;
-  final String? doesNotClaim;
+export interface Inference {
+  sentence: string;            // contains "all else equal" when tier === 'inferred'
+  tier: 'firm' | 'inferred' | 'speculative';
+  phase: 'entry' | 'mid' | 'exit' | null;
+  reversesIf: string | null;
+  doesNotClaim: string | null;
 }
 ```
-- **The formatter never fills a tolerance.** `Tolerance?` is nullable on purpose; a null prints the `~` alone. A build check asserts no call site constructs a `Tolerance` outside the document decoder.
+
+- **The formatter never fills a tolerance.** `tolerance` is nullable on purpose; null prints the `~`
+  alone. A build check asserts no call site constructs a `Tolerance` outside the document decoder.
 
 ---
 
 ## 13. Do not
 
-- Do not use `ColorScheme.fromSeed`.
-- Do not put a unit inside the number string.
+- Do not generate the palette from a seed colour.
+- Do not put a unit inside the number string, or inside the same text node as the number.
 - Do not colour a value by whether it went up or down.
 - Do not show `0` for a missing measurement, or `NaN`, or `--`.
 - Do not animate a value while a finger is dragging it.

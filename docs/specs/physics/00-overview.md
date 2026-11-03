@@ -1,10 +1,11 @@
 # 00 — Physics & calculator specification: overview
 
-Status: **round 3 revision** (2026-10-31). No Dart has been written against this document yet.
-Audience: the Flutter developer implementing `app/packages/setup_physics`, a physics-competent
+Status: **round 4** (2026-10-31). No implementation has been written against this document yet.
+Audience: the TypeScript developer implementing `packages/physics`, a physics-competent
 reviewer, and Dave (owner).
 
-This spec is the contract for the pure-Dart physics package. It is deliberately arithmetic-heavy:
+This spec is the contract for the pure-TypeScript physics package (`packages/physics` — no DOM, no
+React, no I/O). It is deliberately arithmetic-heavy:
 every number the app displays must be reproducible from this document by hand, and every claim
 about a model's validity is paired with the case where it fails.
 
@@ -175,7 +176,7 @@ Every equation in modules 2–10 therefore ends with a unit line such as:
 k_bar [N/m] = k_θ [N·m/rad] · (IR_arm / a_arm[m])²                       (5.7)
 ```
 
-and every symbol in every input table carries its unit. `tool/spec_audit.dart` should reject an
+and every symbol in every input table carries its unit. `npm run spec:audit` should reject an
 equation line with no bracketed unit on its left-hand side.
 
 **Proof that the two layers agree.** The reference roll-centre height is 9.9749 mm in `02` §6.2 and
@@ -334,8 +335,8 @@ invented citations. What survives is the only part that constrains us:
 Every module ends with a table of golden cases. They are the acceptance criteria for the module and
 the source of `app/test/golden/`. Conventions:
 
-- IDs are `G<module>.<n>`, e.g. `G02.3`. The Dart test name contains the ID so
-  `dart run tool/spec_audit.dart` can trace spec → test.
+- IDs are `G<module>.<n>`, e.g. `G02.3`. The test name contains the ID so
+  `npm run spec:audit` can trace spec → test.
 - **Tolerances are part of the case.** Geometry 1e-3 mm; angles 1e-4 °; ratios 1e-4 relative;
   damping forces 1e-3 N; stiffness and loads 1e-4 relative. A case that asserts a value derived from
   a finite difference states the step, because the step is part of the value.

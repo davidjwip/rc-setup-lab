@@ -3,8 +3,11 @@
 The path through the app, end to end. Companion: `screens.md` (screen inventory, states, data)
 and `glossary.md` (in-app terminology and the exact "we cannot compute this" copy).
 
-Status: design, no code. Route names and state names here are the contract a Flutter
-developer implements with `go_router` and Riverpod.
+Status: design, no code. Route names and state names here are the contract a web developer
+implements with React Router and Zustand (D-19); the **URLs are real URLs**, so every destination is
+addressable, shareable and reloadable, and the branch-persistence behaviour below is expressed against
+browser history rather than an in-app back stack. `docs/specs/architecture.md` §3 is the binding
+version of the back/refresh rules.
 
 ---
 
@@ -33,8 +36,12 @@ Three design consequences that shape every flow below:
 **Three-destination bottom navigation — Garage · Compare · Learn — with a stack-based
 drill-down inside each destination.**
 
-- `go_router` `StatefulShellRoute.indexedStack`, one `Navigator` per branch, so each
-  destination keeps its own back stack and scroll position when the user switches tabs.
+- Each destination keeps its **own remembered path and scroll offset**, held in memory, so
+  switching tabs returns you to the car you were looking at rather than to a list. That is the
+  behaviour `indexedStack` gave us for free; on the web it is a `Map<destination, path>` in the
+  router store (§3 of the architecture), because there is no per-branch navigator to preserve it.
+  Every navigation is still one `push`, so the browser's Back button means "undo my last navigation"
+  and never "replay my tab tour".
 - No top-level tabs, no drawer, no hamburger. Three destinations is the most a gloved thumb
   can hit blind, and each maps to one verb: *my car*, *what changed*, *what does it mean*.
 - The car → setup → analysis path is a **linear push stack**, not a set of peer tabs. There
@@ -52,7 +59,7 @@ pushes inside the Garage branch. Every wireframe now draws three items.
 
 | Option | Why rejected |
 |---|---|
-| Tabs across the top (Setup / Analysis / Geometry) | On a 360 dp phone, three tabs of Latin words at the top are the least reachable part of the screen and the most thumb-hostile. Also implies the sections are peers, when they are a hierarchy: geometry → setup → analysis. |
+| Tabs across the top (Setup / Analysis / Geometry) | On a 360 px phone, three tabs of Latin words at the top are the least reachable part of the screen and the most thumb-hostile. Also implies the sections are peers, when they are a hierarchy: geometry → setup → analysis. |
 | A single flat hub with no bottom bar | Learn becomes buried in a menu, which kills the teaching outcome for the returning racer, and Compare needs a home that is not "inside one car". |
 | Analysis as its own bottom tab | Analysis without a selected car+setup is an empty screen with a picker — a context-free tab that always starts in an error state. Contextual routes avoid that class of bug entirely. |
 | Modal sheets for everything | Sheets are used only for the "why?" explanation and one-off pickers; anything with its own scroll depth is a screen with a back button. |
@@ -93,21 +100,24 @@ Sheets (local state, not routes): **Why sheet**, **Export sheet**, **Version his
 | From | Back goes to | Notes |
 |---|---|---|
 | Analysis | Setup values | Same setup, same segment state |
-| Property detail | Analysis | Scroll position restored exactly (`PageStorageKey` per card) |
+| Property detail | Analysis | Scroll position restored exactly (a per-route scroll offset, keyed by card id) |
 | Why sheet | Analysis | Sheet dismiss restores the card that opened it, briefly outlined |
 | Concept opened from a number | Analysis | The originating card is highlighted for 1.5 s; `?from=analysis&car=…&setup=…` carries the origin |
 | Measurement task saved from a missing-input row | Analysis | `?returnTo=analysis` — the user must not be stranded in the wizard after a 20-second fix |
 | Compare row → property detail | Compare | Detail renders both slots (A and B), not one |
-| Tab switch | The tab's last screen | Branch state is preserved; tab re-tap pops that branch to its root |
+| Tab switch | The destination's remembered path | One history entry, not a replay of the branch; the remembered path and scroll offset are restored |
 
 Rule: **no action ever lands the user somewhere they cannot get back from with one gesture.**
 The one deliberate exception is the missing-input detour, which always carries `returnTo`.
 
 ### 2.5 Deep links
 
-`/car/:carId/setup/:setupId/analysis` and `/learn/:conceptId?car=&setup=` are shareable
-inside the app (and later via a URI scheme). If a link names a car that is not present, the
-app opens Garage with a one-line notice: "That car isn't on this device." — not a 404.
+`/car/:carId/setup/:setupId/analysis` and `/learn/:conceptId?car=&setup=` are shareable URLs — the
+ordinary kind, that paste into a message and open in a browser. If a link names a car that is not
+present, the app opens Garage with a one-line notice: "That car isn't on this device — ask for the
+car file, then import it." — not a 404, and not a dead end, because with documents living in each
+device's own storage this is now the *common* outcome of a shared link rather than an edge case
+(architecture §3.3).
 
 ---
 
@@ -276,7 +286,7 @@ One field per screen, in this shape:
 
 Design rules:
 
-- **56 dp targets, bottom-anchored primary action.** Everything doable with one thumb.
+- **56 px targets, bottom-anchored primary action.** Everything doable with one thumb.
 - **Diagram before keypad.** The picture is the instruction; the words are the caption.
 - **Numeric keypad is the app's, not the OS keyboard** — decimal point, sign, and a unit
   toggle in the same thumb zone.
@@ -391,7 +401,9 @@ chevron to the field's explanation. Editing is inline; there is no edit mode.
   any one can be "restore as new version" — never mutated in place.
 - The **baseline** is a flag on one version of one setup. Exactly one baseline per car. The
   default baseline is the first setup saved; it can be moved with a long-press menu item, not
-  a swipe (destructive-ish actions are never swipe-only).
+  a swipe (destructive-ish actions are never swipe-only — and on mobile Safari a swipe that starts
+  near the left edge is the *browser's* back gesture, which the app cannot intercept; architecture
+  §3.1).
 
 Rationale: at the track the racer's real fear is "I changed it and lost the reference". A
 versioned snapshot per heat costs nothing and makes Flow 6 (compare) exact.
@@ -457,7 +469,8 @@ Three layers, each one gesture deeper, each reachable in one tap from the card:
 **Layer 1 — the card.** Two numbers and a delta. Nothing to interpret.
 
 **Layer 2 — the Why sheet.** Tap the `?` on the card header. A draggable bottom sheet, ~55%
-height, dismissible by swipe or scrim. Contents, in fixed order:
+height, dismissible by scrim tap **and** by a close button — the swipe is kept as an extra, never as
+the only way out, because the browser's own edge-swipe wins that contest on iOS (architecture §3.1). Contents, in fixed order:
 
 1. **What it is**, one sentence, racer words.
 2. **Your numbers, in the equation.** The equation written in words with the user's own
@@ -673,7 +686,7 @@ display unit never changes stored values.
 
 - Primary action bottom-anchored on every screen that has one.
 - No gesture-only action: every long-press has a visible menu equivalent.
-- Minimum 56 dp touch targets; 4.5:1 contrast minimum; the dark theme is the default and the
+- Minimum 56 CSS px touch targets; 4.5:1 contrast minimum; the dark theme is the default and the
   tested one (mid-grey surfaces, not pure black, so text does not bleed in sunlight).
 - Direction is always text + arrow + colour, never colour alone.
 
@@ -698,45 +711,59 @@ a first-class action, not a settings toggle:
 
 ## 14. State contracts (implementable shape)
 
-Named for a Riverpod/go_router implementation. No UI framework detail beyond names.
+Named for the React Router + Zustand implementation (D-19). No component detail beyond names; the
+URLs are the contract (§2.3), and the store shapes are described rather than typed.
 
-| Provider / object | Type | Depends on | Notes |
+| Store / selector | Holds | Reads from | Notes |
 |---|---|---|---|
-| `garageProvider` | `AsyncNotifier<List<CarSummary>>` | local store | Car summaries carry completeness counters so the garage renders without loading geometry |
-| `carProvider(carId)` | `AsyncNotifier<Car>` | store | |
-| `geometryProvider(carId)` | derived from `carProvider` | | Per-subsystem completeness + outlier list |
-| `setupsProvider(carId)` | `AsyncNotifier<List<SetupSummary>>` | store | Includes baseline flag and dirty-draft flag |
-| `setupProvider(carId, setupId)` | `AsyncNotifier<SetupVersion>` | store | Returns the selected version |
-| `draftProvider(carId, setupId)` | `AsyncNotifier<SetupDraft>` | `setupProvider` | Holds a field overlay + `isDirty` + `changedFieldIds`; `discard()` and `saveAsVersion()` |
-| `effectiveGeometryProvider(setupId)` | derived | car + draft | Applies shim offsets to base hardpoints — the *only* place geometry is assembled |
-| `analysisProvider(setupId)` | derived `AnalysisResult` | `effectiveGeometryProvider` | Pure, cached, never throws (see below) |
-| `compareProvider` | `Notifier<CompareSlots>` | persisted | `CompareSlots{left, right}` of `SetupRef(carId, setupId, versionId)` |
-| `unitsProvider` | `Notifier<DisplayUnits>` | persisted | Conversion happens only at render |
-| `learningProgressProvider` | `Notifier<Set<ConceptId>>` | persisted | Path checkmarks |
+| `useGarage` | `CarSummary[]` | `DocumentStore.list('models')` | Car summaries carry completeness counters so the garage renders without loading geometry; the store also holds the load state, because IndexedDB is async and the list is the first thing on screen |
+| `useCar(carId)` | `Car \| null` | store | |
+| `selectGeometry(carId)` | derived | `useCar` | Per-subsystem completeness + outlier list |
+| `useSetups(carId)` | `SetupSummary[]` | store | Includes baseline flag and dirty-draft flag |
+| `useSetup(carId, setupId)` | `SetupVersion` | store | Returns the selected version |
+| `useDraft(carId, setupId)` | `SetupDraft` | `useSetup` | Field overlay + `dirty` + `changedFieldIds`; `discard()` and `saveAsVersion()`. Mutations land here synchronously and are coalesced to one solve per animation frame (architecture §2) |
+| `selectEffectiveGeometry(setupId)` | derived | car + draft | Applies shim offsets to base hardpoints — the *only* place geometry is assembled |
+| `selectAnalysis(setupId)` | derived `AnalysisResult` | `selectEffectiveGeometry` | Pure, memoised per solve, never throws (see below) |
+| `useCompare` | `CompareSlots` | persisted | `{left, right}` of `SetupRef(carId, setupId, versionId)` |
+| `useUnits` | `DisplayUnits` | persisted (`localStorage`) | Conversion happens only in `packages/data`; formatting only in `web/src/format/` |
+| `useLearningProgress` | `Set<ConceptId>` | persisted (`localStorage`) | Path checkmarks |
+| `useShell` | `destination`, `rememberedPath`, `scroll` | memory only | What replaces the per-branch navigator: the remembered path and offset per destination (architecture §3.1) |
 
-### 14.1 The analysis result is a sealed union, not a nullable number
+### 14.1 The analysis result is a discriminated union, not a nullable number
 
 The single most important contract, because it is what makes rule 4 of `review-rules.md`
-(no NaN reaching a chart) and the "never invent a number" trap structurally impossible to
+(no `NaN` reaching a chart) and the "never invent a number" trap structurally impossible to
 violate by accident:
 
-```
-AnalysisResult = List<PropertyResult>
+```ts
+type AnalysisResult = PropertyResult[];          // one entry per output, both axles expanded
 
-PropertyResult =
-  | Computed(value, unit, confidence: exact|estimated, inputsUsed)
-  | MissingInputs(missing: List<FieldRef>)
-  | UndefinedGeometry(reason: DegenerateReason, fields: List<FieldRef>)
-  | OutOfRange(partial: List<SamplePoint>, measuredLimit, requestedLimit)
+type PropertyResult =
+  | { kind: 'defined'; value: number; tier: 'firm' | 'inferred';
+      band: Band | null; basis: Basis | null;
+      provenance: ReadonlySet<Ref>; flags: ReadonlySet<Flag> }
+  | { kind: 'notMeasured'; missing: FieldRef[] }
+  | { kind: 'undefined'; reason: UndefinedReason; inputs: FieldRef[] };
 ```
 
 The UI maps each variant to exactly one visual state (solid value / dashed "needs X" / hollow
-"undefined" / solid-to-dashed chart). There is no code path that renders a number for a
-`MissingInputs` result, because there is no number in it. `Computed.value` is non-nullable by
-construction; `double.nan` is unrepresentable at the boundary.
+"undefined"). There is no code path that renders a number for a `notMeasured` result, because
+there is no number in it, and `value` is non-nullable by construction — `NaN` is unrepresentable at
+the boundary.
 
-`MissingInputs` carries `FieldRef` (field id + measure task id), which is what makes the
-"Add it ›" deep link possible without the analysis layer knowing any routes.
+**Two corrections to this section, made when the stack switched (round 4).** (a) The outline above
+used to list a fourth variant, `OutOfRange(partial, measuredLimit, requestedLimit)`. That is not a
+transport state: in the shipped vocabulary an out-of-domain value is a *defined* number carrying the
+`OUT_OF_DOMAIN(bound)` state and an `outOfDomain` flag (spec §4.4.1, architecture §7), and it must
+render as a number, because "flagged number" beats "refusal the user cannot reason about". (b) The
+old variant carried `confidence: exact|estimated`, which was a third vocabulary for what spec §4.11
+splits into a *tier* (`firm`/`inferred`) and a *state* (eight values): the union carries the tier,
+and the state is derived in `packages/data` from the schema's `on_absence` and `plausible` facts.
+Neither change is a design change — the four visual states in §10.13 are exactly the four the UI
+still renders.
+
+`notMeasured` carries `FieldRef` (field id + measure task id), which is what makes the "Add it ›"
+deep link possible without the analysis layer knowing any routes.
 
 ### 14.2 Draft lifecycle
 

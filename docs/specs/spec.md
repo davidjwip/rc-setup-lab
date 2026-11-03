@@ -29,6 +29,19 @@ capped (§2, §8.2). The 25 untestable criteria named in
 removal is recorded in §8.3. Every computed value now carries a visible
 validation state (E3.16, D-11) and a tier (§4.11).
 
+**What changed in round 4.** The owner's **D-19** moved the implementation stack from Flutter/Dart
+to **React + TypeScript, built with Vite, installable as a PWA and fully offline**, with D-20–D-23
+ruling persistence, the provisional performance budgets, import/export and the drawing mechanism.
+Every criterion that named a Flutter mechanism, an Android permission, a Play artefact, a bundle
+identifier, an SDK version or an app size has been rewritten for the web **with its id unchanged**;
+the clauses D-19 genuinely supersedes are marked `SUPERSEDED by D-19` in §8.3 rather than deleted.
+Two criteria are new, and only because the web stack needs them: **E8.17** (installability) and
+**E8.18** (storage durability and export as the user's backup). D-21 also moved one marker — E8.11
+from SHOULD/R2 to MUST/R1 — because a size budget that only warns does not bind (recorded in §8.3).
+The physics, the frame, the units, the schema, the state and tier vocabularies and every tolerance
+are untouched; §8.4's audit is what checks that claim rather than trusting this sentence. The stack
+itself is specified in `docs/specs/architecture.md`.
+
 **Five owner decisions landed during this revision and are applied throughout:**
 setup sheets carry optional conditions with a sheet-diff warning (E4.9); damping
 ratio ships in v1 as an estimate with a computed band (E3.6, §4.8); CG height is
@@ -43,12 +56,16 @@ with firm/inferred/speculative tiers and "all else equal" on every inferred clai
 
 ### 1.1 Product statement
 
-Setup Lab is a free, offline, cross-platform workbench that turns a set of
-caliper measurements into the suspension numbers that explain how an RC car
-will behave, and shows the arithmetic behind every one of them. A racer measures
-their chassis once — hardpoints, springs, bars, damper settings — and the model
-is kept for as long as they keep the app: no installer, no database engine, no
-account, no server, no subscription. From that model and a setup, the app
+Setup Lab is a free, offline, cross-platform web app that turns a set of caliper
+measurements into the suspension numbers that explain how an RC car will behave,
+and shows the arithmetic behind every one of them. A racer measures their chassis
+once — hardpoints, springs, bars, damper settings — and the model is kept in the
+browser's own storage and exportable as one file at any time: no installer, no
+database engine, no account, no server, no subscription. *Kept for as long as they
+keep it* now carries a condition, and the app states it (E8.18): a browser may
+evict the data of a site it has not seen for a week unless the app is installed to
+the home screen, which is why the first run offers installation and the app nags
+for an export. From that model and a setup, the app
 computes the properties that connect a setup change to a handling change —
 motion ratio, wheel rate, ride frequency, roll stiffness, lateral load-transfer
 split, roll-centre height and migration, camber gain, bump steer, and damping
@@ -121,11 +138,12 @@ E2.11 is the requirement that keeps it honest.
 
 ## 2. Scope of v1, and the slice that proves it
 
-**The cut line, in one sentence: v1 (R1) is the Android release that measures a
-car, keeps it forever as a file, computes the eleven outputs of §4.4 that are not
-R2 — including a banded damping estimate — with an honest state and tier on each,
-compares two setups, and shares files with their attribution intact; every other
-criterion in §3 is R2 and does not block that ship.**
+**The cut line, in one sentence: v1 (R1) is the web release — one URL, installable
+to a home screen, working with no network after its first load — that measures a
+car, keeps it as a file the user can export, computes the eleven outputs of §4.4
+that are not R2 — including a banded damping estimate — with an honest state and
+tier on each, compares two setups, and shares files with their attribution intact;
+every other criterion in §3 is R2 and does not block that ship.**
 
 Every acceptance criterion in §3 carries a **Release** marker. The markers are
 mutually exclusive and mean exactly this:
@@ -133,7 +151,7 @@ mutually exclusive and mean exactly this:
 | Marker | Meaning | Blocks |
 |---|---|---|
 | **R0** | Slice 0 (§2.3): one screen, a complete example model, three live outputs, an input the user can move, the equation behind each. | The first usable artefact. R0 is a subset of v1. |
-| **R1** | The rest of v1: the first Android store submission. **38 MUSTs**, which with R0's 8 makes 46 MUSTs in v1. | The v1 release. |
+| **R1** | The rest of v1: the first public web release. **41 MUSTs**, which with R0's 8 makes 49 MUSTs in v1. | The v1 release. |
 | **R2** | v1.1 and later: everything not cut into v1. MUSTs here are commitments to a named later release, not to v1. | Nothing in v1. |
 
 ### 2.1 In v1
@@ -189,17 +207,21 @@ Recorded here so they are not re-litigated later; each one costs something.
 
 | Decision | Consequence the spec must absorb |
 |---|---|
-| Flutter, Android first (D-10) | Every numeric input must be usable on a 320 dp-wide touch screen with no keyboard-hover. v1 ships Android only; iOS is deferred with no date. No AC may require an Apple-only capability; where the old text did, the Apple clause moved to R2 or was deleted (§8.3). Desktop and web are later renderings of the same screens (E8.6). |
+| React + TypeScript web app, installable and offline (D-19) | Every numeric input must be usable on a 320 CSS px-wide viewport with no keyboard-hover. One URL serves both phone platforms from day one, so there is no platform split to write clauses around — but Safari/WebKit and Chrome/Blink both matter, and criteria that were Apple-only because iOS was deferred are now ordinary criteria on their own merits (§8.3). A web app has no native file system, no share sheet by right and no store review: import is a picker, a drop or a paste (D-22), and installation is the user's choice rather than the distribution channel. Two things are bought and one is lost: no installer, no signing key, and no file association. |
 | Offline-only, no accounts, no backend | Model sharing works through the OS share sheet and files, so the file format *is* the community feature (E6.4, E7.1a/b). There is no server to fix a bad model, so validation is local and strict (E6.5). A setup that arrives without its model must therefore have a real local path (§4.6, E6.9). |
 | Human-readable versioned JSON with per-value provenance | The format is a public interface from day one; schema changes need migrations and fixtures (E9.10), and every value needs a source or the format is a lie (E1.3). The canonical form is pinned by reference to RFC 8785 (§4.5) so two implementations agree. |
-| Physics in a pure Dart package | The UI cannot compute; it can only present. Anything the user sees must be obtainable from a function a headless test can call (E3.11, E3.16). SI lives inside the package only, at one conversion boundary (§4.1 rule 1). |
+| Physics in a pure TypeScript package — no DOM, no React | The UI cannot compute; it can only present. Anything the user sees must be obtainable from a function a headless test can call (E3.11, E3.16). SI lives inside the package only, at one conversion boundary (§4.1 rule 1). The package compiles without the DOM lib, so a component cannot reach into the maths and the maths cannot reach the browser. |
 | Free forever | No paid tier, no telemetry-funded tier, no ad SDK — which removes a whole class of "how do we see usage" features and replaces them with the instrumented usability test (E9.5, R2) and the dependency check (E8.13). |
 | Clean-room | Explanation text is written by us and mechanically checked against the research corpus (E5.4, E9.4). This is a build-time gate, not a promise. |
 | ISO 8855 frame (R-1) | x forward, y **left**, z up, origin on the ground plane at the rear axle centre. Per-wheel quantities are per-wheel signed (camber + = top outboard, toe + = toe-in) and **mirroring does not negate them** (D-17); only point `y` is negated, and the side factor `s` that converts to the car frame is applied once, inside the solver. Car-level quantities are never signed per side. Every hardpoint in every document is re-derived once. |
 | mm/g/deg on disk (R-2) | The file is what a caliper and a setup sheet produce; the physics adapter converts to SI at exactly one site and a `\|coordinate\| > 3000 mm` guard catches a metre value (E3.8's property test covers the guard). |
 | Validity state on every number (D-11) | A computed value is never shown bare. Every surface, including every export, carries the state from §4.4.1 (E3.16). |
 | Owner decisions, 2026-10-30 | Setups carry **optional** conditions — surface (`carpet`/`asphalt`/`other`), ambient temperature, humidity, free-text tyre and motor — all `on_absence: OMIT` in the maths; a sheet diff warns when they differ (E4.9). Damping ratio ships as an **estimate with a band**, not deferred and not measured (E3.6, §4.8). CG height is **inferred** and never a MUST-measure field (§4.2.1). Grip is inference-only (§4.11, E5.6). The setup-sheet interpreter uses understeer/oversteer at entry/mid/exit with firm/inferred/speculative tiers and "all else equal" on every inferred claim (E2.13). |
-| One gate command (D-09) | `cd app && dart run tool/gate.dart` is the only entry point CI runs, and every stage it runs has its own AC here (E9.8). No gate may depend on a tool that no AC requires. |
+| One gate command (D-09, in form now `npm run gate` per D-19) | `npm run gate`, from the repository root, is the only entry point CI runs, and every stage it runs has its own AC here (E9.8). No gate may depend on a tool that no AC requires. |
+| IndexedDB documents, `localStorage` preferences (D-20) | The library is browser storage, not a directory: it can be evicted, and on iOS Safari it is evicted for sites unvisited for seven days unless the app is installed. `navigator.storage.persist()` is requested at first run, installation is offered, and an export older than seven days is nagged about (E8.17, E8.18). The document format does not change; only where it lives does. |
+| Provisional web performance budgets (D-21) | A slider-drag recompute is budgeted at 8 ms p50 / 16 ms p95, first-load JavaScript at 350 KB gzipped, the cached asset set at 2 MB and a model document at 100 KB — all provisional until measured on the reference phone, and E3.12 then cites the measured number rather than the estimate. A budget nobody measured is a slogan. |
+| Import by picker, drop or paste; file association accepted as lost (D-22) | Tapping a `.json` in a mail client cannot open the app, and that is recorded rather than engineered around. Export is a download or a save dialog; "export everything" is one archive (E7.6, E8.18). |
+| SVG scene, chart library behind a wrapper (D-23) | The suspension drawing is inspectable and testable against the physics objects, and no renderer computes geometry: a component that calls a trigonometry function is a review failure, and E8.7d keeps every chart's table alternative honest. |
 
 ---
 
@@ -298,8 +320,12 @@ two fixture files `docs/specs/fixtures/hash-1.json` and
 `docs/specs/fixtures/hash-2.json` with the expected values published in
 `docs/specs/fixtures/hash-1.sha256` and `hash-2.sha256`, *when* the hash function
 runs on each, *then* the published value is reproduced exactly, on x86_64 and on
-ARM64, and in both debug and release builds. A serialiser rewrite is allowed to
-change nothing about this test. **MUST** · **R1**
+ARM64, in V8 and in JavaScriptCore, and in both development and production
+builds. A serialiser rewrite is allowed to change nothing about this test — and
+the two engines matter here in a way two CPU architectures did not: RFC 8785 pins
+number *formatting* to ECMAScript's, which both implements identically, so a
+failure is a bug in our canonicaliser rather than a difference in theirs.
+**MUST** · **R1**
 
 **E1.8** — *Given* a model with no unsprung mass recorded (the field's
 `on_absence` is `ESTIMATE(unsprung_corner_weighing)`), *when* analysis runs,
@@ -396,7 +422,7 @@ the field shows either the output names in its `consumed_by` list from
 maths"; the test iterates every setup field and fails on any field that shows
 neither, or whose displayed output names differ from the YAML. **MUST** · **R2**
 
-**E2.6** — *Given* a 320 dp device, *when* the test drives the real route stack
+**E2.6** — *Given* a 320 CSS px viewport, *when* the test drives the real route stack
 from the setup screen to each of the seven setup groups in turn, *then* each group
 is reached in ≤ 2 taps, every group is reachable without completing another
 group first, and the tap counts measured with a 1-setup library and a 50-setup
@@ -538,7 +564,7 @@ runs, *then* the output is displayed with the flag "outside the range this model
 is valid for" and the bound that was exceeded, rather than as a normal number.
 **MUST** · **R2**
 
-**E3.11** — *Given* `app/packages/setup_physics/test/golden/*.json`, *when* the
+**E3.11** — *Given* `packages/physics/test/golden/*.json`, *when* the
 golden suite runs, *then* each file has keys `output_id`, `inputs`, `expected`,
 `tolerance`, `source_kind` ∈ {`published_equation`, `cited_worked_example`,
 `hand_calculation`} and `source_ref`; a `hand_calculation` requires a file under
@@ -548,13 +574,20 @@ timestamp locator; every output id in §4.4 has at least one file; and a run wit
 the implementation deliberately perturbed by 1% fails at least one assertion,
 proving the values are not the code's own output. **MUST** · **R0**
 
-**E3.12** — *Given* the reference device (§5.2) in a release build, *when* the
-timing harness performs 1,000 recomputes of the complete example model, *then*
-p50 ≤ 16 ms and p99 ≤ 25 ms; *and when* the user drags one slider continuously for
-10 s (600 frames, the first 30 excluded as warm-up), *then* ≥ 95% of frames are
-presented within 16.7 ms and no frame exceeds 32 ms. The pre-release proxy is the
-same harness on the CI emulator with p50 ≤ 40 ms and p99 ≤ 80 ms, and the release
-checklist records the reference-device numbers. **MUST** · **R1**
+**E3.12** — *Given* the reference phone (§5.2) running the installed app in a
+production build, *when* the timing harness recomputes the complete example model
+1,000 times, *then* a recompute takes **≤ 8 ms at p50 and ≤ 16 ms at p95** (D-21,
+provisional); *and when* the user drags one slider continuously for 10 s (600
+frames, the first 30 excluded as warm-up), *then* ≥ 95% of frames are presented
+within 16.7 ms, no frame exceeds 32 ms, and the app stays interactive throughout —
+a dropped frame is a defect, not a trade-off. The budgets are **provisional until
+the first measurement**, and are re-baselined from it: the checked-in criterion
+must then quote the number measured on the reference phone, with the harness
+output in the release checklist (E9.3). A criterion still carrying D-21's estimate
+after that measurement has been taken is a review failure, because an unmeasured
+budget is indistinguishable from a wish. The pre-release proxy is the same harness
+on CI hardware, gated at twice the target so a real regression trips it and a noisy
+runner does not. **MUST** · **R1**
 
 **E3.13** — *Given* a model where the user has recorded the measured ride
 stiffness at a corner (E1.10), *when* analysis runs, *then* the predicted wheel
@@ -612,7 +645,7 @@ value differs, with previous value, new value and signed delta with units, and
 units and a direction word resolved from the `<output_id>.direction.<rising|falling>`
 template. The test computes the expected input-diff set from the two fixture
 files and asserts set equality, and asserts that every output row is present in
-the view's widget tree. **MUST** · **R1**
+the view's component tree. **MUST** · **R1**
 
 **E4.2** — *Given* two setups that differ only in `corners.LF.spring_rate`
 (3.10 → 3.40 N/mm), *when* they are compared, *then* the output list has exactly
@@ -713,8 +746,8 @@ model-specific assumed fields from E1.2, and the identical block is carried in
 every export (asserted by string equality between screen and export).
 **MUST** · **R1**
 
-**E5.6** — *Given* the release build, *when* the string audit runs over the
-localisation bundle and the widget tree of every screen, *then* no user-facing
+**E5.6** — *Given* the production build, *when* the string audit runs over the
+string table and the component tree of every screen, *then* no user-facing
 string matches
 `(?i)\b(grip score|handling score|balance verdict|best setup|faster|lap time)\b`,
 every directional string on the analysis, compare and concept screens resolves
@@ -753,7 +786,9 @@ provenance entry, it carries `license`, `contributors[]` and `attribution_text`
 table rather than asserted in prose. **MUST** · **R0**
 
 **E6.2** — *Given* a model file received by any of the three entry points the
-harness can drive (file picker, `ACTION_VIEW` intent, share-sheet target), *when*
+harness can drive (file picker — `<input type="file">`, or a File System Access
+picker where the browser has one — drag-and-drop onto the app on desktop, and
+paste-a-document on any platform, per D-22), *when*
 the user installs it, *then* the library row shows its name, its `class`, its
 completeness as `<measured>/<required> fields` computed from `fields.yaml`, and a
 provenance summary equal to the counts in the file's `sources` map, and the
@@ -767,11 +802,13 @@ last-modified date, and the percentage equals measured fields divided by require
 fields from `fields.yaml` for that row's own model; a row whose percentage does
 not match the recomputation fails the test. **MUST** · **R2**
 
-**E6.4** — *Given* a model or setup, *when* the user shares it, *then* the OS share
-sheet is offered with a single self-contained JSON file, the app performs no
-network request to complete the share, and the share preview names every personal
-field in the file (`sources.<id>.by`, `contributors[].name`) and the licence id,
-so the user knows what is leaving the device. **MUST** · **R1**
+**E6.4** — *Given* a model or setup, *when* the user shares it, *then* a single
+self-contained JSON file is produced — offered through the Web Share API where the
+browser exposes it for files, and through a download or a save dialog everywhere
+else (D-20, D-22) — the app performs no network request to complete the share, and
+the preview names every personal field in the file (`sources.<id>.by`,
+`contributors[].name`) and the licence id, so the user knows what is leaving the
+device. **MUST** · **R1**
 
 **E6.5** — *Given* an invalid file — including a binary database, an installer, or
 anything produced by the program this app succeeds — *when* it is imported, *then*
@@ -811,7 +848,7 @@ model…" writes `model_ref.mapped_from = {id, content_hash, name}` (the origina
 values, verbatim, never overwritten), adds `meta.mapped_at`, sets state `mapped`,
 and every output then carries the banner "geometry differs from the sender's car
 — outputs are not comparable"; (f) "Discard" removes the library record and
-leaves any file outside the app untouched. Each of (a)–(f) has its own widget
+leaves any file outside the app untouched. Each of (a)–(f) has its own component
 test. **MUST** · **R1**
 
 ---
@@ -822,8 +859,10 @@ The file format is the community's memory. If a user cannot get their work out
 in a form that outlives the app, the app has failed at the only thing the
 original could not do.
 
-**E7.1a** — *Given* a model file, *when* it is exported, imported on a second
-device or emulator, and a setup is computed against it, *then* the imported
+**E7.1a** — *Given* a model file, *when* it is exported, imported into a second
+browser profile or a second device — through a different entry point, so the file
+path is exercised rather than the in-memory store — and a setup is computed
+against it, *then* the imported
 `content_hash` equals the exported one, every stored value is present with its
 original source id, `schema_version`, `meta.app_version`, `license`,
 `contributors[]`, `attribution_text` and the E5.5 assumptions block are all
@@ -901,18 +940,27 @@ attribution. **MUST** · **R1**
 ### Epic E8 — Platform, offline and accessibility
 
 The phone at the track is the only context that matters, and it is a hostile
-one: bright sun, gloves, one hand, no signal, no charger. v1 ships Android only
-(D-10), so every criterion here is written against the Android artifact; Apple
-clauses are R2 by construction.
+one: bright sun, gloves, one hand, no signal, no charger. v1 is one web app served
+by one URL, so every criterion here is written against two engines — Safari on iOS,
+Chrome on Android — and neither is a later port of the other. What is new under
+D-19 is that the browser is a third party in the middle: it can evict the user's
+data, it can serve a stale app from a service worker, and it decides whether a file
+picker or a download dialog is the shape of "save" (D-20, D-22). Those are the
+subjects of E8.1, E8.17 and E8.18.
 
-**E8.1** — *Given* the built Android artifact, *when* the gate's manifest stage
-inspects the merged manifest, *then* it declares no `INTERNET` permission and a
-`minSdkVersion` of 26 or higher, and adding
-`<uses-permission android:name="android.permission.INTERNET"/>` to the manifest
-makes the stage exit non-zero naming the permission. iOS entitlements are not
-asserted in v1 (D-10). **MUST** · **R1**
+**E8.1** — *Given* that a first load has completed once, *when* the browser is put
+into offline mode — no network at all — and the app is cold-started from its URL or
+from the home-screen icon, *then* the shell loads from the service worker, the
+library renders, a stored model opens and every output computes and displays, with
+zero network requests: the test's request log contains no request after the shell
+is served. The static half is the gate's `offline` stage, which fails the build if
+any module in the bundle calls `fetch`/`XMLHttpRequest`/`WebSocket` against an
+origin other than the app's own, if any `<script src>` or font URL points off
+origin, or if the service worker's precache manifest omits a shell asset. Seeded
+failure: adding an off-origin `fetch` to any module makes the stage exit non-zero
+naming the module. **MUST** · **R1**
 
-**E8.2** — *Given* a device or emulator in airplane mode with no SIM and no Wi-Fi,
+**E8.2** — *Given* a phone with the radio off and the browser in offline mode,
 *when* an integration test drives model → setup → compute → compare → explain →
 export, *then* every step reaches its own assertion (each named in the test) and
 no step blocks on a network call. **MUST** · **R2**
@@ -923,25 +971,31 @@ screen is reachable without entering anything about the user; the test drives th
 first-run flow and fails on any text field that collects personal data.
 **MUST** · **R2**
 
-**E8.5** — *Given* the reference device, *when* the app is cold-started to an
-interactive analysis screen, *then* it takes ≤ 2.0 s, and opening a stored model
-takes ≤ 300 ms, measured by an automated test on the release build.
-**MUST** · **R2**
+**E8.5** — *Given* the reference phone with the app installed and its shell
+cached, *when* it is cold-started to an interactive analysis screen, *then* it
+takes ≤ 2.0 s, and opening a stored model takes ≤ 300 ms, measured by an automated
+test on the production build. The **first** load is a different measurement and is
+governed by E8.11's byte budget rather than by this criterion: on a phone network,
+time-to-interactive is a function of what has to be downloaded, and E8.11 is the
+number the app controls. **MUST** · **R2**
 
-**E8.6** — *Given* a device running Android 8.0 (API 26) or later, *when* the app
-runs, *then* every screen is usable from 320 dp to 1024 dp wide, in portrait,
-landscape and split view, with no horizontal scrolling and no clipped value on
-the analysis screen at 320 dp; the test walks every route at 320, 411 and 1024 dp.
-**MUST** · **R2**
+**E8.6** — *Given* a browser on the current or previous major version of Safari
+(iOS and macOS), Chrome (Android and desktop) and Firefox, *when* the app runs,
+*then* every screen is usable from 320 CSS px to 1024 CSS px of viewport width, in
+portrait, landscape and split view, with no horizontal scrolling and no clipped
+value on the analysis screen at 320 px; the test walks every route at 320, 411 and
+1024 viewport widths in all three engines, and a route that works in only one of
+them fails. **MUST** · **R2**
 
-**E8.7a** — *Given* every route at 320 dp, *when* the test walks the semantics
-tree, *then* every tappable node reports a size ≥ 44×44 dp and ≥ 8 dp from its
-nearest tappable neighbour. **MUST** · **R2**
+**E8.7a** — *Given* every route at 320 CSS px, *when* the test walks the
+accessibility tree, *then* every tappable node reports a size ≥ 44×44 CSS px and
+≥ 8 px from its nearest tappable neighbour. **MUST** · **R2**
 
-**E8.7b** — *Given* text scale 2.0, *when* every route is rendered, *then* no text
-node's painted bounds exceed its parent's, and every output value on the analysis
-screen has non-zero painted height and its full string present in the semantics
-tree (so a value clipped to "12." fails). **MUST** · **R2**
+**E8.7b** — *Given* 200% browser zoom and, separately, a 32 px root font size —
+two mechanisms, both real, and neither implied by the other — *when* every route
+is rendered, *then* no text node's box exceeds its parent's, and every output value
+on the analysis screen has non-zero painted height and its full string present in
+the accessibility tree (so a value clipped to "12." fails). **MUST** · **R2**
 
 **E8.7c** — *Given* a dump of the theme tokens in both themes, *when* the contrast
 check runs, *then* every foreground/background pair meets 4.5:1 for body text,
@@ -955,49 +1009,58 @@ data-point count. **SHOULD** · **R2**
 **E8.8** — *Given* a screen reader, *when* the user moves to a computed value,
 *then* it announces the quantity's name, its value, its unit, its validation
 state and whether it changed from the baseline, and no icon-only control is
-unlabelled; asserted by reading the semantics tree on the analysis, compare and
+unlabelled; asserted by reading the accessibility tree on the analysis, compare and
 concept screens. **MUST** · **R2**
 
-**E8.9a** — *Given* the release build, *when* the externalisation check runs inside
+**E8.9a** — *Given* the production build, *when* the externalisation check runs inside
 the gate, *then* every user-facing string resolves from the localisation bundle,
 no string is assembled by concatenation (asserted by a lint rule on string
-interpolation inside user-facing widgets), and adding a literal user-facing
+interpolation inside user-facing components), and adding a literal user-facing
 string fails the check naming the file and line. **MUST** · **R2**
 
 **E8.9b** — *Given* a pseudo-locale that expands every string by 40% and an RTL
 locale, *when* every route is rendered, *then* no text is clipped, no number or
 unit is misformatted, and no layout overlaps. **SHOULD** · **R2**
 
-**E8.11** — *Given* the release artifacts, *when* their sizes are measured, *then*
-the Android App Bundle download for a phone is ≤ 25 MB and the installed footprint
-is ≤ 60 MB, with the figures and the measuring command recorded in the release
-checklist (E9.3), and a CI size-diff job warns when a change adds more than 1 MB.
-**SHOULD** · **R2**
+**E8.11** — *Given* the production build, *when* its sizes are measured, *then* the
+**first load is ≤ 350 KB of gzipped JavaScript**, the **total cached asset set is
+≤ 2 MB**, and **a single model document is ≤ 100 KB** (D-21), with the three
+figures and the measuring command recorded in the release checklist (C-02); the
+build job runs the size check on every pull request and **fails** above a budget
+rather than warning, because a warning nobody reads is how a 350 KB budget becomes
+1.4 MB. The budgets are **provisional**: after the first measurement on the
+reference phone they are re-baselined, and the numbers checked in at that point are
+the measured ones. **MUST** · **R1**
 
-**E8.12** — *Given* a save in progress, *when* the process is killed at the write
-boundary, *then* the previously saved version is intact and readable on next
-launch, and no partially written file is ever offered as valid; the test kills
-the process between the temp-file write and the rename for each document kind.
-**MUST** · **R1**
+**E8.12** — *Given* a save in progress, *when* the tab is closed or the process is
+killed at the transaction boundary, *then* the previously saved revision is intact
+and readable on next launch, and no partially written revision is ever offered as
+valid; the tests abort a storage transaction through the store's own failure hook
+for each document kind, and a browser test closes the tab mid-save and reopens the
+app. **MUST** · **R1**
 
-**E8.13** — *Given* the shipped Android artifact and the app's screens, *when* the
-dependency check and the privacy test run, *then* (a) the resolved dependency set
-contains no package whose declared purpose is analytics, advertising or crash
-reporting, and adding one to `pubspec.yaml` makes the check exit non-zero naming
-the package; (b) a Privacy screen is reachable in two taps from the about screen
-and its exact text equals `docs/release/privacy.txt`; (c) the Play data-safety
-declaration for the submitted version is recorded in `docs/release/checklist.md`
-with its public URL. **MUST** · **R1**
+**E8.13** — *Given* the shipped bundle and the app's screens, *when* the
+dependency check, the request-log test and the privacy test run, *then* (a) the
+resolved dependency tree contains no package whose declared purpose is analytics,
+advertising or crash reporting, and adding one to `package.json` makes the check
+exit non-zero naming the package; (b) a Privacy screen is reachable in two taps
+from the about screen and its exact text equals `docs/release/privacy.txt`; and
+(c) **no third party is contacted at any point** — with the production build open
+and every route, import and export exercised while online, the request log contains
+requests to the app's own origin only: no beacon, no analytics endpoint, no
+third-party font, no error-reporting call, no telemetry of any kind. **MUST** · **R1**
 
-**E8.14** — *Given* a save that fails (storage full, permission revoked, write
-interrupted), *when* it fails, *then* the failure is reported on the field being
+**E8.14** — *Given* a save that fails — the storage quota is exceeded, persistent
+storage was refused and the browser rejects the write, or the transaction is
+interrupted — *when* it fails, *then* the failure is reported on the field being
 saved with a retry affordance that retries that row only, no other value is lost,
-and the previous revision remains current; asserted with a mocked filesystem that
-fails the second write. **MUST** · **R2**
+and the previous revision remains current; asserted with a mocked storage backend
+whose second write rejects with `QuotaExceededError`. **MUST** · **R2**
 
-**E8.15** — *Given* a corrupt or unreadable file in the library at launch, *when*
-the app opens, *then* the file is moved to a quarantine directory, named in a
-single notice with its path, and the rest of the library opens normally.
+**E8.15** — *Given* a corrupt or unreadable record in the library at launch, *when*
+the app opens, *then* the record is moved to the quarantine store rather than
+deleted, named in a single notice with its id and the reason it could not be read,
+its raw bytes remain exportable, and the rest of the library opens normally.
 **MUST** · **R2**
 
 **E8.16a** — *Given* every slider and drag-based input, *when* the test opens its
@@ -1005,14 +1068,43 @@ stepped alternative, *then* each offers a numeric field or ± step buttons that
 produce the same values as the drag, reachable in one tap (A-08).
 **MUST** · **R2**
 
-**E8.16b** — *Given* a switch-access or hardware-keyboard session, *when* the user
-traverses the analysis screen, *then* focus order equals the reading order of the
-semantics tree and every interactive element is reachable and operable (A-07).
-**MUST** · **R2**
+**E8.16b** — *Given* a keyboard-only or switch-access session, *when* the user
+traverses the analysis screen, *then* focus order equals the visual reading order,
+every interactive element is reachable and operable, no control is reachable only
+by pointer, and focus is visible at every stop (A-07). **MUST** · **R2**
 
-**E8.16c** — *Given* the system "remove animations" setting, *when* it is on,
-*then* no non-essential animation runs, and no content flashes more than three
-times per second in either setting (A-09). **MUST** · **R2**
+**E8.16c** — *Given* the `prefers-reduced-motion: reduce` media query, *when* it
+matches, *then* no non-essential animation runs, and no content flashes more than
+three times per second in either setting (A-09). **MUST** · **R2**
+
+
+**E8.17** — *Given* a first visit on a phone, *when* the app offers installation,
+*then* (a) the build ships a Web App Manifest with name, short name, start URL,
+`display: standalone`, theme and background colours, and 192 px and 512 px icons
+including a maskable one, and Lighthouse's installability audit passes on the
+production build; (b) on a browser that fires `beforeinstallprompt` (Chrome on
+Android) the first run offers one install action wired to that event, dismissible,
+and not offered again unless the user asks; (c) on iOS Safari, where no such event
+exists, the first run shows the two-step instruction (Share → Add to Home Screen)
+as text — not a button that cannot work — and says that installation is what keeps
+the library; and (d) the reason is stated in one sentence on the same screen: an
+installed app is exempt from the browser's seven-day eviction of unvisited sites,
+a bookmark is not. **MUST** · **R1**
+
+**E8.18** — *Given* a library of documents, *when* the user's storage state is
+examined, *then* (a) `navigator.storage.persist()` is requested at first run before
+the first document is written, and the result is shown on a storage-state row with
+the usage and quota reported by `navigator.storage.estimate()`; (b) "export
+everything" produces **one archive** containing every model, setup and note, the
+date of the last successful export is shown, and the app prompts — dismissible for
+the session, not a modal — to export once that date is more than seven days old;
+(c) when a write fails because the quota is exhausted, the app says so, names the
+largest documents, and offers export-then-delete instead of losing an edit
+silently; and (d) when the library is empty on startup *and* a previous session
+recorded documents, the app says the data was evicted or cleared, offers "import
+your backup" as the primary action, and does not present a first run — because an
+empty library is otherwise indistinguishable from a fresh install, and the user
+must be told which one happened. **MUST** · **R1**
 
 *E8.4 (deleted, duplicate of E8.1) and E8.10 (deleted, duplicate of E8.7c) — see
 §8.3. The former E8.7 and E8.9 are split into a/b/c and a/b, and A-07/A-08/A-09
@@ -1043,8 +1135,8 @@ naming the string. **MUST** · **R1**
 **E9.5** — *Given* five participants who have not seen the app, recruited per
 `docs/specs/eval/protocol.md`, *when* each completes the session unaided, *then*
 (a) ≥ 4 of 5 produce a model whose required fields are all present within 30
-minutes, measured from app install to the first analysis screen with all four
-corners measured; (b) each participant, shown a camber-link shim change and a
+minutes, measured from first page load — or from the home-screen icon, where the
+app was installed — to the first analysis screen with all four corners measured; (b) each participant, shown a camber-link shim change and a
 roll-centre change, names the direction of the affected output in the same
 direction the app's own sensitivity output (E3.14) reports, before the app shows
 the delta; (c) every session's timing, failures and abandoned steps are recorded
@@ -1056,30 +1148,31 @@ code licence, the data licence, and for every shipped model its
 `attribution_text`, its `license.id` and every `contributors[].name` are readable
 in-app, generated from the model files themselves (not from a hand-written list),
 and the dedication is shown; the test asserts the displayed set equals the set
-computed from `app/assets/models/*.json`. **MUST** · **R2**
+computed from `assets/models/*.json`. **MUST** · **R2**
 
 **E9.7** — *Given* a user who has found a problem, *when* they look for a way to
 report it, *then* a route that requires no account is offered (a mail link or an
 issue tracker link) and it is reachable from the about screen. **SHOULD** · **R2**
 
-**E9.8** — *Given* the release commit, *when* `cd app && dart run tool/gate.dart`
-runs in CI, *then* every stage exits 0 and the stages are exactly: analyse, test,
-spec audit (E9.9), schema and fixtures (E9.10), IP and overlap (E9.4, E5.4),
-manifest (E8.1), dependency and privacy (E8.13), string audit (E5.6); a stage that
-exists in `gate.dart` without a corresponding AC here fails the spec audit, and a
-stage that is named here but absent from `gate.dart` fails the gate. The gate
-runs on every pull request and its output is pasted in the PR (AGENTS.md).
-**MUST** · **R1**
+**E9.8** — *Given* the release commit, *when* `npm run gate` runs in CI from the
+repository root, *then* every stage exits 0 and the stages are exactly: typecheck,
+test, spec audit (E9.9), schema and fixtures (E9.10), IP and overlap (E9.4, E5.4),
+offline (E8.1), dependency, privacy and third-party requests (E8.13), string audit
+(E5.6); a stage that exists in `tool/gate.ts` without a corresponding AC here fails
+the spec audit, and a stage that is named here but absent from the gate fails the
+gate. The gate runs on every pull request and its output is pasted in the PR
+(AGENTS.md). **MUST** · **R1**
 
 **E9.9** — *Given* the repository, *when* the gate's spec-audit stage runs, *then*
 it exits 0 only if every MUST id in §3 whose release marker is R0 or R1 appears
-in at least one `@SpecTest('<id>')` annotation in a test file (R2 MUSTs may be
-annotated early but are not required to be, so the gate cannot block v1 on a
-release that has not started), every `@SpecTest` id exists in §3 with the same
-tag and release marker, and no LATER-tagged AC has a test; deleting
-one `@SpecTest('E3.3')` annotation, adding an unknown id, and annotating a LATER
-id each make the stage exit non-zero naming the id, and each is a separate
-seeded-failure test in the gate's own suite. **MUST** · **R1**
+in at least one `specTest('<id>', …)` wrapper call in a test file (a JSDoc
+`@SpecTest <id>` tag on the test is equivalent; R2 MUSTs may be annotated early but
+are not required to be, so the gate cannot block v1 on a release that has not
+started), every annotation's id exists in §3 with the same tag and release marker,
+and no LATER-tagged AC has a test; deleting one `specTest('E3.3', …)` call, adding
+an unknown id, and annotating a LATER id each make the stage exit non-zero naming
+the id, and each is a separate seeded-failure test in the gate's own suite.
+**MUST** · **R1**
 
 **E9.10** — *Given* `docs/specs/fields.yaml`, the JSON schema and the fixture
 directory, *when* the gate's schema stage runs, *then* it fails unless: (a) every
@@ -1107,12 +1200,12 @@ checklist and fails on a missing, unsigned or unevidenced item.
 
 | # | Item | Evidence |
 |---|---|---|
-| C-01 | Store listing title, description, screenshots and keywords checked against the clean-room rule (was E9.3's content) | the listing text and screenshot set, reviewed, in `docs/release/` |
-| C-02 | Artifact sizes measured and recorded (E8.11) | the `bundletool`/`aapt` output pasted into the checklist |
+| C-01 | Install surface checked against the clean-room rule (was E9.3's content): manifest name and short name, icons, the first-run install copy for both engines, store-free sharing text, and any screenshot or preview used publicly | the reviewed manifest, icons and copy in `docs/release/` |
+| C-02 | Artifact sizes measured and recorded (E8.11): first-load JS, total cached assets, largest model document | the `size-limit` and build output pasted into the checklist |
 | C-03 | Continuous 30-minute session on the reference device: no thermal frame-rate drop, ≤ 5% battery (P-10) | the session log |
 | C-04 | Reference-device performance numbers for E3.12 pasted from the harness | harness CSV |
 | C-05 | The three-user usability session (E9.5, R2) — each participant's run file linked | `docs/specs/eval/run-<date>.md` |
-| C-06 | Play data-safety declaration submitted, its public URL recorded (E8.13 clause (c)) | the Play console confirmation |
+| C-06 | **SUPERSEDED by D-19** — there is no store and therefore no data-safety declaration to submit. The declaration's *substance* is now the Privacy screen (E8.13 clause (b)) plus the no-third-party-request test (clause (c)); publishing that text at a public URL is a marketing choice, not a release gate | — |
 | C-07 | Every MUST id in the release marker R1 has a green test in the gate output pasted in the release PR | the PR body |
 
 ---
@@ -2121,7 +2214,7 @@ screen (E7.12).
 
 `docs/specs/fields.yaml` **exists** (it did not in v0.2, which is why this
 section described a file nobody could read) and is the single source for both
-field tables, for the generated Dart table the validator interprets, and for
+field tables, for the generated TypeScript table the validator interprets, and for
 every test that iterates fields. One entry per field:
 
 ```yaml
@@ -2157,7 +2250,7 @@ Rules, all enforced by E9.10:
   have been caught by the gate rather than by a review.
 - The Markdown tables in §4.2.1 and §4.3.1 are **generated** from this file, and
   the gate fails if the checked-in tables differ from the generated ones. So are
-  the Dart table and the fixture set.
+  the TypeScript table and the fixture set.
 
 The file's own header records every place the two documents disagreed and which
 name survived, so a reader of an older file can find what happened to a key
@@ -2209,7 +2302,7 @@ criteria named beside it; the ACs are the contract, this list is the map.
 | FR-11 | Explain any output and any input in place, with definitions that close | E5.1–E5.3, E5.8 |
 | FR-12 | State the model's limits and assumptions on the analysis screen and in every export | E5.5, E7.1a |
 | FR-13 | Maintain a local model library with completeness and provenance visible | E6.1–E6.3 |
-| FR-14 | Install and share models and setups as files through the OS, with attribution intact | E6.2, E6.4, E7.5, E7.12 |
+| FR-14 | Install and share models and setups as files — picker, drop, paste, download, web share — with attribution intact | E6.2, E6.4, E7.5, E7.12 |
 | FR-15 | Export any model, setup, comparison and sheet; back up and restore the library | E7.1a–E7.8 |
 | FR-16 | Offer a guided first run from empty install to first delta | E5.7 |
 | FR-17 | Work completely with no network, no account and no personal data | E8.1–E8.3, E8.13 |
@@ -2218,43 +2311,53 @@ criteria named beside it; the ACs are the contract, this list is the map.
 | FR-20 | Validate, version, canonicalise, hash and migrate documents reproducibly | E1.7, E6.5, E6.6, E9.10 |
 | FR-21 | Enforce the clean-room rule and the no-score rule mechanically | E5.4, E5.6, E9.4 |
 | FR-22 | Save atomically, survive process death, and report save failures without loss | E8.12, E8.14, E8.15, E1.13 |
-| FR-23 | State the privacy position in-app and in the store declaration | E8.13 |
+| FR-23 | State the privacy position in-app, and prove it: no third-party request is made | E8.13 |
 | FR-24 | Gate the release: every stage exits 0, every MUST has a test, every checklist item is signed | E9.3, E9.8, E9.9, E9.10 |
 | FR-25 | Infer, band and tier every quantity the user cannot measure, and never dress an inference as a measurement | E3.2, E3.6, E5.2, E5.6, §4.11 |
 | FR-26 | Interpret a driver's written report as understeer/oversteer claims with phases and tiers | E2.13 |
 
 ### 5.2 Performance
 
-**Reference device (the budget's denominator).** A mid-range phone of the class
-in a racer's pocket in 2026: 8 cores (2 performance + 6 efficiency, roughly
-Snapdragon 695 / Dimensity 700 class), 4 GB RAM, 1080×2400 at 60 Hz, Android 12,
-**release build, profile mode, no debugger attached, battery not in saver mode**,
-device at 25 °C. Every number below is measured on that device; a faster phone
-proves nothing and a slower one is not a release blocker until it is the
-reference.
+**Reference phone (the budget's denominator).** A mid-range phone of the class in
+a racer's pocket in 2026 — 8 cores (2 performance + 6 efficiency, roughly
+Snapdragon 695 / Dimensity 700 class), 4 GB RAM, 1080×2400 at 60 Hz, Android 12 —
+running the **installed app in a production build, launched from the home-screen
+icon, with no debugger and no devtools attached, and battery not in saver mode**,
+device at 25 °C. Every number below is measured on that device, in that browser;
+a faster phone proves nothing, a slower one is not a release blocker until it is
+the reference, and **a desktop browser is not the reference** — a value measured in
+Chrome on a laptop is a development aid, and the release checklist records which
+engine produced each number. The iOS half of the matrix is measured on the same
+class of device running Safari, because D-19 made it a v1 platform rather than a
+later port.
 
 | # | Measurement | Target | Test | AC |
 |---|---|---|---|---|
-| P-01 | Full analysis recompute for a complete model (all outputs, both axles, 13-row roll-centre sweep) | **≤16 ms** typical, ≤25 ms at p99 | Timing harness over 1,000 iterations, release build | E3.12 |
+| P-01 | Full analysis recompute for a complete model (all outputs, both axles, 13-row roll-centre sweep) | **≤8 ms at p50, ≤16 ms at p95** (D-21, provisional) | Timing harness over 1,000 iterations, production build | E3.12 |
 | P-02 | Recomputation during a continuous slider drag of 10 s | **≥95% of frames presented within 16.7 ms**; no frame >32 ms | Automated frame-timing capture | E3.12 |
 | P-03 | Single-output recompute (one output, one input change) | ≤2 ms | Timing harness | — (design target) |
-| P-04 | Cold start to interactive analysis screen | ≤2.0 s | Automated launch test on release build | E8.5 |
+| P-04 | Warm start to interactive analysis screen (shell cached, app installed) | ≤2.0 s | Automated launch test on the production build | E8.5 |
 | P-05 | Open a stored model | ≤300 ms | Timing harness | E8.5 |
 | P-06 | Library list, 200 models, scroll | Sustained 60 fps | Frame-timing capture | E6.3 |
 | P-07 | Validate + import a 1 MB model file | ≤150 ms | Timing harness | — (design target) |
-| P-08 | Generate a one-page setup sheet PDF | ≤2.0 s | Timing harness | E7.4 |
-| P-09 | Peak resident memory during analysis | ≤150 MB | Platform profiler | — (design target) |
-| P-10 | Continuous use, 30 minutes | No frame-rate drop attributable to thermal throttling; ≤5% battery on the reference device | Recorded in the release checklist (C-03) | E9.3 |
+| P-08 | Generate a one-page setup sheet PDF (print-to-PDF in the browser) | ≤2.0 s | Timing harness | E7.4 |
+| P-09 | Peak memory used by the page during analysis | ≤150 MB | Browser memory panel over a 10-minute session | — (design target) |
+| P-10 | Continuous use, 30 minutes | No frame-rate drop attributable to thermal throttling; ≤5% battery on the reference phone | Recorded in the release checklist (C-03) | E9.3 |
+| P-11 | First load, cold cache, on the reference phone over a mobile network | ≤350 KB gzipped JavaScript (E8.11); time-to-interactive recorded, not gated until the first measurement sets the baseline | `size-limit` in the build job + a one-off device measurement | E8.11 |
 
 The last column exists so that a performance number without a criterion is
 visible as such: P-03, P-07 and P-09 are design targets, not release gates, and
 saying so is better than pretending they are tested.
 
-**Design consequence:** P-01 and P-02 together mean the analysis must be a
-single pure function over a pre-parsed model — allocating a new results object
-per frame is acceptable, re-parsing JSON per frame is not. This is a constraint
-on the physics package's API (it takes a typed model, not a file) and it is
-already implied by the pure-Dart rule.
+**Design consequence:** P-01 and P-02 together mean the analysis must be a single
+pure function over a pre-parsed model — allocating a new results object per frame
+is acceptable, re-parsing JSON per frame is not, and neither is writing the result
+into browser storage per frame. This is a constraint on the physics package's API
+(it takes a typed model, not a file) and it is already implied by the pure-TypeScript
+rule. On the web it adds one constraint the native build did not have: the frame
+also has to carry the browser's style, layout and paint work, so the solve has to
+finish well inside the budget rather than exactly at it — which is why D-21 halves
+the p50 target instead of carrying 16 ms across.
 
 ### 5.3 Reliability and data safety
 
@@ -2274,7 +2377,13 @@ Every rule here has an AC id, because a rule without one is a rule nobody builds
   are named first (E2.2).
 - A backup carries a hash per document and a restore verifies every one before
   writing anything (E7.6).
-- No operation requires a network acknowledgement to complete (E8.1, E8.2).
+- No operation requires a network acknowledgement to complete (E8.1, E8.2), and no
+  operation contacts a third party at all (E8.13 clause (c)).
+- Browser storage can be evicted under pressure, and on iOS Safari it is evicted for
+  a site not visited for seven days unless the app is installed; persistent storage
+  is requested at first run, installation is offered, and an export older than seven
+  days is prompted for (E8.17, E8.18). An empty library that was not empty last time
+  reports eviction rather than presenting itself as a first run (E8.18 clause (d)).
 - Work in progress survives a kill: the worksheet field and the setup working
   copy come back exactly as they were (E1.13).
 
@@ -2285,7 +2394,7 @@ one AC, so the nine rules cannot be claimed by one grab-bag criterion.
 
 | # | Requirement | AC |
 |---|---|---|
-| A-01 | Minimum interactive target 44×44 dp with ≥8 dp separation | E8.7a |
+| A-01 | Minimum interactive target 44×44 CSS px with ≥8 px separation | E8.7a |
 | A-02 | Text scales to 200% with no clipping, overlap or loss of a value | E8.7b |
 | A-03 | Contrast: 4.5:1 body text, 3:1 large text and non-text UI, both themes | E8.7c |
 | A-04 | Never colour alone: every delta carries a sign and a direction word; every chart series carries a line style and a direct label | E8.7c |
@@ -2309,17 +2418,22 @@ one AC, so the nine rules cannot be claimed by one grab-bag criterion.
 
 ### 5.6 App size and distribution
 
-The numbers live in **E8.11** and nowhere else: Android App Bundle download
-≤ 25 MB, installed footprint ≤ 60 MB, with the measuring command recorded in the
-release checklist (C-02). No bundled model library beyond the example models
-(E6.1); no bundled video, no bundled fonts beyond one variable family;
-explanations are text, not images. iOS figures are absent because v1 does not
-ship on iOS (D-10).
+The numbers live in **E8.11** and nowhere else: first load ≤ 350 KB of gzipped
+JavaScript, total cached assets ≤ 2 MB, one model document ≤ 100 KB (D-21,
+provisional), with the measuring command recorded in the release checklist (C-02).
+No bundled model library beyond the example models (E6.1); no bundled video, and
+**no bundled fonts at all** — the type is the platform's system stack, so there is
+nothing to download and nothing to licence; explanations are text, not images.
+There is no app-store package, so there is no download size to declare and no
+installed footprint to report: the service worker's cache *is* the footprint, and
+E8.11's second budget is its ceiling.
 
 ### 5.7 Maintainability and IP
 
-- The physics package has no Flutter dependency, and a test inside it asserts that
-  (review rule 3); the test runs in E9.8's test stage.
+- The physics package has no React and no DOM dependency — its `tsconfig.json`
+  omits the DOM lib, so a browser API is a type error rather than a review note —
+  and a test also asserts that its `package.json` declares no UI dependency
+  (review rule 3). Both run in E9.8's `typecheck` and `test` stages.
 - Every physics function states its units in its doc comment, and that doc comment
   is in SI, because the package is SI-only inside its boundary (R-2).
 - Every constant in the physics carries a citation (review rule 1), and E3.11
@@ -2355,12 +2469,12 @@ that a user is never promised them by accident.
 | L-02 | Acceleration simulation and time-domain chassis roll (E3.15) | After v1; needs a validated damper model and a lateral-g input |
 | L-03 | Chassis torsional stiffness, diff-height effect, aero | Each needs measured inputs the app cannot currently obtain |
 | L-04 | Droop-limited roll behaviour in the static analysis | Needs a load-path model; v1 states the limit instead of guessing |
-| L-05 | Desktop and web builds | Same source, later rendering; v1 is Android only (D-10) |
+| L-05 | Desktop and web builds | **SUPERSEDED by D-19** — the web app *is* the product; a desktop browser is the same URL, not a second build. The two layout breakpoints (600, 900 px) are in v1 |
 | L-06 | Any sync, sharing service or model store (E6.8) | Files work offline; a store adds cost and a trust boundary |
 | L-07 | OCR of paper sheets (E2.10), photo/CAD capture (E1.12), sheet-format adapters (E7.10) | Each is a separate feature with its own accuracy problem |
 | L-08 | Multi-setup comparison beyond two (E4.8) | Two is the question users actually ask |
 | L-09 | In-app teaching videos or links out to them | The predecessor's teaching is not ours to link; see §8.3 on the removed E5.9 |
-| L-10 | **iOS** | D-10: Android is the v1 release target. Revisit with a store account and a device in hand; every Apple-only clause was moved out of R1 in round 2 |
+| L-10 | **iOS** | **SUPERSEDED by D-19** — one URL serves iOS Safari and the home-screen app, so there is no iOS build to schedule and no enrolment question to answer |
 | L-11 | A **measured** damping ratio: a `damper_curve` document or a drop-test workflow (§4.8) | When a user asks for a number they can trust, or a dyno sheet turns up. The estimate plus its band is v1's answer |
 | L-12 | Non-linear ARB setting curves (`arb.setting_table`) | When a blade-bar user reports the linear assumption is what makes the number wrong |
 
@@ -2374,8 +2488,13 @@ that a user is never promised them by accident.
 |---|---|---|
 | R-1 | **Frame is ISO 8855**: x forward, y **left**, z up, origin on the ground plane at the rear axle centre. Per-wheel quantities are per-wheel signed (camber positive = top outboard, toe positive = toe-in) and mirroring copies them **unchanged** — it negates point `y` only (D-17, `docs/decisions.md`); the side factor `s` is applied once in the solver. Car-level quantities are never signed per side. | §4.2, E3.3, E3.4, all hardpoints re-derived |
 | R-2 | **Storage is mm, g, degrees**; SI exists only inside the physics package, at one conversion boundary; the metre-value guard is `\|c\| > 3000 mm`. | §4.1 rule 1, §4.5.4 |
-| D-09 | One gate command: `cd app && dart run tool/gate.dart`. | E9.8, AGENTS.md |
-| D-10 | **iOS is deferred; Android is the v1 release target.** No AC may require an Apple-only capability. | E8.1, §2.4, L-10, §8.3 |
+| D-09 | One gate command, **now `npm run gate`** (typecheck + unit + schema/field drift): the principle is unchanged, the tool is D-19's. | E9.8, AGENTS.md |
+| D-10 | **Superseded by D-19.** iOS is not deferred, because there is nothing to defer: one URL serves both phone platforms. No AC may require a store, an SDK version or a native permission — there is no artifact to hold either. | §2.4, L-10, §8.3 |
+| D-19 | **The app is a React + TypeScript web application**, installable as a PWA and fully offline; Flutter and Dart are retired. Distribution is static hosting — no store, no signing key — and the physics, schema, units and goldens are unchanged by the switch. | §2.4, §5.6, E8.1, E8.17, E9.8, `architecture.md` |
+| D-20 | **Persistence is IndexedDB for documents, `localStorage` for preferences only**, with `navigator.storage.persist()` at first run; Safari's seven-day eviction of unvisited sites is stated on screen and answered by installation plus an export nag. | E8.17, E8.18, §5.3 |
+| D-21 | **Web performance budgets are provisional** — 350 KB gzipped first load, 2 MB cached, 100 KB per document, 8 ms p50 / 16 ms p95 for a drag recompute — and are re-baselined from the first device measurement, which the criterion then quotes. | E3.12, E8.11, §5.2 |
+| D-22 | **Import is a picker, a drop or a paste; export is a download; "export everything" is one archive.** File association is an accepted loss, recorded rather than engineered around. | E6.2, E6.4, E8.18 |
+| D-23 | **The suspension scene is SVG, series plots go through one chart library behind a wrapper, and no renderer computes physics.** | E8.7d, `architecture.md` §6 |
 | D-11 | Every computed property carries a visible validity state, `not_yet_validated` initially. | §4.4.1, E3.16 |
 | D-12 | v1 = geometry, balance and damping ratio. Round 2 could not support damping ratio as specified, and the owner's decision of 2026-10-30 resolved it as an estimate with a band rather than a measurement. | §2.1, §4.8, E3.6 |
 | S-01 | **Absence policy**: every field declares `on_absence` ∈ `ASSUME`/`ESTIMATE`/`REFUSE`/`OMIT`; three prose policies were deleted and the tests are generated from the table. | §4.1 rule 3, E1.2, E2.4, E9.10 |
@@ -2422,20 +2541,32 @@ racers think, and it is cheap; it is R2 only because it is new surface. Pull it
 forward if v1 has room.
 
 **O-5 — The name (D1), the model-data permission (D4), the review bar (D5), the
-first shipped models (D7), the minimum OS and reference device (D8), the store
-accounts (D9), the localisation timing (D10).** These are unchanged from v0.1 and
-are listed below with their original reasoning.
+first shipped models (D7), the browser floor and reference phone (D8), hosting
+(D9), the localisation timing (D10).** These are unchanged from v0.1 and are
+listed below with their original reasoning, each annotated where D-19 changed the
+question it asks.
+
+**O-6 — Do the Safari-relevant criteria move from R2 to R1?** The R0/R1/R2
+allocation in §8.2 was partly made by platform: anything Apple-only was R2 by
+construction while iOS was deferred (the old E8 preamble said so). D-19 removes
+that rationale — one URL serves both engines from day one — so the markers on the
+criteria that were parked there (E8.6, E8.7b, E8.16a/b) are now a scope decision
+rather than a consequence. This revision records the problem and changes nothing,
+because promoting them widens v1 by four MUSTs and that is Dave's call, not an
+editor's. **Decide before the R1 freeze.**
 
 ---
 
 ### Original decision notes (D1–D10), with round-2 status
 
 **D1 — The product name.**
-*Question:* ship as "Setup Lab", or name it before the first store submission?
-*Recommendation:* treat "Setup Lab" as an internal codename and decide the store
-name at least four weeks before first submission, after a store and trademark
-search in the app stores and in the RC trade. The name is the one thing that
-cannot be changed after reviews, backlinks and community references exist.
+*Question:* ship as "Setup Lab", or name it before the first public URL?
+*Recommendation:* treat "Setup Lab" as an internal codename and decide the public
+name at least four weeks before the first public URL and the first shared link,
+after a trademark search in the RC trade (and, if it ever ships to a store, in the
+app stores). D-19 removed the store *listing* from the critical path but not the
+problem: the name is baked into the domain, the installed app's label on a home
+screen, the manifest, and every link anyone has shared.
 *Cost of getting it wrong:* a rename after launch breaks every shared link, every
 setup file's `meta`, and the community's memory of the app.
 **Status:** open.
@@ -2494,18 +2625,27 @@ ten half-measured models to look substantial.
 **Status:** open; E6.1 is R0 and its fixture is the example model in §4.2.
 
 **D8 — Minimum OS versions and the performance denominator.**
-*Question:* Android 8.0 (API 26), and the reference device in §5.2?
-*Recommendation:* **yes to both**, and buy one cheap reference device, keep it,
-and run every performance test on it. iOS 15 is deferred with the platform (D-10).
+*Question:* which browser floor, and the reference phone in §5.2?
+*Recommendation:* E8.6's matrix — the current and previous major version of Safari,
+Chrome and Firefox — and **yes to the reference phone**: buy one cheap mid-range
+Android, keep it, install the app on it, and run every performance test on it. A
+second, borrowed iPhone is the iOS half of the matrix until one is bought. iOS 15
+is no longer relevant: there is no deployment target, only a browser floor.
 *Cost of getting it wrong:* a budget validated on a flagship ships an app that
 stutters on the phones racers actually bring to a track.
-**Status:** open, but E8.1 now asserts `minSdkVersion ≥ 26`.
+**Status:** resolved in form by D-19 — there is no `minSdkVersion`; E8.6 names the
+browser matrix and E8.1's off-origin assertion replaces the old permission check.
+The reference-phone purchase is still open.
 
-**D9 — Store accounts against "free forever, zero running cost".**
-*Recommendation:* one Google Play account held personally by the owner, budgeted
-as a fixed annual cost, and the public claim phrased as "free to use, no account,
-no server, no ads".
-**Status:** open; with iOS deferred the Apple account is no longer an R1 cost.
+**D9 — Hosting against "free forever, zero running cost".**
+*Recommendation:* static hosting on the owner's existing Cloudflare account, free
+tier, deploying from `main`, and the public claim phrased as "free to use, no
+account, no server, no ads". No store account of any kind is bought (D-19).
+*Cost of getting it wrong:* a host whose free tier changes under load, or a deploy
+only one person can run — the second is the one to avoid, because it turns a static
+site into a job.
+**Status:** open — the subdomain, the deploy trigger and whether per-PR previews
+are enabled (`architecture.md` open question 5).
 
 **D10 — Localisation timing.**
 *Recommendation:* **English in v1, fully externalised**, translate after the
@@ -2526,10 +2666,10 @@ explanation text stops changing.
 | I4 | Compare two setups side by side and say what changed and why it matters | E4.1 |
 | I5 | Teach the same concepts at the point where they are used | E5.1 |
 | I6 | Run on a phone at the track, offline, no account, no server, no subscription | E8.1 |
-| I7 | One codebase, cross-platform, store-shippable, no installer, no proprietary database | E8.1 (Android artifact, API 26+, no INTERNET) |
+| I7 | One codebase, cross-platform, installable, no installer, no proprietary database | E8.1 (offline shell, no off-origin request), E8.17 (installable) |
 | I8 | Zero running cost | E8.13 |
 | I9 | No predecessor code, binaries, help text, iconography or name | E9.4 |
-| I10 | Physics as a pure Dart package, unit-testable and reusable headless | E3.11 |
+| I10 | Physics as a pure TypeScript package — no DOM, no React — unit-testable and reusable headless | E3.11 |
 | S | Success test: model in under 30 minutes, predict the direction of a camber-link or roll-centre change correctly | E9.5 (R2); at R1, E4.1 and E3.14 carry the direction claim |
 | N2 | Non-goal: a tyre model of record (ties to §6.1, N-02 and N-08) | E5.6 |
 
@@ -2540,25 +2680,29 @@ capability failure, not a formatting failure.
 
 ### 8.2 Coverage
 
-**108 acceptance criteria** across nine epics, with a release marker on every
+**110 acceptance criteria** across nine epics, with a release marker on every
 one:
 
 | Release | MUST | SHOULD | LATER | Total |
 |---|---|---|---|---|
 | **R0** — Slice 0 | 8 | 0 | 0 | **8** |
-| **R1** — v1 | 38 | 2 | 0 | **40** |
-| **R2** — v1.1 and later | 38 | 15 | 7 | **60** |
-| **All** | 84 | 17 | 7 | **108** |
+| **R1** — v1 | 41 | 2 | 0 | **43** |
+| **R2** — v1.1 and later | 38 | 14 | 7 | **59** |
+| **All** | 87 | 16 | 7 | **110** |
 
-v1 therefore ships **46 MUSTs**: 8 in the Slice 0 subset and
-38 in the rest of v1 — the round-2 cap of ~35 plus the three that the
-owner's late decisions and the checklist gate added (E3.6 damping as a banded
-estimate, E4.9 the conditions warning, E9.3 the checklist gate).
+v1 therefore ships **49 MUSTs**: 8 in the Slice 0 subset and 41 in the rest of
+v1 — the round-2 cap of ~35, plus three the owner's late decisions and the
+checklist gate added (E3.6 damping as a banded estimate, E4.9 the conditions
+warning, E9.3 the checklist gate), plus three from round 4: E8.11's size budget
+became a gate rather than a warning, and E8.17 (installation) and E8.18 (storage
+durability and export) are new because the web stack has no directory to keep the
+library in. The three round-4 changes are the only ones in this revision that
+move a marker or add an id, and each is recorded in §8.3.
 
 Verification legend: `U` unit, `G` golden value from a source outside the
-codebase, `P` randomised property test, `W` widget/integration, `B` build or CI
-check, `M` scripted manual check, `E` usability evaluation on real users,
-`U (perf)` timing harness. **No MUST carries `M` alone**: every manual check is
+codebase, `P` randomised property test, `W` component test or browser
+integration, `B` build or CI check, `M` scripted manual check, `E` usability
+evaluation on real users, `U (perf)` timing harness. **No MUST carries `M` alone**: every manual check is
 paired with an automated one, and the only observational criterion (E9.5) is
 tagged `E` with its protocol and pass rule written into the AC itself.
 
@@ -2655,7 +2799,7 @@ tagged `E` with its protocol and pass rule written into the AC itself.
 | E8.8 | MUST | R2 | I6 | W |
 | E8.9a | MUST | R2 | I6 | B |
 | E8.9b | SHOULD | R2 | I6 | W |
-| E8.11 | SHOULD | R2 | I6 | B |
+| E8.11 | MUST | R1 | I6 | B |
 | E8.12 | MUST | R1 | I6 | U, W |
 | E8.13 | MUST | R1 | I6, I8 | B, W |
 | E8.14 | MUST | R2 | I6 | W |
@@ -2663,6 +2807,8 @@ tagged `E` with its protocol and pass rule written into the AC itself.
 | E8.16a | MUST | R2 | I6 | W |
 | E8.16b | MUST | R2 | I6 | W |
 | E8.16c | MUST | R2 | I6 | W |
+| E8.17 | MUST | R1 | I6, I7 | W, B |
+| E8.18 | MUST | R1 | I6, I1 | W, U |
 | E9.1 | MUST | R2 | I10 | W |
 | E9.3 | MUST | R1 | I10 | U |
 | E9.4 | MUST | R1 | I9 | B |
@@ -2681,7 +2827,7 @@ in this revision is listed here with its reason.
 | AC | Disposition | Reason |
 |---|---|---|
 | E3.10 | **deleted** | "every output agrees to 1e-9 on two devices, debug and release" demands bit-agreement from transcendental functions across ARM64 and x86_64 libm and across AOT and JIT; it duplicates E7.1a's tolerance, which is stated per fixture on one platform with a cross-platform allowance. |
-| E8.4 | **deleted** | Its only machine-checkable content was "no `INTERNET` permission", which is E8.1; the rest is not provable from inside the app. Privacy is now E8.13 (dependency check + privacy screen + store declaration). |
+| E8.4 | **deleted** | Its only machine-checkable content was "no `INTERNET` permission", which is E8.1; the rest is not provable from inside the app. Privacy is now E8.13 (dependency check + privacy screen + the no-third-party-request test). |
 | E8.10 | **deleted** | "used in direct sunlight" has no protocol and duplicated E8.7c, which computes the same contrast ratios from the theme tokens in both themes. |
 | E5.9 | **deleted** | A LATER that would link out to the predecessor's teaching inside a clean-room successor — the fastest way to turn a respectful project into an accusation, for zero product value. L-09 records it. |
 | E1.7 (old text) | **replaced** | The old criterion demanded byte-identical persistence "including field order and float representation": a serialiser property that blocks every legitimate serialiser change and is unsatisfiable alongside unknown-key preservation. Now hash stability plus two published hash fixtures (§4.5.4). |
@@ -2696,11 +2842,21 @@ in this revision is listed here with its reason.
 | E9.8 (old text) | **rewritten** | It depended on a `spec_audit` tool that no AC required: a circular gate. E9.8 now asserts every named stage exits 0 and that a stage with no AC fails the audit, and each stage has its own AC (E8.1, E8.13, E9.4, E9.9, E9.10). |
 | E7.3 | **folded into E7.1a** | "the export carries `schema_version`, app version, provenance, assumptions" is an assertion about a round-tripped file, and E7.1a is that file's test. |
 | E7.9 | **folded into E6.5** | "refuse a binary database or an installer" is a rejection case; E6.5 is the rejection test, and it now names the foreign-artifact path explicitly. |
+| E8.1 (old text) | **rewritten** | It asserted the *absence of an Android permission* — "the merged manifest declares no `INTERNET`" — an artefact that no longer exists. The property it protected survives as a stronger one: the app completes every path with the network disabled, and the gate fails on any off-origin request in the bundle (D-19). |
+| E8.11 (old text) | **rewritten, and re-markered SHOULD/R2 → MUST/R1** | "AAB ≤ 25 MB / installed ≤ 60 MB" measured an artefact that does not exist. Replaced by D-21's three budgets (350 KB gzipped JS, 2 MB cached, 100 KB per document). The marker moved because D-21 makes the budget a release gate and the build job fails above it; a SHOULD that fails CI is a contradiction. |
+| E8.13 clause (c) | **SUPERSEDED by D-19** | The Play data-safety declaration cannot be submitted because there is no store. Its substance is now E8.13(b)'s Privacy screen plus the new clause (c): no third party is contacted at all. Recorded as C-06 in §3.5. |
+| E6.2 clause (b) | **rewritten** | The `ACTION_VIEW` intent cannot exist: a web app is not the handler for a tapped `.json`. Replaced by the three entry points a browser can drive — file picker, drag-and-drop, paste (D-22). |
+| E8.5 (old text) | **rewritten** | It budgeted a cold start to an interactive screen at 2.0 s, which on the web is a download measurement and not a start-up one. Now a warm start; first load is E8.11's business. |
+| E8.12 (old text) | **rewritten** | It asserted a kill between a temp-file write and a rename. There are no files; the equivalent boundary is a storage transaction, tested by aborting one and by closing the tab mid-save. |
+| E3.12 (old text) | **rewritten** | p50 ≤ 16 ms / p99 ≤ 25 ms were Dart-AOT numbers measured on a native widget tree. D-21 replaces them with 8 ms p50 / 16 ms p95, provisional until measured on the reference phone. |
+| E8.6, E8.7a, E8.7b (old text) | **rewritten** | Device and SDK language replaced by a browser matrix and CSS px; "text scale 2.0" replaced by the two mechanisms a browser actually has (200% zoom, and a 32 px root font). |
+| E9.8 (old text) | **rewritten** | The gate command and two stage names changed with the stack: `typecheck` for `analyse`, `offline` for `manifest`. The stage count and the one-command contract are unchanged. |
+| E8.17, E8.18 | **added** | D-19 adds two capabilities no earlier criterion covered: installation to a home screen (which is what exempts the library from Safari's seven-day eviction) and the storage-durability promise that depends on it. Listed here so a reader does not hunt for an earlier instance. |
 | E9.2 | **folded into E9.10** | "one fixture per schema version, adding a version without a fixture fails" is a build gate; E9.10 clause (d) is the same assertion with seeded-failure semantics. |
 | E2.12 (planned) | **folded into E1.13** | One process-death criterion covers the worksheet draft and the setup working copy; two criteria would share one mechanism and one test. |
 | E1.14 (planned) | **folded into E9.10** | The `fields.yaml` completeness check is a build gate, and the round-2 rule is one AC per gate. |
 | E9.11 (planned) | **folded into E8.1** | The manifest gate is the only place "no `INTERNET` permission" is asserted; two criteria for one check would allow one to pass while the other failed. |
-| E6.3, E6.6, E2.5, E2.6, E2.7, E4.2, E4.4, E4.5, E7.4, E7.5, E7.6, E7.11, E8.2, E8.3, E8.5, E8.6, E8.8, E8.11, E8.14, E8.15, E9.1, E9.5, E9.6 | **moved to R2** | Not deleted: retain their ids and their content, and do not block v1. Each was cut because v1 is capped at 46 MUSTs (R0's 8 plus R1's 38) and these are the ones a first release can ship without while staying honest. |
+| E6.3, E6.6, E2.5, E2.6, E2.7, E4.2, E4.4, E4.5, E7.4, E7.5, E7.6, E7.11, E8.2, E8.3, E8.5, E8.6, E8.8, E8.11, E8.14, E8.15, E9.1, E9.5, E9.6 | **moved to R2** | Not deleted: retain their ids and their content, and do not block v1. Each was cut because v1 is capped at 49 MUSTs (R0's 8 plus R1's 41) and these are the ones a first release can ship without while staying honest. |
 
 ### 8.4 What the audit checks
 
@@ -2792,7 +2948,7 @@ What the evidence changed in this spec:
 - `docs/specs/fields.yaml` written and the §4.2.1/§4.3.1 tables regenerated from
   it, so E9.10 has something to compare against.
 - The three documents that must agree with this one — `physics/01` (frame and
-  units), `architecture.md` (the one conversion boundary, `gate.dart`) and
+  units), `architecture.md` (the one conversion boundary, `npm run gate`) and
   `docs/design/screens.md` (the `inferred` tier, the model-missing state, the
   conditions warning) — reconciled against §4 and §2.
 - Answers to O-1, O-2 and O-4 recorded in §7.1, and the damping-ratio field set

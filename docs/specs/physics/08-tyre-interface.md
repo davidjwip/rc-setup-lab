@@ -123,23 +123,23 @@ coefficient. Module 6 stops at load transfer, which is a mechanics result and is
 
 The rule to implement: every string in the UI that contains "grip", "understeer", "oversteer",
 "traction" or "faster" must be attached to a `conditional` qualifier or removed. A grep test in CI
-can enforce it (`test/no_grip_claims_test.dart` over the UI string tables).
+can enforce it (`no-grip-claims.test.ts` over the UI string tables).
 
 ### 3.2 What ships as the seam
 
 So that a future version can add a tyre model without refactoring, the package defines the
 interface and nothing else:
 
-```dart
-/// Models the tyre's contribution to handling. v1 has no implementation.
-abstract class TyreModel {
-  /// Lateral force [N] for a vertical load [N] and slip angle [rad].
-  double lateralForce({required double fz, required double alpha});
-  bool get isCalibrated;
+```ts
+/** Models the tyre's contribution to handling. v1 has no implementation. */
+export interface TyreModel {
+  /** Lateral force [N] for a vertical load [N] and slip angle [rad]. */
+  lateralForce(input: { fz: number; alpha: number }): number;
+  readonly isCalibrated: boolean;
 }
 ```
 
-`setup_physics` returns `TyreModel?` as `null` in v1, and every consumer must handle null by
+`packages/physics` returns `TyreModel | null` as `null` in v1, and every consumer must handle null by
 withholding the derived claim. A test asserts that `null` is the only value the factory can return
 until a calibrated model exists.
 

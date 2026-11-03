@@ -48,11 +48,13 @@ A free, offline-first, cross-platform setup workbench that:
 
 ## Constraints
 
-- **Flutter**, single codebase, targeting Android/iOS first (store-shippable), then desktop
-  and web from the same source.
+- **One web app** — React + TypeScript, built with Vite, installable to a home screen and fully
+  offline (D-19). One URL serves Android, iOS and desktop, so "cross-platform" stops being a build
+  matrix and becomes a URL; there is no store, no installer and no signing key anywhere in the
+  distribution path.
 - **Offline by default**; any sync is a later, optional, dumb-store layer.
-- **Physics is a pure Dart package** with no UI dependency, so it can be unit-tested against
-  published values and reused headless.
+- **Physics is a pure TypeScript package** with no DOM and no React dependency, so it can be
+  unit-tested against published values and reused headless.
 - **No estate IP**: no decompiled code, no copied help text, no reuse of the RC3 name.
 - Zero running cost: static hosting only if anything is hosted at all.
 

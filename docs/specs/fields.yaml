@@ -5,7 +5,7 @@
 #
 # Two document kinds are defined here: `car_model` and `setup`. Prose tables in
 # docs/specs/spec.md §4.2.1 and §4.3.1 are *generated views* of this file, and
-# so is the Dart table the validator reads (`tool/gen_schema.dart`). The gate's
+# so is the TypeScript table the validator reads (`tool/gen_schema.ts`). The gate's
 # `schema` stage (spec E9.10) fails if any view diverges from this file: a field
 # present in one and not another, a differing `on_absence`, unit or `req`, a
 # `consumed_by` id that does not exist in the output list below (or is not the
