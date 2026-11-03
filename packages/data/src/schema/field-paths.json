@@ -15,6 +15,13 @@
     "axles.<axle>.droop_limit_wheel",
     "axles.<axle>.bump_limit_wheel",
     "axles.<axle>.spring.rate",
+    "axles.<axle>.arb",
+    "axles.<axle>.arb.type",
+    "axles.<axle>.arb.rate_at_link",
+    "axles.<axle>.arb.bar_diameter",
+    "axles.<axle>.arb.span",
+    "axles.<axle>.arb.arm_length",
+    "axles.<axle>.arb.shear_modulus",
     "corners.<corner>.arm_type.lower",
     "corners.<corner>.arm_type.upper",
     "corners.<corner>.points.lca_in_a",
@@ -33,6 +40,7 @@
     "camber_gain",
     "motion_ratio",
     "wheel_rate",
-    "ride_frequency"
+    "ride_frequency",
+    "roll_stiffness"
   ]
 }

@@ -1,32 +1,39 @@
-import { useMemo, useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import {
   buildFrontViewInput,
   buildRatesInput,
+  buildRollStiffnessInput,
   parseCarModel,
   updateCornerPointMm,
   type CarModelDocument,
   type CornerPointKey,
   type DataError,
 } from '@setuplab/data';
-import { solveFrontView, solveRates, type Solved } from '@setuplab/physics';
+import { solveFrontView, solveRates, solveRollStiffness, type Solved } from '@setuplab/physics';
 import rawModel from '../../assets/models/reference-touring-car.json';
 import {
   CAMBER_GAIN_UNIT,
+  FRONT_SHARE_UNIT,
   LENGTH_UNIT,
   RIDE_FREQUENCY_UNIT,
+  ROLL_STIFFNESS_UNIT,
   WHEEL_RATE_UNIT,
   formatBandFromMetres,
   formatBandFromNpm,
   formatCamberGain,
   formatCriticalDamping,
+  formatFrontShare,
   formatInstallationRatio,
   formatLengthFromMetres,
   formatLengthMm,
   formatNumber,
   formatRideFrequency,
   formatRollCentreHeight,
+  formatRollStiffness,
+  formatRollStiffnessSi,
   formatSlope,
   formatSpringRateFromNpm,
+  formatTorsionalStiffness,
   formatWheelRateFromNpm,
 } from './format/format.js';
 
@@ -100,6 +107,17 @@ export function App() {
     () =>
       ratesInputResult !== null && ratesInputResult.ok ? solveRates(ratesInputResult.value) : null,
     [ratesInputResult],
+  );
+  const rollInputResult = useMemo(
+    () => (model === null ? null : buildRollStiffnessInput(model)),
+    [model],
+  );
+  const rollResult = useMemo(
+    () =>
+      rollInputResult !== null && rollInputResult.ok
+        ? solveRollStiffness(rollInputResult.value)
+        : null,
+    [rollInputResult],
   );
 
   if (!initialParse.ok) return <ParseErrors errors={initialParse.errors} />;
@@ -303,6 +321,50 @@ export function App() {
             </article>
           )}
 
+          <article className="card result-card">
+            <div className="card-heading">
+              <h2>Roll stiffness</h2>
+              <span className="pill">
+                {rollResult === null ? 'not computable' : stateLabel(rollResult.frontShare)}
+              </span>
+            </div>
+            {rollResult !== null && rollResult.frontShare.kind === 'defined' ? (
+              <div className="value-row">
+                <span className="value">{formatFrontShare(rollResult.frontShare.value)}</span>
+                <span className="band">front share</span>
+              </div>
+            ) : (
+              <p className="no-answer">
+                {rollResult === null
+                  ? rollInputResult !== null && !rollInputResult.ok
+                    ? rollInputResult.errors.map((error) => error.path).join(', ')
+                    : 'no model'
+                  : stateLabel(rollResult.frontShare)}
+              </p>
+            )}
+            {rollResult === null ? null : (
+              <p className="hint">
+                Front{' '}
+                {rollResult.front.rollStiffness.kind === 'defined'
+                  ? formatRollStiffness(rollResult.front.rollStiffness.value)
+                  : stateLabel(rollResult.front.rollStiffness)}{' '}
+                · rear{' '}
+                {rollResult.rear.rollStiffness.kind === 'defined'
+                  ? formatRollStiffness(rollResult.rear.rollStiffness.value)
+                  : stateLabel(rollResult.rear.rollStiffness)}
+                .
+              </p>
+            )}
+            <p className="hint">
+              A higher front share sends more lateral load transfer to the front axle in the steady
+              state, which biases the car toward understeer.
+            </p>
+            <p className="footnote">
+              Torsion bars use k_θ = G·π·d⁴/(32·L), the arm conversion and the ARB pickup's motion
+              ratio; no bar is a defined zero contribution.
+            </p>
+          </article>
+
           <article className="card maths-card">
             <details>
               <summary>Show the maths</summary>
@@ -428,6 +490,69 @@ export function App() {
                       ) : null}
                     </>
                   ) : null}
+                  {rollResult !== null ? (
+                    <>
+                      {(['front', 'rear'] as const).map((axleKey) => {
+                        const axle = rollResult[axleKey];
+                        const bar = axle.working.antiRollBar;
+                        const suffix = axleKey === 'front' ? 'f' : 'r';
+                        if (
+                          bar.torsionalStiffness_NmPerRad === null ||
+                          bar.armLength_m === null ||
+                          bar.motionRatio === null ||
+                          bar.rateAtLink_Npm === null ||
+                          bar.wheelRate_Npm === null
+                        ) {
+                          return (
+                            <li key={`bar-${axleKey}`}>
+                              <span>
+                                k_bar,{suffix} = {stateLabel(axle.antiRollBar.wheelRate)}
+                              </span>
+                            </li>
+                          );
+                        }
+                        return (
+                          <Fragment key={`bar-${axleKey}`}>
+                            <li>
+                              <span>
+                                k_θ,{suffix} = G·π·d⁴/(32·L) ={' '}
+                                {formatTorsionalStiffness(bar.torsionalStiffness_NmPerRad)}
+                              </span>
+                            </li>
+                            <li>
+                              <span>
+                                k_bar,link,{suffix} = k_θ/a² ={' '}
+                                {formatTorsionalStiffness(bar.torsionalStiffness_NmPerRad)} ÷ (
+                                {formatLengthFromMetres(bar.armLength_m, 1)})² ={' '}
+                                {formatWheelRateFromNpm(bar.rateAtLink_Npm)}
+                              </span>
+                            </li>
+                            <li>
+                              <span>
+                                k_bar,wheel,{suffix} = k_bar,link × IR_arm² ={' '}
+                                {formatWheelRateFromNpm(bar.rateAtLink_Npm)} × (
+                                {formatInstallationRatio(bar.motionRatio, 3)})² ={' '}
+                                {formatWheelRateFromNpm(bar.wheelRate_Npm)}
+                              </span>
+                            </li>
+                            {axle.rollStiffness.kind === 'defined' &&
+                            axle.working.springWheelRate_Npm !== null &&
+                            axle.working.track_m !== null ? (
+                              <li>
+                                <span>
+                                  k_φ,{suffix} = (k_w/2 + k_bar,wheel) × t² = (
+                                  {formatWheelRateFromNpm(axle.working.springWheelRate_Npm / 2)} +{' '}
+                                  {formatWheelRateFromNpm(bar.wheelRate_Npm)}) × (
+                                  {formatLengthFromMetres(axle.working.track_m, 1)})² ={' '}
+                                  {formatRollStiffnessSi(axle.rollStiffness.value)}
+                                </span>
+                              </li>
+                            ) : null}
+                          </Fragment>
+                        );
+                      })}
+                    </>
+                  ) : null}
                 </ol>
               ) : (
                 <p className="no-answer">The maths is unavailable while a hardpoint is missing.</p>
@@ -444,8 +569,8 @@ export function App() {
 
       <footer className="footer">
         <span>
-          Units: {LENGTH_UNIT}, {CAMBER_GAIN_UNIT}, {WHEEL_RATE_UNIT}, {RIDE_FREQUENCY_UNIT},
-          degrees.
+          Units: {LENGTH_UNIT}, {CAMBER_GAIN_UNIT}, {WHEEL_RATE_UNIT}, {RIDE_FREQUENCY_UNIT},{' '}
+          {ROLL_STIFFNESS_UNIT}, {FRONT_SHARE_UNIT}, degrees.
         </span>
         <span>Pure TypeScript physics · no DOM in the solver · one conversion site.</span>
       </footer>

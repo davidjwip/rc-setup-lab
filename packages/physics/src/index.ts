@@ -19,6 +19,19 @@ export {
 
 export { solveFrontView, solveFrontViewAtBump } from './frontView/kinematics.js';
 export { solveRates, solveRatesFromRatio } from './rates/rates.js';
+export { solveAntiRollBar, solveRollStiffness } from './roll/roll.js';
+export type {
+  AntiRollBarInput,
+  AntiRollBarResult,
+  AntiRollBarWorking,
+  ArbType,
+  AxleKey,
+  AxleRollInput,
+  AxleRollResult,
+  AxleRollWorking,
+  RollStiffnessInput,
+  RollStiffnessResult,
+} from './roll/types.js';
 export type {
   RatesFromRatioInput,
   RatesInput,

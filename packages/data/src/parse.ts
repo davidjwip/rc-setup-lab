@@ -1,7 +1,10 @@
 import type { Confidence } from '@setuplab/physics';
 import { dataError, fail, ok, type DataError, type DataResult } from './errors.js';
 import type {
+  ArbDocument,
+  ArbTypeDocument,
   ArmTypeDocument,
+  AxleDocument,
   CarModelDocument,
   CornerDocument,
   CornerKey,
@@ -14,6 +17,7 @@ import type {
 } from './model.js';
 
 const CORNER_KEYS: readonly CornerKey[] = ['LF', 'RF', 'LR', 'RR'];
+const ARB_TYPES: readonly ArbTypeDocument[] = ['torsion_bar', 'blade', 'fixed', 'none'];
 const SOURCE_TYPES: readonly SourceType[] = [
   'measured',
   'manufacturer',
@@ -42,6 +46,10 @@ function isCornerKey(value: string): value is CornerKey {
 
 function isSourceType(value: string): value is SourceType {
   return SOURCE_TYPES.includes(value as SourceType);
+}
+
+function isArbType(value: string): value is ArbTypeDocument {
+  return ARB_TYPES.includes(value as ArbTypeDocument);
 }
 
 function readSources(
@@ -182,6 +190,59 @@ function readMass(
     sprungFront: readOptionalMeasuredNumber(mass, 'body.mass', 'sprung_front', errors, sources),
     sprungRear: readOptionalMeasuredNumber(mass, 'body.mass', 'sprung_rear', errors, sources),
   };
+}
+
+function readArb(
+  axle: Record<string, unknown>,
+  path: string,
+  errors: DataError[],
+  sources: Readonly<Record<string, SourceRecord>>,
+): ArbDocument | null {
+  const arb = asRecord(axle['arb']);
+  if (arb === null) return null;
+
+  const rawType = asString(arb['type']);
+  if (rawType === null || !isArbType(rawType)) {
+    errors.push(
+      dataError(
+        'invalidValue',
+        `${path}.arb.type`,
+        'arb.type must be torsion_bar, blade, fixed or none',
+      ),
+    );
+    return null;
+  }
+
+  const arbPath = `${path}.arb`;
+  return {
+    type: rawType,
+    rateAtLink: readOptionalMeasuredNumber(arb, arbPath, 'rate_at_link', errors, sources),
+    barDiameter: readOptionalMeasuredNumber(arb, arbPath, 'bar_diameter', errors, sources),
+    span: readOptionalMeasuredNumber(arb, arbPath, 'span', errors, sources),
+    armLength: readOptionalMeasuredNumber(arb, arbPath, 'arm_length', errors, sources),
+    shearModulus: readOptionalMeasuredNumber(arb, arbPath, 'shear_modulus', errors, sources),
+  };
+}
+
+function readAxle(
+  raw: Record<string, unknown>,
+  path: string,
+  errors: DataError[],
+  sources: Readonly<Record<string, SourceRecord>>,
+): AxleDocument | null {
+  const track = readMeasuredNumber(raw, path, 'track', errors, sources);
+  const tyreRadius = readOptionalMeasuredNumber(raw, path, 'tyre_radius', errors, sources);
+  const bumpLimit = readOptionalMeasuredNumber(raw, path, 'bump_limit_wheel', errors, sources);
+  const droopLimit = readOptionalMeasuredNumber(raw, path, 'droop_limit_wheel', errors, sources);
+  const spring = asRecord(raw['spring']);
+  const springRate =
+    spring === null
+      ? null
+      : readOptionalMeasuredNumber(spring, `${path}.spring`, 'rate', errors, sources);
+  const arb = readArb(raw, path, errors, sources);
+
+  if (track === null) return null;
+  return { track, tyreRadius, bumpLimit, droopLimit, springRate, arb };
 }
 
 function readArmType(
@@ -426,37 +487,11 @@ export function parseCarModel(rawInput: unknown): DataResult<CarModelDocument> {
   if (rawFront === null) {
     errors.push(dataError('missingField', 'axles.front', 'a front axle block is required'));
   } else {
-    const track = readMeasuredNumber(rawFront, 'axles.front', 'track', errors, sourceMap);
-    const tyreRadius = readMeasuredNumber(
-      rawFront,
-      'axles.front',
-      'tyre_radius',
-      errors,
-      sourceMap,
-    );
-    const bumpLimit = readOptionalMeasuredNumber(
-      rawFront,
-      'axles.front',
-      'bump_limit_wheel',
-      errors,
-      sourceMap,
-    );
-    const droopLimit = readOptionalMeasuredNumber(
-      rawFront,
-      'axles.front',
-      'droop_limit_wheel',
-      errors,
-      sourceMap,
-    );
-    const spring = asRecord(rawFront['spring']);
-    const springRate =
-      spring === null
-        ? null
-        : readOptionalMeasuredNumber(spring, 'axles.front.spring', 'rate', errors, sourceMap);
-    if (track !== null) {
-      front = { track, tyreRadius, bumpLimit, droopLimit, springRate };
-    }
+    front = readAxle(rawFront, 'axles.front', errors, sourceMap);
   }
+
+  const rawRear = rawAxles === null ? null : asRecord(rawAxles['rear']);
+  const rear = rawRear === null ? null : readAxle(rawRear, 'axles.rear', errors, sourceMap);
 
   const mass = readMass(raw, errors, sourceMap);
 
@@ -478,7 +513,7 @@ export function parseCarModel(rawInput: unknown): DataResult<CarModelDocument> {
     symmetry,
     sources,
     corners,
-    axles: { front },
+    axles: { front, rear },
     mass,
     raw: rawInput,
   });
