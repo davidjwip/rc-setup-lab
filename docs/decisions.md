@@ -200,6 +200,15 @@ against the same geometry objects the physics returns, and accessible to a scree
 wrapper, switching to canvas only above a few thousand points. Any painter or chart component that
 calls a trigonometry function is a review failure: it renders numbers the physics package produced.
 
+**D-24 — `arb.blades` exists, and `arb.rate_at_link` means "one blade" only when it does.** Ruled
+2026-10-31, after the roll-stiffness slice found that the schema could not express a blade bar while
+G05.12 required one. `axles.<axle>.arb.blades` is added (count, `OMIT`). Semantics:
+**present** → `rate_at_link` is the rate of a single blade and the bar rate is n × it, in parallel,
+never half; **absent** → `rate_at_link` is the rate of the bar as fitted, which is what bench-testing
+the assembled bar gives, and is the normal case for a club racer. Torsion bars, `fixed` and `none`
+ignore it. Forecloses: nothing — the field is optional and defaults to the behaviour every existing
+model already assumed.
+
 ## Proposals awaiting a decision
 
 - **Setup-sheet library with a change interpreter.** Compare not only two setups but a *sequence*
