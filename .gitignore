@@ -4,6 +4,7 @@ Thumbs.db
 
 # Node / Vite
 node_modules/
+dist/
 web/dist/
 web/.vite/
 *.tsbuildinfo

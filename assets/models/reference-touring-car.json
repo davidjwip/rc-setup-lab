@@ -1,0 +1,127 @@
+{
+  "schema_version": "1.0.0",
+  "kind": "car_model",
+  "id": "mdl_reference_tc_front",
+  "name": "Reference touring car — front corner",
+  "class": "touring_car_1_10",
+  "frame": {
+    "standard": "ISO 8855",
+    "axes": "x forward, y left, z up",
+    "origin": "ground plane, rear axle centre, vehicle centreline"
+  },
+  "units": {
+    "length": "mm",
+    "mass": "g",
+    "angle": "deg",
+    "spring_rate": "N/mm"
+  },
+  "symmetry": true,
+  "license": {
+    "id": "CC-BY-4.0",
+    "url": "https://creativecommons.org/licenses/by/4.0/"
+  },
+  "contributors": [
+    {
+      "name": "Setup Lab",
+      "role": "contributed"
+    }
+  ],
+  "attribution_text": "Reference touring-car front-corner geometry from the Setup Lab worked example (CC BY 4.0).",
+  "sources": {
+    "s_worked": {
+      "type": "measured",
+      "method": "worked example in docs/specs/physics/02 §6",
+      "by": "Setup Lab"
+    }
+  },
+  "body": {
+    "reference_ride_height": {
+      "value": 5.0,
+      "source": "s_worked"
+    },
+    "wheelbase": {
+      "value": 257.0,
+      "source": "s_worked"
+    }
+  },
+  "axles": {
+    "front": {
+      "track": {
+        "value": 172.0,
+        "source": "s_worked"
+      },
+      "tyre_radius": {
+        "value": 32.0,
+        "source": "s_worked"
+      },
+      "droop_limit_wheel": {
+        "value": 6.0,
+        "source": "s_worked"
+      },
+      "bump_limit_wheel": {
+        "value": 6.0,
+        "source": "s_worked"
+      },
+      "spring": {
+        "rate": {
+          "value": 2.5,
+          "source": "s_worked"
+        }
+      }
+    }
+  },
+  "corners": {
+    "LF": {
+      "arm_type": {
+        "lower": "hinge",
+        "upper": "single_link"
+      },
+      "points": {
+        "lca_in_a": {
+          "value": [238.0, 30.0, 12.0],
+          "source": "s_worked"
+        },
+        "lca_in_b": {
+          "value": [272.0, 30.0, 12.0],
+          "source": "s_worked"
+        },
+        "lca_out": {
+          "value": [259.0, 78.0, 7.0],
+          "source": "s_worked"
+        },
+        "uca_in": {
+          "value": [250.0, 42.0, 45.0],
+          "source": "s_worked"
+        },
+        "uca_out": {
+          "value": [254.0, 72.8, 44.0],
+          "source": "s_worked"
+        },
+        "tie_in": {
+          "value": [225.0, 26.0, 30.0],
+          "source": "s_worked"
+        },
+        "tie_out": {
+          "value": [243.68, 74.04, 32.0],
+          "source": "s_worked"
+        },
+        "wc": {
+          "value": [257.0, 86.0, 32.0],
+          "source": "s_worked"
+        },
+        "damper_lo": {
+          "value": [257.0, 60.0, 8.875],
+          "source": "s_worked"
+        },
+        "damper_up": {
+          "value": [257.0, 44.0, 58.0],
+          "source": "s_worked"
+        },
+        "arb_drop": {
+          "value": [250.0, 55.0, 9.4],
+          "source": "s_worked"
+        }
+      }
+    }
+  }
+}

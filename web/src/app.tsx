@@ -1,0 +1,314 @@
+import { useMemo, useState } from 'react';
+import {
+  buildFrontViewInput,
+  parseCarModel,
+  updateCornerPointMm,
+  type CarModelDocument,
+  type CornerPointKey,
+  type DataError,
+} from '@setuplab/data';
+import { solveFrontView, type Solved } from '@setuplab/physics';
+import rawModel from '../../assets/models/reference-touring-car.json';
+import {
+  CAMBER_GAIN_UNIT,
+  LENGTH_UNIT,
+  formatBandFromMetres,
+  formatCamberGain,
+  formatLengthFromMetres,
+  formatLengthMm,
+  formatNumber,
+  formatRollCentreHeight,
+  formatSlope,
+} from './format/format.js';
+
+interface FieldRow {
+  readonly key: CornerPointKey;
+  readonly label: string;
+}
+
+const FIELD_ROWS: readonly FieldRow[] = [
+  { key: 'lca_in_a', label: 'Lower arm inner (hinge point)' },
+  { key: 'lca_out', label: 'Lower ball joint' },
+  { key: 'uca_in', label: 'Upper link inner' },
+  { key: 'uca_out', label: 'Upper ball stud' },
+  { key: 'wc', label: 'Wheel centre' },
+];
+
+const initialParse = parseCarModel(rawModel);
+
+function stateLabel(value: Solved<unknown>): string {
+  switch (value.kind) {
+    case 'defined':
+      return `computed · ${value.tier} · not yet validated`;
+    case 'notMeasured':
+      return `not measured · ${value.missing.join(', ')}`;
+    case 'undefined':
+      return `undefined · ${value.reason}`;
+  }
+}
+
+function numberFromInput(text: string): number | null {
+  const value = Number.parseFloat(text);
+  return Number.isFinite(value) ? value : null;
+}
+
+function ParseErrors({ errors }: { readonly errors: readonly DataError[] }) {
+  return (
+    <main className="shell">
+      <h1>Setup Lab</h1>
+      <section className="card error-card">
+        <h2>That model did not load</h2>
+        <ul>
+          {errors.map((error) => (
+            <li key={`${error.code}:${error.path}`}>
+              <code>{error.path || 'document'}</code>: {error.message}
+            </li>
+          ))}
+        </ul>
+      </section>
+    </main>
+  );
+}
+
+export function App() {
+  const [model, setModel] = useState<CarModelDocument | null>(
+    initialParse.ok ? initialParse.value : null,
+  );
+
+  const inputResult = useMemo(
+    () => (model === null ? null : buildFrontViewInput(model, 'LF')),
+    [model],
+  );
+  const result = useMemo(
+    () => (inputResult !== null && inputResult.ok ? solveFrontView(inputResult.value) : null),
+    [inputResult],
+  );
+
+  if (!initialParse.ok) return <ParseErrors errors={initialParse.errors} />;
+  if (model === null || inputResult === null || result === null) {
+    return <ParseErrors errors={[{ code: 'invalidDocument', path: '', message: 'no model' }]} />;
+  }
+  if (!inputResult.ok) return <ParseErrors errors={inputResult.errors} />;
+
+  const corner = model.corners.LF;
+  if (corner === undefined) {
+    return <ParseErrors errors={[{ code: 'missingField', path: 'corners.LF', message: 'missing' }]} />;
+  }
+
+  const update = (pointKey: CornerPointKey, axis: 1 | 2, text: string) => {
+    const value = numberFromInput(text);
+    if (value === null) return;
+    const edited = updateCornerPointMm(model, 'LF', pointKey, axis, value);
+    if (edited.ok) setModel(edited.value);
+  };
+
+  const lowerInner = corner.points.lca_in_a?.value;
+  const lowerOuter = corner.points.lca_out?.value;
+  const upperInner = corner.points.uca_in?.value;
+  const upperOuter = corner.points.uca_out?.value;
+  const working = result.working;
+
+  return (
+    <main className="shell">
+      <header className="masthead">
+        <p className="eyebrow">Setup Lab · Slice 0</p>
+        <h1>Front-view kinematics</h1>
+        <p className="lede">
+          {model.name}. Left-front corner, ISO 8855: x forward, y left, z up. Move a hardpoint and
+          the roll centre and camber gain recompute.
+        </p>
+      </header>
+
+      <section className="grid">
+        <div className="card input-card">
+          <div className="card-heading">
+            <h2>Hardpoints</h2>
+            <span className="pill">millimetres</span>
+          </div>
+          <p className="hint">
+            Every value below is stored with its source. Editing one revalidates the document before
+            the solve.
+          </p>
+          <table className="fields">
+            <thead>
+              <tr>
+                <th scope="col">Point</th>
+                <th scope="col">y ({LENGTH_UNIT})</th>
+                <th scope="col">z ({LENGTH_UNIT})</th>
+              </tr>
+            </thead>
+            <tbody>
+              {FIELD_ROWS.map((row) => {
+                const point = corner.points[row.key];
+                if (point === undefined) {
+                  return (
+                    <tr key={row.key}>
+                      <th scope="row">{row.label}</th>
+                      <td colSpan={2}>not measured</td>
+                    </tr>
+                  );
+                }
+                return (
+                  <tr key={row.key}>
+                    <th scope="row">{row.label}</th>
+                    <td>
+                      <input
+                        aria-label={`${row.label} y in ${LENGTH_UNIT}`}
+                        type="number"
+                        step="0.1"
+                        value={point.value[1]}
+                        onChange={(event) => update(row.key, 1, event.target.value)}
+                      />
+                    </td>
+                    <td>
+                      <input
+                        aria-label={`${row.label} z in ${LENGTH_UNIT}`}
+                        type="number"
+                        step="0.1"
+                        value={point.value[2]}
+                        onChange={(event) => update(row.key, 2, event.target.value)}
+                      />
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          <p className="footnote">
+            Arm type: {corner.armType.lower} / {corner.armType.upper}. Track is derived from the wheel
+            centre, so moving it moves the contact patch too.
+          </p>
+        </div>
+
+        <div className="outputs">
+          <article className="card result-card">
+            <div className="card-heading">
+              <h2>Roll-centre height</h2>
+              <span className="pill">{stateLabel(result.rollCentreHeight)}</span>
+            </div>
+            {result.rollCentreHeight.kind === 'defined' ? (
+              <div className="value-row">
+                <span className="value">{formatRollCentreHeight(result.rollCentreHeight.value)}</span>
+                <span className="band">
+                  {result.rollCentreHeight.band === null
+                    ? 'no band'
+                    : formatBandFromMetres(result.rollCentreHeight.band)}
+                </span>
+              </div>
+            ) : (
+              <p className="no-answer">{stateLabel(result.rollCentreHeight)}</p>
+            )}
+            <p className="hint">
+              About 10 {LENGTH_UNIT} on the reference car, with the model's ±1 {LENGTH_UNIT} band
+              stated rather than hidden.
+            </p>
+          </article>
+
+          <article className="card result-card">
+            <div className="card-heading">
+              <h2>Camber gain</h2>
+              <span className="pill">{stateLabel(result.camberGain)}</span>
+            </div>
+            {result.camberGain.kind === 'defined' ? (
+              <div className="value-row">
+                <span className="value">{formatCamberGain(result.camberGain.value)}</span>
+                <span className="band">per wheel</span>
+              </div>
+            ) : (
+              <p className="no-answer">{stateLabel(result.camberGain)}</p>
+            )}
+            <p className="hint">
+              Negative κ means the wheel gains negative camber in bump. The global-frame value is{' '}
+              {result.camberGainGlobal.kind === 'defined'
+                ? formatCamberGain(result.camberGainGlobal.value)
+                : stateLabel(result.camberGainGlobal)}
+              .
+            </p>
+          </article>
+
+          <article className="card maths-card">
+            <details>
+              <summary>Show the maths</summary>
+              <p className="hint">
+                The roll-centre height is the contact-patch-to-instant-centre line evaluated at the
+                centreline. The substituted values are the ones above.
+              </p>
+              {lowerInner !== undefined &&
+              lowerOuter !== undefined &&
+              upperInner !== undefined &&
+              upperOuter !== undefined ? (
+                <ol className="maths">
+                  <li>
+                    <span>
+                      m₁ = (Lₒ.z − Lᵢ.z) / (Lₒ.y − Lᵢ.y) = ({formatLengthMm(lowerOuter[2])} −{' '}
+                      {formatLengthMm(lowerInner[2])}) / ({formatLengthMm(lowerOuter[1])} −{' '}
+                      {formatLengthMm(lowerInner[1])}) ={' '}
+                      {working.lowerSlope === null ? 'undefined' : formatSlope(working.lowerSlope)}
+                    </span>
+                  </li>
+                  <li>
+                    <span>
+                      m₂ = (Uₒ.z − Uᵢ.z) / (Uₒ.y − Uᵢ.y) = ({formatLengthMm(upperOuter[2])} −{' '}
+                      {formatLengthMm(upperInner[2])}) / ({formatLengthMm(upperOuter[1])} −{' '}
+                      {formatLengthMm(upperInner[1])}) ={' '}
+                      {working.upperSlope === null ? 'undefined' : formatSlope(working.upperSlope)}
+                    </span>
+                  </li>
+                  <li>
+                    <span>
+                      IC = (y, z) = (
+                      {working.instantCentreY_m === null
+                        ? 'undefined'
+                        : formatLengthFromMetres(working.instantCentreY_m)}
+                      ,{' '}
+                      {working.instantCentreZ_m === null
+                        ? 'undefined'
+                        : formatLengthFromMetres(working.instantCentreZ_m)}
+                      )
+                    </span>
+                  </li>
+                  <li>
+                    <span>
+                      m = z_IC / (y_IC − y_cp) ={' '}
+                      {working.rollCentreSlope === null
+                        ? 'undefined'
+                        : formatSlope(working.rollCentreSlope)}
+                    </span>
+                  </li>
+                  <li>
+                    <span>
+                      z_rc = 0 + m(0 − y_cp) ={' '}
+                      {result.rollCentreHeight.kind === 'defined'
+                        ? formatLengthFromMetres(result.rollCentreHeight.value)
+                        : stateLabel(result.rollCentreHeight)}
+                    </span>
+                  </li>
+                  <li>
+                    <span>
+                      κ = [γ(+0.5 {LENGTH_UNIT}) − γ(−0.5 {LENGTH_UNIT})] / (2 × 0.5 {LENGTH_UNIT}) ={' '}
+                      {result.camberGain.kind === 'defined'
+                        ? formatCamberGain(result.camberGain.value)
+                        : stateLabel(result.camberGain)}
+                    </span>
+                  </li>
+                </ol>
+              ) : (
+                <p className="no-answer">The maths is unavailable while a hardpoint is missing.</p>
+              )}
+              <p className="footnote">
+                κ is a derivative: the app reports {formatNumber(working.rollCentreSlope ?? 0, 6)} for
+                the roll-centre slope and the secant at ±0.5 {LENGTH_UNIT} for camber, so a two-point
+                secant elsewhere need not equal κ × that step.
+              </p>
+            </details>
+          </article>
+        </div>
+      </section>
+
+      <footer className="footer">
+        <span>Units: {LENGTH_UNIT}, {CAMBER_GAIN_UNIT}, degrees.</span>
+        <span>Pure TypeScript physics · no DOM in the solver · one conversion site.</span>
+      </footer>
+    </main>
+  );
+}
