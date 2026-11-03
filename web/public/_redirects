@@ -1,6 +1,2 @@
-# Hashed build assets must 404 when they are missing, never fall back to the SPA
-# shell: a cached shell served under an asset URL poisons the browser for hours
-# (observed 2026-11-03: a 4-hour max-age entry made the app a blank page).
-/assets/*  /404.html  404
-# Everything else is the app: deep links and client-side routes.
+# Client-side routes and deep links are the app.
 /*  /index.html  200
