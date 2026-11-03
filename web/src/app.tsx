@@ -12,6 +12,8 @@ import {
   type DataError,
 } from '@setuplab/data';
 import {
+  buildCamberSeries,
+  buildFrontViewScene,
   solveFrontView,
   solveLoadTransfer,
   solveRates,
@@ -19,6 +21,9 @@ import {
   type Solved,
 } from '@setuplab/physics';
 import rawModel from '../../assets/models/reference-touring-car.json';
+import { CamberGainChart } from './scene/CamberGainChart.js';
+import { FrontViewScene } from './scene/FrontViewScene.js';
+import { buildCamberChart } from './scene/presenter.js';
 import {
   ANGLE_UNIT,
   CAMBER_GAIN_UNIT,
@@ -155,6 +160,52 @@ export function App() {
         : null,
     [transferInputResult],
   );
+  const scene = useMemo(
+    () =>
+      inputResult !== null && inputResult.ok && result !== null
+        ? buildFrontViewScene(inputResult.value, result)
+        : null,
+    [inputResult, result],
+  );
+  const camberSeries = useMemo(
+    () => (inputResult !== null && inputResult.ok ? buildCamberSeries(inputResult.value) : null),
+    [inputResult],
+  );
+  const camberChart = useMemo(
+    () =>
+      camberSeries !== null && camberSeries.kind === 'series'
+        ? buildCamberChart(camberSeries)
+        : null,
+    [camberSeries],
+  );
+  const sceneLabels = useMemo(() => {
+    if (scene === null || result === null) return null;
+
+    const rollCentre = result.rollCentreHeight;
+    const instantCentre = result.instantCentre;
+    const rollCentreValue =
+      rollCentre.kind === 'defined' ? formatRollCentreHeight(rollCentre.value) : 'not defined';
+    const rollCentreBand =
+      rollCentre.kind === 'defined' && rollCentre.band !== null
+        ? formatBandFromMetres(rollCentre.band)
+        : 'no band';
+    const instantCentreText =
+      instantCentre.kind === 'defined' && scene.instantCentre.kind === 'visible'
+        ? `y ${formatLengthFromMetres(instantCentre.value.y)}, z ${formatLengthFromMetres(
+            instantCentre.value.z,
+          )}`
+        : null;
+    const side = scene.side === 1 ? 'left' : 'right';
+    const description = [
+      `Front-view elevation of the ${side}-front corner.`,
+      `Roll centre ${rollCentreValue} with band ${rollCentreBand}.`,
+      instantCentreText === null
+        ? 'Instant centre not drawn.'
+        : `Instant centre at ${instantCentreText}.`,
+    ].join(' ');
+
+    return { rollCentreValue, rollCentreBand, instantCentre: instantCentreText, description };
+  }, [scene, result]);
 
   if (!initialParse.ok) return <ParseErrors errors={initialParse.errors} />;
   if (model === null || inputResult === null || result === null) {
@@ -257,6 +308,28 @@ export function App() {
         </div>
 
         <div className="outputs">
+          <article className="card scene-card">
+            <div className="card-heading">
+              <h2>Front-view drawing</h2>
+              <span className="pill">left front · live</span>
+            </div>
+            {scene !== null && sceneLabels !== null ? (
+              <FrontViewScene scene={scene} labels={sceneLabels} />
+            ) : (
+              <p className="no-answer">The drawing needs a solved front view.</p>
+            )}
+            {camberChart !== null ? (
+              <CamberGainChart view={camberChart} />
+            ) : (
+              <p className="no-answer">The camber curve needs a solved front view.</p>
+            )}
+            <p className="footnote">
+              The drawing renders the solver's numbers. It does not re-solve the geometry: the
+              roll-centre marker is the value in the card below, and the dashed lines are the
+              construction lines that produced it.
+            </p>
+          </article>
+
           <article className="card result-card">
             <div className="card-heading">
               <h2>Roll-centre height</h2>
