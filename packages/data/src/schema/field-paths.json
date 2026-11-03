@@ -21,6 +21,7 @@
     "axles.<axle>.tyre_radius",
     "axles.<axle>.droop_limit_wheel",
     "axles.<axle>.bump_limit_wheel",
+    "axles.rear.derived_from",
     "axles.<axle>.spring.rate",
     "axles.<axle>.arb",
     "axles.<axle>.arb.type",

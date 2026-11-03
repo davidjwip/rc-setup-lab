@@ -90,6 +90,7 @@ function sourcedPoint(key: CornerKey, pointKey: CornerPointKey, point: MeasuredP
     },
     ref: `${key}.points.${pointKey}`,
     confidence: point.confidence,
+    sourceId: point.source,
   };
 }
 
@@ -127,11 +128,19 @@ export function cornerFor(
       dataError('missingField', `corners.${cornerKey}`, 'this corner is not in the document'),
     ]);
   }
-  const leftFront = model.corners.LF;
-  if (leftFront === undefined) {
-    return fail([dataError('missingField', 'corners.LF', 'no source corner to mirror')]);
+  const sourceKey: CornerKey | null =
+    cornerKey === 'RF' ? 'LF' : cornerKey === 'RR' ? 'LR' : null;
+  const sourceCorner = sourceKey === null ? undefined : model.corners[sourceKey];
+  if (sourceKey === null || sourceCorner === undefined) {
+    return fail([
+      dataError(
+        'missingField',
+        `corners.${cornerKey}`,
+        'this corner is not in the document and the same axle has no left corner to mirror',
+      ),
+    ]);
   }
-  return ok(mirrorCorner(leftFront));
+  return ok(mirrorCorner(sourceCorner));
 }
 
 export function buildFrontViewInput(

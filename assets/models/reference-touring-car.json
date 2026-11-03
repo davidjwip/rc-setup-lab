@@ -47,6 +47,11 @@
       "type": "estimated",
       "method": "stated default 28.0 mm (D-18)",
       "by": "Setup Lab"
+    },
+    "s_rear_mirrored": {
+      "type": "derived",
+      "method": "mirrored from the LF/RF corner by symmetry about the vehicle centreline; rear hardpoints NOT measured",
+      "by": "Setup Lab"
     }
   },
   "body": {
@@ -140,6 +145,7 @@
       }
     },
     "rear": {
+      "derived_from": "front",
       "track": {
         "value": 174.0,
         "source": "s_worked"
@@ -225,6 +231,110 @@
         "arb_drop": {
           "value": [250.0, 55.0, 9.4],
           "source": "s_worked"
+        }
+      }
+    },
+    "LR": {
+      "arm_type": {
+        "lower": "hinge",
+        "upper": "single_link"
+      },
+      "points": {
+        "lca_in_a": {
+          "value": [238.0, 30.0, 12.0],
+          "source": "s_rear_mirrored"
+        },
+        "lca_in_b": {
+          "value": [272.0, 30.0, 12.0],
+          "source": "s_rear_mirrored"
+        },
+        "lca_out": {
+          "value": [259.0, 78.0, 7.0],
+          "source": "s_rear_mirrored"
+        },
+        "uca_in": {
+          "value": [250.0, 42.0, 45.0],
+          "source": "s_rear_mirrored"
+        },
+        "uca_out": {
+          "value": [254.0, 72.8, 44.0],
+          "source": "s_rear_mirrored"
+        },
+        "tie_in": {
+          "value": [225.0, 26.0, 30.0],
+          "source": "s_rear_mirrored"
+        },
+        "tie_out": {
+          "value": [243.68, 74.04, 32.0],
+          "source": "s_rear_mirrored"
+        },
+        "wc": {
+          "value": [257.0, 86.0, 32.0],
+          "source": "s_rear_mirrored"
+        },
+        "damper_lo": {
+          "value": [257.0, 60.0, 8.875],
+          "source": "s_rear_mirrored"
+        },
+        "damper_up": {
+          "value": [257.0, 44.0, 58.0],
+          "source": "s_rear_mirrored"
+        },
+        "arb_drop": {
+          "value": [250.0, 55.0, 9.4],
+          "source": "s_rear_mirrored"
+        }
+      }
+    },
+    "RR": {
+      "arm_type": {
+        "lower": "hinge",
+        "upper": "single_link"
+      },
+      "points": {
+        "lca_in_a": {
+          "value": [238.0, -30.0, 12.0],
+          "source": "s_rear_mirrored"
+        },
+        "lca_in_b": {
+          "value": [272.0, -30.0, 12.0],
+          "source": "s_rear_mirrored"
+        },
+        "lca_out": {
+          "value": [259.0, -78.0, 7.0],
+          "source": "s_rear_mirrored"
+        },
+        "uca_in": {
+          "value": [250.0, -42.0, 45.0],
+          "source": "s_rear_mirrored"
+        },
+        "uca_out": {
+          "value": [254.0, -72.8, 44.0],
+          "source": "s_rear_mirrored"
+        },
+        "tie_in": {
+          "value": [225.0, -26.0, 30.0],
+          "source": "s_rear_mirrored"
+        },
+        "tie_out": {
+          "value": [243.68, -74.04, 32.0],
+          "source": "s_rear_mirrored"
+        },
+        "wc": {
+          "value": [257.0, -86.0, 32.0],
+          "source": "s_rear_mirrored"
+        },
+        "damper_lo": {
+          "value": [257.0, -60.0, 8.875],
+          "source": "s_rear_mirrored"
+        },
+        "damper_up": {
+          "value": [257.0, -44.0, 58.0],
+          "source": "s_rear_mirrored"
+        },
+        "arb_drop": {
+          "value": [250.0, -55.0, 9.4],
+          "source": "s_rear_mirrored"
         }
       }
     }

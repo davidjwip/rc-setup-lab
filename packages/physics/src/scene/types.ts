@@ -103,6 +103,8 @@ export interface SceneCarrier {
 export interface FrontViewScene {
   readonly corner: CornerKey;
   readonly side: SideSign;
+  /** True when the corner's hardpoints are derived, not measured. */
+  readonly derivedGeometry: boolean;
   readonly clip: SceneBounds;
   readonly hardpoints: readonly SceneHardpoint[];
   readonly lowerArm: SceneSegment;

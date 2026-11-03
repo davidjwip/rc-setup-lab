@@ -74,48 +74,46 @@ type InternalSuccess<T> = { readonly ok: true; readonly value: T };
 
 type InternalResult<T> = InternalSuccess<T> | InternalFailure;
 
-function inputRefs(input: FrontViewInput): string[] {
+function geometrySources(input: FrontViewInput): readonly Sourced<unknown>[] {
   return [
-    input.lcaIn_m.ref,
-    input.lcaOut_m.ref,
-    input.ucaIn_m.ref,
-    input.ucaOut_m.ref,
-    input.wheelCentre_m.ref,
-  ];
-}
-
-function isFirmSource(confidence: Confidence): boolean {
-  return confidence === 'measured' || confidence === 'manufacturer' || confidence === 'derived';
-}
-
-function tierOf(input: FrontViewInput): Tier {
-  const sources: readonly Sourced<unknown>[] = [
     input.lcaIn_m,
     input.lcaOut_m,
     input.ucaIn_m,
     input.ucaOut_m,
     input.wheelCentre_m,
   ];
-  return sources.every((source) => isFirmSource(source.confidence)) ? 'firm' : 'inferred';
+}
+
+function inputRefs(input: FrontViewInput): string[] {
+  return geometrySources(input).map((source) => source.ref);
+}
+
+function isFirmSource(confidence: Confidence): boolean {
+  return confidence === 'measured' || confidence === 'manufacturer';
+}
+
+function tierOf(input: FrontViewInput): Tier {
+  return geometrySources(input).every((source) => isFirmSource(source.confidence))
+    ? 'firm'
+    : 'inferred';
 }
 
 function provenanceOf(input: FrontViewInput): Set<string> {
-  return new Set(inputRefs(input));
+  const provenance = new Set(inputRefs(input));
+  for (const source of geometrySources(input)) {
+    if (source.sourceId !== undefined) provenance.add(source.sourceId);
+  }
+  return provenance;
 }
 
 function outputFlags(input: FrontViewInput): Set<Flag> {
   const flags = new Set<Flag>();
-  const sources: readonly Sourced<unknown>[] = [
-    input.lcaIn_m,
-    input.lcaOut_m,
-    input.ucaIn_m,
-    input.ucaOut_m,
-    input.wheelCentre_m,
-  ];
+  const sources = geometrySources(input);
   if (sources.some((source) => source.confidence === 'assumed')) flags.add('assumedInput');
   if (sources.some((source) => source.confidence === 'estimated' || source.confidence === 'library')) {
     flags.add('lowConfidence');
   }
+  if (sources.some((source) => source.confidence === 'derived')) flags.add('derivedGeometry');
   return flags;
 }
 

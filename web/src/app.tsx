@@ -8,6 +8,7 @@ import {
   parseCarModel,
   updateCornerPointMm,
   type CarModelDocument,
+  type CornerKey,
   type CornerPointKey,
   type DataError,
 } from '@setuplab/data';
@@ -114,10 +115,12 @@ export function App() {
     initialParse.ok ? initialParse.value : null,
   );
   const [lateralG, setLateralG] = useState(1.0);
+  const [axle, setAxle] = useState<'front' | 'rear'>('front');
+  const cornerKey: CornerKey = axle === 'front' ? 'LF' : 'LR';
 
   const inputResult = useMemo(
-    () => (model === null ? null : buildFrontViewInput(model, 'LF')),
-    [model],
+    () => (model === null ? null : buildFrontViewInput(model, cornerKey)),
+    [model, cornerKey],
   );
   const result = useMemo(
     () => (inputResult !== null && inputResult.ok ? solveFrontView(inputResult.value) : null),
@@ -196,8 +199,9 @@ export function App() {
           )}`
         : null;
     const side = scene.side === 1 ? 'left' : 'right';
+    const axleName = axle === 'front' ? 'front' : 'rear';
     const description = [
-      `Front-view elevation of the ${side}-front corner.`,
+      `${axle === 'front' ? 'Front' : 'Rear'}-view elevation of the ${side}-${axleName} corner.`,
       `Roll centre ${rollCentreValue} with band ${rollCentreBand}.`,
       instantCentreText === null
         ? 'Instant centre not drawn.'
@@ -205,7 +209,7 @@ export function App() {
     ].join(' ');
 
     return { rollCentreValue, rollCentreBand, instantCentre: instantCentreText, description };
-  }, [scene, result]);
+  }, [scene, result, axle]);
 
   if (!initialParse.ok) return <ParseErrors errors={initialParse.errors} />;
   if (model === null || inputResult === null || result === null) {
@@ -213,10 +217,11 @@ export function App() {
   }
   if (!inputResult.ok) return <ParseErrors errors={inputResult.errors} />;
 
-  const corner = model.corners.LF;
-  if (corner === undefined) {
+  const editorCorner = model.corners.LF;
+  if (editorCorner === undefined) {
     return <ParseErrors errors={[{ code: 'missingField', path: 'corners.LF', message: 'missing' }]} />;
   }
+  const selectedCorner = model.corners[cornerKey];
 
   const update = (pointKey: CornerPointKey, axis: 1 | 2, text: string) => {
     const value = numberFromInput(text);
@@ -225,10 +230,10 @@ export function App() {
     if (edited.ok) setModel(edited.value);
   };
 
-  const lowerInner = corner.points.lca_in_a?.value;
-  const lowerOuter = corner.points.lca_out?.value;
-  const upperInner = corner.points.uca_in?.value;
-  const upperOuter = corner.points.uca_out?.value;
+  const lowerInner = selectedCorner?.points.lca_in_a?.value;
+  const lowerOuter = selectedCorner?.points.lca_out?.value;
+  const upperInner = selectedCorner?.points.uca_in?.value;
+  const upperOuter = selectedCorner?.points.uca_out?.value;
   const working = result.working;
   const springRateNpm =
     ratesInputResult !== null && ratesInputResult.ok
@@ -239,10 +244,11 @@ export function App() {
     <main className="shell">
       <header className="masthead">
         <p className="eyebrow">Setup Lab · Slice 0</p>
-        <h1>Front-view kinematics</h1>
+        <h1>Front- and rear-view kinematics</h1>
         <p className="lede">
-          {model.name}. Left-front corner, ISO 8855: x forward, y left, z up. Move a hardpoint and
-          the roll centre and camber gain recompute.
+          {model.name}. Left-front and left-rear corners, ISO 8855: x forward, y left, z up. Move a
+          front hardpoint and the roll centre and camber gain recompute. The rear corner is derived
+          from the front and says so.
         </p>
       </header>
 
@@ -254,7 +260,8 @@ export function App() {
           </div>
           <p className="hint">
             Every value below is stored with its source. Editing one revalidates the document before
-            the solve.
+            the solve. These are the measured front-left hardpoints; the rear corner is derived from
+            them and is not edited here.
           </p>
           <table className="fields">
             <thead>
@@ -266,7 +273,7 @@ export function App() {
             </thead>
             <tbody>
               {FIELD_ROWS.map((row) => {
-                const point = corner.points[row.key];
+                const point = editorCorner.points[row.key];
                 if (point === undefined) {
                   return (
                     <tr key={row.key}>
@@ -302,26 +309,48 @@ export function App() {
             </tbody>
           </table>
           <p className="footnote">
-            Arm type: {corner.armType.lower} / {corner.armType.upper}. Track is derived from the wheel
-            centre, so moving it moves the contact patch too.
+            Arm type: {editorCorner.armType.lower} / {editorCorner.armType.upper}. Track is derived
+            from the wheel centre, so moving it moves the contact patch too.
           </p>
         </div>
 
         <div className="outputs">
           <article className="card scene-card">
             <div className="card-heading">
-              <h2>Front-view drawing</h2>
-              <span className="pill">left front · live</span>
+              <div>
+                <h2>{axle === 'front' ? 'Front' : 'Rear'}-view drawing</h2>
+                <div className="axle-toggle" role="group" aria-label="Axle">
+                  <button
+                    type="button"
+                    aria-pressed={axle === 'front'}
+                    onClick={() => setAxle('front')}
+                  >
+                    Front
+                  </button>
+                  <button
+                    type="button"
+                    aria-pressed={axle === 'rear'}
+                    onClick={() => setAxle('rear')}
+                  >
+                    Rear
+                  </button>
+                </div>
+              </div>
+              <span className="pill">
+                {scene !== null && scene.derivedGeometry
+                  ? 'derived · not measured'
+                  : 'left front · live'}
+              </span>
             </div>
             {scene !== null && sceneLabels !== null ? (
               <FrontViewScene scene={scene} labels={sceneLabels} />
             ) : (
-              <p className="no-answer">The drawing needs a solved front view.</p>
+              <p className="no-answer">The drawing needs a solved corner.</p>
             )}
             {camberChart !== null ? (
               <CamberGainChart view={camberChart} />
             ) : (
-              <p className="no-answer">The camber curve needs a solved front view.</p>
+              <p className="no-answer">The camber curve needs a solved corner.</p>
             )}
             <p className="footnote">
               The drawing renders the solver's numbers. It does not re-solve the geometry: the

@@ -49,6 +49,8 @@ export interface CornerDocument {
   readonly points: Partial<Record<CornerPointKey, MeasuredPoint>>;
 }
 
+export type AxleDerivedFrom = 'front';
+
 export type ArbTypeDocument = 'torsion_bar' | 'blade' | 'fixed' | 'none';
 
 export interface ArbDocument {
@@ -62,6 +64,8 @@ export interface ArbDocument {
 }
 
 export interface AxleDocument {
+  /** Present only when this axle's corner geometry is declared derived from another axle. */
+  readonly derivedFrom: AxleDerivedFrom | null;
   readonly track: MeasuredValue<number>;
   readonly tyreRadius: MeasuredValue<number> | null;
   readonly bumpLimit: MeasuredValue<number> | null;

@@ -44,7 +44,8 @@ export type Flag =
   | 'assumedInput'
   | 'diagnosticOnly'
   | 'cgInferred'
-  | 'rollCentreAboveCg';
+  | 'rollCentreAboveCg'
+  | 'derivedGeometry';
 
 export interface Defined<T> {
   readonly kind: 'defined';

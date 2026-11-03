@@ -8,6 +8,8 @@ export interface Sourced<T> {
   readonly value: T;
   readonly ref: Ref;
   readonly confidence: Confidence;
+  /** Document source id, when the adapter knows it (e.g. `s_rear_mirrored`). */
+  readonly sourceId?: string;
   readonly tolerance?: number;
 }
 

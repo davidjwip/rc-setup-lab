@@ -63,10 +63,11 @@ describe('document model', () => {
     expect(input.value.sprungMass_kg?.ref).toBe('body.mass.sprung_front');
   });
 
-  it('refuses a rear rates input when the document has no rear corner geometry', () => {
-    // The reference asset carries a rear axle block (track, spring, bar) but no
-    // rear hardpoints, so the geometry-based rates path is refused; the roll
-    // builder uses 05 §6.5's assumed rear installation ratio instead.
+  it('refuses a rear rates input when the rear corner is only derived', () => {
+    // The reference asset carries a rear axle block (track, spring, bar) and a
+    // derived rear corner, but no measured rear hardpoints, so the geometry-based
+    // rates path is refused; the roll builder uses 05 §6.5's assumed rear
+    // installation ratio instead.
     const parsed = parseCarModel(rawModel);
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;

@@ -338,9 +338,13 @@ export function buildFrontViewScene(
     source: 'frontView.staticState',
   };
 
+  const derivedGeometry =
+    result.staticState.kind === 'defined' && result.staticState.flags.has('derivedGeometry');
+
   return {
     corner: input.corner,
     side: input.side,
+    derivedGeometry,
     clip,
     hardpoints,
     lowerArm: segment(
