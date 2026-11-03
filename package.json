@@ -1,0 +1,22 @@
+{
+  "name": "setup-lab",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "web"
+  ],
+  "scripts": {
+    "gate": "node scripts/gate.mjs",
+    "typecheck": "tsc -p packages/physics --noEmit && tsc -p packages/data --noEmit && tsc -p web --noEmit",
+    "test": "vitest run --root packages/physics && vitest run --root packages/data && vitest run --root web",
+    "field-drift": "node scripts/field-drift.mjs",
+    "build": "npm run build --workspace @setuplab/web",
+    "dev": "npm run dev --workspace @setuplab/web"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  }
+}
