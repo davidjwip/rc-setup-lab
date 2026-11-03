@@ -38,6 +38,36 @@ Say which skill you loaded. One canonical skill per stage.
 | PR before hand-off | `github-code-review`, `pr-review-gate` |
 | Retro / closeout | `retro` |
 
+## Branches, review and release (agreed 2026-10-31)
+
+Three tiers, one direction of flow:
+
+```
+feat/*  ──PR──►  uat  ──PR (Dave only)──►  main
+                 │                        │
+        rc-setup-uat.zt489.com   rc-setup.zt489.com
+```
+
+- **`main` is protected.** Production. Every change arrives by pull request, and **only Dave merges
+  `uat` → `main`**, after he has looked at UAT. Agents never merge into `main` and never push to it.
+- **`uat` is the integration branch.** Agents *may* open pull requests into it and merge them once
+  `npm run gate` is green. Every push deploys `rc-setup-uat.zt489.com`.
+- **`feat/*`, `fix/*`, `chore/*` are bite-size.** One concern per branch, one PR, deleted after merge.
+  Every branch gets its own Cloudflare Pages preview URL on the pull request.
+- Never `git push --force` a shared branch, never rewrite `uat`'s history, and never leave a branch
+  merged locally but not pushed — UAT deploys from the remote.
+
+## Hosting (Cloudflare Pages)
+
+| Branch | Pages project | Hostname |
+|---|---|---|
+| `main` | `rc-setup-lab` | `rc-setup.zt489.com` |
+| `uat` | `rc-setup-lab-uat` | `rc-setup-uat.zt489.com` |
+| any other | preview deployment | shown on the pull request |
+
+Build: `npm run build` at the **repository root**, output `dist/`. Static hosting only — no server,
+no functions, no environment secrets. The deploy is automatic on push; nothing is uploaded by hand.
+
 ## Gates (exact commands, run them, paste the output)
 
 ```bash
