@@ -42,7 +42,9 @@ export type Flag =
   | 'nearlyParallel'
   | 'lowConfidence'
   | 'assumedInput'
-  | 'diagnosticOnly';
+  | 'diagnosticOnly'
+  | 'cgInferred'
+  | 'rollCentreAboveCg';
 
 export interface Defined<T> {
   readonly kind: 'defined';

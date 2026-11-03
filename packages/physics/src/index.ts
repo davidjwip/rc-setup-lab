@@ -20,6 +20,27 @@ export {
 export { solveFrontView, solveFrontViewAtBump } from './frontView/kinematics.js';
 export { solveRates, solveRatesFromRatio } from './rates/rates.js';
 export { solveAntiRollBar, solveRollStiffness } from './roll/roll.js';
+export {
+  CG_BALANCE_BAND_FRACTION,
+  CG_ROLL_ANGLE_BAND_RELATIVE,
+  CG_TLLT_BAND_RELATIVE,
+  GRAVITY_MPS2,
+  PER_WHEEL_BAND_RELATIVE,
+  STATED_CG_HEIGHT_M,
+  inferCgHeight,
+  solveLoadTransfer,
+} from './transfer/transfer.js';
+export type {
+  AxleTransfer,
+  CgComponentInput,
+  CgHeightResult,
+  CgInferenceInput,
+  CgRoute,
+  LoadTransferInput,
+  LoadTransferResult,
+  LoadTransferWorking,
+  WheelLoad,
+} from './transfer/types.js';
 export type {
   AntiRollBarInput,
   AntiRollBarResult,
