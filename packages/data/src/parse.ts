@@ -217,6 +217,7 @@ function readArb(
   return {
     type: rawType,
     rateAtLink: readOptionalMeasuredNumber(arb, arbPath, 'rate_at_link', errors, sources),
+    blades: readOptionalMeasuredNumber(arb, arbPath, 'blades', errors, sources),
     barDiameter: readOptionalMeasuredNumber(arb, arbPath, 'bar_diameter', errors, sources),
     span: readOptionalMeasuredNumber(arb, arbPath, 'span', errors, sources),
     armLength: readOptionalMeasuredNumber(arb, arbPath, 'arm_length', errors, sources),

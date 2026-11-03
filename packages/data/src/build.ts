@@ -12,6 +12,7 @@ import {
 } from '@setuplab/physics';
 import { dataError, fail, ok, type DataError, type DataResult } from './errors.js';
 import type {
+  ArbDocument,
   AxleDocument,
   CarModelDocument,
   CornerDocument,
@@ -286,6 +287,27 @@ export function buildRatesInput(
 }
 
 /**
+ * D-24: a present `blades` count means `rate_at_link` is the rate of one blade;
+ * absent (the normal case) means it is the rate of the bar as fitted, so the
+ * effective count is one and the rate's provenance carries it. `fixed` is a
+ * single bar regardless.
+ */
+function effectiveBladeCount(arb: ArbDocument, prefix: string): Sourced<number> {
+  if (arb.type === 'blade' && arb.blades !== null) {
+    return {
+      value: arb.blades.value,
+      ref: `${prefix}.blades`,
+      confidence: arb.blades.confidence,
+    };
+  }
+  return {
+    value: 1,
+    ref: `${prefix}.rate_at_link`,
+    confidence: arb.rateAtLink?.confidence ?? 'assumed',
+  };
+}
+
+/**
  * Build the anti-roll bar input for one axle. Lengths on disk are millimetres
  * and `shear_modulus` is GPa; both are converted here, the one boundary. A
  * missing bar geometry is carried as null so the physics package can refuse
@@ -333,10 +355,7 @@ export function buildAntiRollBarInput(axle: AxleDocument, axleKey: 'front' | 're
       `${prefix}.rate_at_link`,
       newtonsPerMillimetreToNewtonsPerMetre,
     ),
-    // TODO(spec §3.2): fields.yaml has no axles.<axle>.arb.blades. A blade model
-    // therefore reaches solveAntiRollBar with no count and is refused, never
-    // assumed; `fixed` is a single bar and needs no count.
-    blades: null,
+    blades: effectiveBladeCount(arb, prefix),
     motionRatio,
   };
 }

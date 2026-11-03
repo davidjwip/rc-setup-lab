@@ -104,6 +104,102 @@ describe('anti-roll bar and roll-stiffness data', () => {
     expect(result.rear.rollStiffness.kind).toBe('defined');
   });
 
+  it('takes rate_at_link as the fitted bar rate when a blade bar has no blade count (D-24)', () => {
+    const blade = clone(rawModel) as {
+      axles: { front: { arb: Record<string, unknown> } };
+    };
+    blade.axles.front.arb = {
+      type: 'blade',
+      rate_at_link: { value: 2.1, source: 's_worked' },
+    };
+
+    const parsed = parseCarModel(blade);
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    expect(parsed.value.axles.front.arb?.blades).toBeNull();
+
+    const input = buildRollStiffnessInput(parsed.value);
+    expect(input.ok).toBe(true);
+    if (!input.ok) return;
+    expect(input.value.front.antiRollBar.blades?.value).toBe(1);
+
+    const result = solveRollStiffness(input.value);
+    expect(result.front.antiRollBar.rateAtLink.kind).toBe('defined');
+    if (result.front.antiRollBar.rateAtLink.kind !== 'defined') return;
+    expect(result.front.antiRollBar.rateAtLink.value).toBeCloseTo(2100, 9);
+  });
+
+  it('multiplies rate_at_link by a present blade count (G05.12, D-24)', () => {
+    const blade = clone(rawModel) as {
+      axles: { front: { arb: Record<string, unknown> } };
+    };
+    blade.axles.front.arb = {
+      type: 'blade',
+      rate_at_link: { value: 2.1, source: 's_worked' },
+      blades: { value: 2, source: 's_worked' },
+    };
+
+    const parsed = parseCarModel(blade);
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    expect(parsed.value.axles.front.arb?.blades?.value).toBe(2);
+    expect(parsed.value.axles.front.arb?.blades?.source).toBe('s_worked');
+
+    const input = buildRollStiffnessInput(parsed.value);
+    expect(input.ok).toBe(true);
+    if (!input.ok) return;
+
+    const result = solveRollStiffness(input.value);
+    expect(result.front.antiRollBar.rateAtLink.kind).toBe('defined');
+    if (result.front.antiRollBar.rateAtLink.kind !== 'defined') return;
+    expect(result.front.antiRollBar.rateAtLink.value).toBeCloseTo(4200, 9);
+  });
+
+  it('keeps a fixed bar as the fitted rate with a single bar', () => {
+    const fixed = clone(rawModel) as {
+      axles: { front: { arb: Record<string, unknown> } };
+    };
+    fixed.axles.front.arb = {
+      type: 'fixed',
+      rate_at_link: { value: 2.1, source: 's_worked' },
+    };
+
+    const parsed = parseCarModel(fixed);
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+
+    const input = buildRollStiffnessInput(parsed.value);
+    expect(input.ok).toBe(true);
+    if (!input.ok) return;
+    expect(input.value.front.antiRollBar.blades?.value).toBe(1);
+
+    const result = solveRollStiffness(input.value);
+    expect(result.front.antiRollBar.rateAtLink.kind).toBe('defined');
+    if (result.front.antiRollBar.rateAtLink.kind !== 'defined') return;
+    expect(result.front.antiRollBar.rateAtLink.value).toBeCloseTo(2100, 9);
+  });
+
+  it('still refuses a blade bar with no rate_at_link and names the field', () => {
+    const blade = clone(rawModel) as {
+      axles: { front: { arb: Record<string, unknown> } };
+    };
+    blade.axles.front.arb = { type: 'blade' };
+
+    const parsed = parseCarModel(blade);
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+
+    const input = buildRollStiffnessInput(parsed.value);
+    expect(input.ok).toBe(true);
+    if (!input.ok) return;
+
+    const result = solveRollStiffness(input.value);
+    expect(result.front.rollStiffness.kind).toBe('undefined');
+    if (result.front.rollStiffness.kind === 'undefined') {
+      expect(result.front.rollStiffness.inputs).toContain('axles.front.arb.rate_at_link');
+    }
+  });
+
   it('does not invent rear roll stiffness when the rear axle is absent', () => {
     const broken = clone(rawModel) as { axles: { rear?: unknown } };
     delete broken.axles.rear;

@@ -223,8 +223,8 @@ function solveBladeBar(input: AntiRollBarInput): AntiRollBarResult {
     // to 0.8 only when it is missing; the schema carries no field for the derived value.
     if (motionRatio == null) missing.push('arb.motion_ratio');
     if (input.type === 'blade' && bladeSource == null) {
-      // TODO(spec §3.2): fields.yaml has no axles.<axle>.arb.blades, so a blade
-      // model loaded through packages/data refuses here instead of assuming n.
+      // A direct caller must state the count; packages/data supplies 1 when the
+      // optional axles.<axle>.arb.blades is absent (D-24: fitted rate).
       missing.push(`axles.${input.axle}.arb.blades`);
     }
     return refusedBar(input, undefinedResult('incompleteModel', missing));
