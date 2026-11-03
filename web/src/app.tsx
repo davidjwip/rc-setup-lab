@@ -1,24 +1,33 @@
 import { useMemo, useState } from 'react';
 import {
   buildFrontViewInput,
+  buildRatesInput,
   parseCarModel,
   updateCornerPointMm,
   type CarModelDocument,
   type CornerPointKey,
   type DataError,
 } from '@setuplab/data';
-import { solveFrontView, type Solved } from '@setuplab/physics';
+import { solveFrontView, solveRates, type Solved } from '@setuplab/physics';
 import rawModel from '../../assets/models/reference-touring-car.json';
 import {
   CAMBER_GAIN_UNIT,
   LENGTH_UNIT,
+  RIDE_FREQUENCY_UNIT,
+  WHEEL_RATE_UNIT,
   formatBandFromMetres,
+  formatBandFromNpm,
   formatCamberGain,
+  formatCriticalDamping,
+  formatInstallationRatio,
   formatLengthFromMetres,
   formatLengthMm,
   formatNumber,
+  formatRideFrequency,
   formatRollCentreHeight,
   formatSlope,
+  formatSpringRateFromNpm,
+  formatWheelRateFromNpm,
 } from './format/format.js';
 
 interface FieldRow {
@@ -83,6 +92,15 @@ export function App() {
     () => (inputResult !== null && inputResult.ok ? solveFrontView(inputResult.value) : null),
     [inputResult],
   );
+  const ratesInputResult = useMemo(
+    () => (model === null ? null : buildRatesInput(model, 'LF')),
+    [model],
+  );
+  const ratesResult = useMemo(
+    () =>
+      ratesInputResult !== null && ratesInputResult.ok ? solveRates(ratesInputResult.value) : null,
+    [ratesInputResult],
+  );
 
   if (!initialParse.ok) return <ParseErrors errors={initialParse.errors} />;
   if (model === null || inputResult === null || result === null) {
@@ -107,6 +125,10 @@ export function App() {
   const upperInner = corner.points.uca_in?.value;
   const upperOuter = corner.points.uca_out?.value;
   const working = result.working;
+  const springRateNpm =
+    ratesInputResult !== null && ratesInputResult.ok
+      ? ratesInputResult.value.springRate_Npm.value
+      : null;
 
   return (
     <main className="shell">
@@ -226,6 +248,61 @@ export function App() {
             </p>
           </article>
 
+          {ratesResult !== null ? (
+            <article className="card result-card">
+              <div className="card-heading">
+                <h2>Wheel rate</h2>
+                <span className="pill">{stateLabel(ratesResult.wheelRate)}</span>
+              </div>
+              {ratesResult.wheelRate.kind === 'defined' ? (
+                <div className="value-row">
+                  <span className="value">
+                    {formatWheelRateFromNpm(ratesResult.wheelRate.value)}
+                  </span>
+                  <span className="band">
+                    {ratesResult.wheelRate.band === null
+                      ? 'no band'
+                      : formatBandFromNpm(ratesResult.wheelRate.band)}
+                  </span>
+                </div>
+              ) : (
+                <p className="no-answer">{stateLabel(ratesResult.wheelRate)}</p>
+              )}
+              <p className="hint">
+                Spring{' '}
+                {springRateNpm === null ? 'not set' : formatSpringRateFromNpm(springRateNpm)} · IR{' '}
+                {ratesResult.installationRatio.kind === 'defined'
+                  ? formatInstallationRatio(ratesResult.installationRatio.value)
+                  : stateLabel(ratesResult.installationRatio)}{' '}
+                → ride frequency{' '}
+                {ratesResult.rideFrequency.kind === 'defined'
+                  ? formatRideFrequency(ratesResult.rideFrequency.value)
+                  : stateLabel(ratesResult.rideFrequency)}
+                ; critical damping{' '}
+                {ratesResult.criticalDamping.kind === 'defined'
+                  ? formatCriticalDamping(ratesResult.criticalDamping.value)
+                  : stateLabel(ratesResult.criticalDamping)}
+                .
+              </p>
+              <p className="footnote">
+                No band is printed because the schema stores no per-field tolerance yet, and the
+                app does not invent one (physics/00 §11).
+              </p>
+            </article>
+          ) : (
+            <article className="card result-card">
+              <div className="card-heading">
+                <h2>Wheel rate</h2>
+                <span className="pill">not computable</span>
+              </div>
+              <p className="no-answer">
+                {ratesInputResult !== null && !ratesInputResult.ok
+                  ? ratesInputResult.errors.map((error) => error.path).join(', ')
+                  : 'no model'}
+              </p>
+            </article>
+          )}
+
           <article className="card maths-card">
             <details>
               <summary>Show the maths</summary>
@@ -291,6 +368,66 @@ export function App() {
                         : stateLabel(result.camberGain)}
                     </span>
                   </li>
+                  {ratesResult !== null && ratesResult.installationRatio.kind === 'defined' ? (
+                    <>
+                      <li>
+                        <span>
+                          IR = −[L(+{formatLengthFromMetres(ratesResult.working.bumpStep_m, 1)}) − L(−
+                          {formatLengthFromMetres(ratesResult.working.bumpStep_m, 1)})] / (2 ×{' '}
+                          {formatLengthFromMetres(ratesResult.working.bumpStep_m, 1)}) ={' '}
+                          {ratesResult.working.damperLengthHigh_m === null ||
+                          ratesResult.working.damperLengthLow_m === null
+                            ? 'undefined'
+                            : `−[${formatLengthFromMetres(
+                                ratesResult.working.damperLengthHigh_m,
+                                3,
+                              )} − ${formatLengthFromMetres(
+                                ratesResult.working.damperLengthLow_m,
+                                3,
+                              )}] / ${formatLengthFromMetres(
+                                2 * ratesResult.working.bumpStep_m,
+                                1,
+                              )} = ${formatInstallationRatio(
+                                ratesResult.installationRatio.value,
+                                3,
+                              )}`}
+                        </span>
+                      </li>
+                      <li>
+                        <span>
+                          k_w = k_s × IR² ={' '}
+                          {springRateNpm === null
+                            ? 'not set'
+                            : formatSpringRateFromNpm(springRateNpm)}{' '}
+                          × ({formatInstallationRatio(ratesResult.installationRatio.value, 3)})² ={' '}
+                          {ratesResult.wheelRate.kind === 'defined'
+                            ? formatWheelRateFromNpm(ratesResult.wheelRate.value)
+                            : stateLabel(ratesResult.wheelRate)}
+                        </span>
+                      </li>
+                      {ratesResult.rideFrequency.kind === 'defined' &&
+                      ratesResult.working.sprungMass_kg !== null ? (
+                        <>
+                          <li>
+                            <span>
+                              f = (1/2π)·√(k_w / m_s) = (1/2π)·√(
+                              {(ratesResult.working.wheelRate_Npm ?? 0).toFixed(2)} N/m ÷{' '}
+                              {ratesResult.working.sprungMass_kg.toFixed(5)} kg) ={' '}
+                              {formatRideFrequency(ratesResult.rideFrequency.value)}
+                            </span>
+                          </li>
+                          <li>
+                            <span>
+                              c_crit = 2·√(k_w · m_s) ={' '}
+                              {ratesResult.criticalDamping.kind === 'defined'
+                                ? formatCriticalDamping(ratesResult.criticalDamping.value)
+                                : stateLabel(ratesResult.criticalDamping)}
+                            </span>
+                          </li>
+                        </>
+                      ) : null}
+                    </>
+                  ) : null}
                 </ol>
               ) : (
                 <p className="no-answer">The maths is unavailable while a hardpoint is missing.</p>
@@ -306,7 +443,10 @@ export function App() {
       </section>
 
       <footer className="footer">
-        <span>Units: {LENGTH_UNIT}, {CAMBER_GAIN_UNIT}, degrees.</span>
+        <span>
+          Units: {LENGTH_UNIT}, {CAMBER_GAIN_UNIT}, {WHEEL_RATE_UNIT}, {RIDE_FREQUENCY_UNIT},
+          degrees.
+        </span>
         <span>Pure TypeScript physics · no DOM in the solver · one conversion site.</span>
       </footer>
     </main>

@@ -18,6 +18,13 @@ export {
 } from './result/solved.js';
 
 export { solveFrontView, solveFrontViewAtBump } from './frontView/kinematics.js';
+export { solveRates, solveRatesFromRatio } from './rates/rates.js';
+export type {
+  RatesFromRatioInput,
+  RatesInput,
+  RatesResult,
+  RatesWorking,
+} from './rates/types.js';
 export type {
   CornerKey,
   FrontViewInput,

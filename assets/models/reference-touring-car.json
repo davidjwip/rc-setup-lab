@@ -32,6 +32,11 @@
       "type": "measured",
       "method": "worked example in docs/specs/physics/02 §6",
       "by": "Setup Lab"
+    },
+    "s_derived": {
+      "type": "derived",
+      "method": "corner weights minus unsprung mass (docs/specs/physics/06 §6.1)",
+      "by": "Setup Lab"
     }
   },
   "body": {
@@ -42,6 +47,16 @@
     "wheelbase": {
       "value": 257.0,
       "source": "s_worked"
+    },
+    "mass": {
+      "sprung_front": {
+        "value": 487.49,
+        "source": "s_derived"
+      },
+      "sprung_rear": {
+        "value": 622.49,
+        "source": "s_derived"
+      }
     }
   },
   "axles": {
@@ -64,7 +79,7 @@
       },
       "spring": {
         "rate": {
-          "value": 2.5,
+          "value": 3.5,
           "source": "s_worked"
         }
       }

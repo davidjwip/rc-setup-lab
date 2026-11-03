@@ -6,6 +6,7 @@ import type {
   CornerDocument,
   CornerKey,
   CornerPointKey,
+  MassDocument,
   MeasuredPoint,
   MeasuredValue,
   SourceRecord,
@@ -167,6 +168,20 @@ function readMeasuredPoint(
   }
   const value = coordinates as [number, number, number];
   return { value, source, confidence: record.type };
+}
+
+function readMass(
+  raw: Record<string, unknown>,
+  errors: DataError[],
+  sources: Readonly<Record<string, SourceRecord>>,
+): MassDocument {
+  const body = asRecord(raw['body']);
+  const mass = body === null ? null : asRecord(body['mass']);
+  if (mass === null) return { sprungFront: null, sprungRear: null };
+  return {
+    sprungFront: readOptionalMeasuredNumber(mass, 'body.mass', 'sprung_front', errors, sources),
+    sprungRear: readOptionalMeasuredNumber(mass, 'body.mass', 'sprung_rear', errors, sources),
+  };
 }
 
 function readArmType(
@@ -433,10 +448,17 @@ export function parseCarModel(rawInput: unknown): DataResult<CarModelDocument> {
       errors,
       sourceMap,
     );
+    const spring = asRecord(rawFront['spring']);
+    const springRate =
+      spring === null
+        ? null
+        : readOptionalMeasuredNumber(spring, 'axles.front.spring', 'rate', errors, sourceMap);
     if (track !== null) {
-      front = { track, tyreRadius, bumpLimit, droopLimit };
+      front = { track, tyreRadius, bumpLimit, droopLimit, springRate };
     }
   }
+
+  const mass = readMass(raw, errors, sourceMap);
 
   if (errors.length > 0 || id === null || name === null || sources === null || front === null) {
     return fail(errors);
@@ -457,6 +479,7 @@ export function parseCarModel(rawInput: unknown): DataResult<CarModelDocument> {
     sources,
     corners,
     axles: { front },
+    mass,
     raw: rawInput,
   });
 }

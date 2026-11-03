@@ -1,5 +1,5 @@
-import type { FrontViewInput, Sourced, Vec2 } from '@setuplab/physics';
-import { dataError, fail, ok, type DataResult } from './errors.js';
+import type { FrontViewInput, RatesInput, Sourced, Vec2 } from '@setuplab/physics';
+import { dataError, fail, ok, type DataError, type DataResult } from './errors.js';
 import type {
   CarModelDocument,
   CornerDocument,
@@ -7,7 +7,11 @@ import type {
   CornerPointKey,
   MeasuredPoint,
 } from './model.js';
-import { millimetresToMetres } from './units.js';
+import {
+  gramsToKilograms,
+  millimetresToMetres,
+  newtonsPerMillimetreToNewtonsPerMetre,
+} from './units.js';
 
 export const SIDE_SIGN: Readonly<Record<CornerKey, 1 | -1>> = {
   LF: 1,
@@ -148,5 +152,92 @@ export function buildFrontViewInput(
     wheelCentre_m: wheelCentre,
     bumpLimit_m: millimetresToMetres(bumpLimit.value),
     droopLimit_m: millimetresToMetres(droopLimit.value),
+  });
+}
+
+/**
+ * Build the per-corner rates input: the front-view geometry, the damper mounts, the
+ * spring rate (N/mm on disk → N/m in SI) and the sprung mass (g per axle on disk →
+ * kg per corner in SI). Absent sprung mass is carried as null so the wheel rate can
+ * still be solved and the frequency alone reports `notMeasured`.
+ */
+export function buildRatesInput(
+  model: CarModelDocument,
+  cornerKey: CornerKey = 'LF',
+): DataResult<RatesInput> {
+  if (cornerKey === 'LR' || cornerKey === 'RR') {
+    return fail([
+      dataError(
+        'missingField',
+        'axles.rear.spring.rate',
+        'this document carries a front axle only; the rear rates need rear axle data',
+      ),
+    ]);
+  }
+
+  const frontView = buildFrontViewInput(model, cornerKey);
+  if (!frontView.ok) return frontView;
+  const corner = cornerFor(model, cornerKey);
+  if (!corner.ok) return corner;
+
+  const errors: DataError[] = [];
+  const damperLo = point(corner.value, cornerKey, 'damper_lo');
+  const damperUp = point(corner.value, cornerKey, 'damper_up');
+  const springRate = model.axles.front.springRate;
+
+  if (damperLo === null) {
+    errors.push(
+      dataError(
+        'missingField',
+        `corners.${cornerKey}.points.damper_lo`,
+        'required for the installation ratio',
+      ),
+    );
+  }
+  if (damperUp === null) {
+    errors.push(
+      dataError(
+        'missingField',
+        `corners.${cornerKey}.points.damper_up`,
+        'required for the installation ratio',
+      ),
+    );
+  }
+  if (springRate === null) {
+    errors.push(
+      dataError('missingField', 'axles.front.spring.rate', 'required for the wheel rate'),
+    );
+  }
+
+  if (
+    errors.length > 0 ||
+    damperLo === null ||
+    damperUp === null ||
+    springRate === null
+  ) {
+    return fail(errors);
+  }
+
+  const sprung = model.mass.sprungFront;
+  const sprungMass =
+    sprung === null
+      ? null
+      : {
+          value: gramsToKilograms(sprung.value / 2),
+          ref: 'body.mass.sprung_front',
+          confidence: sprung.confidence,
+        };
+
+  return ok({
+    corner: cornerKey,
+    frontView: frontView.value,
+    damperLo_m: damperLo,
+    damperUp_m: damperUp,
+    springRate_Npm: {
+      value: newtonsPerMillimetreToNewtonsPerMetre(springRate.value),
+      ref: 'axles.front.spring.rate',
+      confidence: springRate.confidence,
+    },
+    sprungMass_kg: sprungMass,
   });
 }
