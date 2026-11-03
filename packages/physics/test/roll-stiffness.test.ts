@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   defined,
+  notMeasured,
   solveAntiRollBar,
   solveRollStiffness,
   type AntiRollBarInput,
@@ -181,11 +182,22 @@ describe('anti-roll bar and roll stiffness degenerate cases (05 §5)', () => {
     }
   });
 
-  it('front share is not measured when one axle has no data', () => {
+  it('a no-bar axle still has a defined roll stiffness, so the share is defined', () => {
     const roll = solveRollStiffness(
       referenceRollInput({ rear: { antiRollBar: { type: 'none', axle: 'rear' } } }),
     );
-    // A no-bar axle is still a defined roll stiffness; only a missing spring/wheel rate would refuse.
+    expect(roll.rear.rollStiffness.kind).toBe('defined');
     expect(roll.frontShare.kind).toBe('defined');
+  });
+
+  it('front share is not measured when one axle has no spring wheel rate', () => {
+    const roll = solveRollStiffness(
+      referenceRollInput({ rear: { springWheelRate_Npm: notMeasured(['wheel_rate']) } }),
+    );
+    expect(roll.rear.rollStiffness.kind).toBe('notMeasured');
+    expect(roll.frontShare.kind).toBe('notMeasured');
+    if (roll.frontShare.kind === 'notMeasured') {
+      expect(roll.frontShare.missing).toContain('wheel_rate');
+    }
   });
 });
