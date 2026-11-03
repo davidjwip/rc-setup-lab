@@ -710,7 +710,8 @@ export type Provenance = 'computed' | 'estimated' | 'inherited' | 'missing' | 'u
 export type Validity   = 'unvalidated' | 'validated';   // + the evidence record's model version
 
 export interface FormattedValue {
-  value: number | null;        // null for missing / undefined
+  value: number;               // never null: missing/undefined never reach the formatter —
+                               // they render as a separate claim type (architecture §8, PropertyView)
   unit: string;
   decimals: number;
   provenance: Provenance;

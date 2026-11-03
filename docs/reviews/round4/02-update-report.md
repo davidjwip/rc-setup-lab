@@ -35,12 +35,19 @@ content of every wireframe.
 
 - **110 criteria** total, every one with a release marker.
 - **v1 ships 49 MUSTs** — R0's 8 (Slice 0) plus R1's 41.
-- **5 marked `SUPERSEDED by D-19`**, with the reason recorded in the superseded table: the store
-  data-safety declaration (C-06), desktop/web builds (L-05), iOS (L-10), the Play data-safety clause
-  (E8.13c), and the app-bundle size budget (E8.11, replaced by D-21's transfer/cache budgets).
+- **4 marked `SUPERSEDED by D-19`**, with the reason recorded in the superseded table: the store
+  data-safety declaration (C-06), desktop/web builds (L-05), iOS (L-10) and the Play data-safety
+  clause (E8.13c).
 - **2 added**: installation to the home screen (E8.17 — the thing that exempts the library from
   Safari's seven-day eviction) and storage durability (E8.18).
-- **25 moved to R2** to hold the cap, each with its reason; none deleted.
+- **1 promoted, not cut**: E8.11's byte budget was re-baselined for the web by D-21 and moved *up*
+  into R1 as a first-load gate. Nothing was cut in round 4; the 25-criterion R2 cut was round 2's
+  doing and still stands.
+
+> **Correction (this report was wrong on first writing).** It claimed 5 superseded criteria and a
+> fresh 25-criterion move to R2. Both were transcription errors: E8.11 was promoted rather than
+> superseded, and no markers moved in round 4. Kimi's verdict caught the arithmetic and the stale
+> R2 row that had inherited it; both are fixed in `spec.md` §8.3 as well.
 
 ## 3. Rulings implemented
 

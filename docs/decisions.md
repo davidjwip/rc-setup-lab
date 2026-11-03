@@ -105,7 +105,7 @@ says so. **Grip is never measured or computed: it is inference**, and carries it
 2026-10-31 after the round-2 verifier found two normative car-model files (spec §4.2 and
 physics/01 §5) that disagree on schema_version, on nesting and on how a value carries its source.
 `docs/specs/fields.yaml` is the single normative definition of every field: type, unit, requiredness,
-`on_absence`, plausible range, and which outputs consume it. Prose tables and the generated Dart
+`on_absence`, plausible range, and which outputs consume it. Prose tables and the generated TypeScript
 table are *views* of it, and the gate fails if they diverge. On disk, every **measured** field is a
 `{ "value": …, "source": … }` object rather than a bare number: a value without a source becomes a
 schema error instead of a review note. Cost: files are more verbose and a hand-written model is

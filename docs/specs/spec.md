@@ -1,6 +1,7 @@
-# Setup Lab — Requirements Specification v0.2
+# Setup Lab — Requirements Specification v0.4
 
-**Status:** revised after review round 1 — `docs/reviews/round1/`
+**Status:** revised through review rounds 1–4 — latest change is the **D-19** stack switch
+(React/TypeScript PWA); see `docs/reviews/round1/` … `docs/reviews/round4/`
 **Date:** 2026-10-30
 **Owner:** Dave (merges all PRs)
 **Upstream:** [`docs/intent.md`](../intent.md) · **Rules applied:** [`AGENTS.md`](../../AGENTS.md), [`docs/review-rules.md`](../review-rules.md)
@@ -197,7 +198,7 @@ tap, and a validity state on every number. If Slice 0 is not in someone's hands
 early, the spec has failed regardless of how many criteria below are green.
 
 Slice 0 satisfies **E3.1, E3.3, E3.4, E3.7, E3.11, E3.16, E5.1 and E6.1**. It
-must also hold E3.12's *recompute* budget (p50 ≤ 16 ms) but not its frame-timing
+must also hold E3.12's *recompute* budget (p50 ≤ 8 ms, D-21) but not its frame-timing
 clause, which needs the release-build harness that arrives with R1. It does not
 satisfy the measurement, library or export epics, and that is deliberate.
 
@@ -2819,7 +2820,7 @@ tagged `E` with its protocol and pass rule written into the AC itself.
 | E9.9 | MUST | R1 | I10 | B |
 | E9.10 | MUST | R1 | I10, I1 | B |
 
-### 8.3 Removed in round 2
+### 8.3 Removed, folded or superseded (rounds 2–4)
 
 Nothing disappears silently. Every criterion that was deleted, replaced or folded
 in this revision is listed here with its reason.
@@ -2856,7 +2857,8 @@ in this revision is listed here with its reason.
 | E2.12 (planned) | **folded into E1.13** | One process-death criterion covers the worksheet draft and the setup working copy; two criteria would share one mechanism and one test. |
 | E1.14 (planned) | **folded into E9.10** | The `fields.yaml` completeness check is a build gate, and the round-2 rule is one AC per gate. |
 | E9.11 (planned) | **folded into E8.1** | The manifest gate is the only place "no `INTERNET` permission" is asserted; two criteria for one check would allow one to pass while the other failed. |
-| E6.3, E6.6, E2.5, E2.6, E2.7, E4.2, E4.4, E4.5, E7.4, E7.5, E7.6, E7.11, E8.2, E8.3, E8.5, E8.6, E8.8, E8.11, E8.14, E8.15, E9.1, E9.5, E9.6 | **moved to R2** | Not deleted: retain their ids and their content, and do not block v1. Each was cut because v1 is capped at 49 MUSTs (R0's 8 plus R1's 41) and these are the ones a first release can ship without while staying honest. |
+| E8.11 | **promoted to R1, not cut** | D-21 re-baselined the byte budget for the web (≤350 KB first-load JS, ≤2 MB cached) and made it a first-load gate, so it moved *up* out of R2 rather than down. It appears in no R2 list. |
+| E6.3, E6.6, E2.5, E2.6, E2.7, E4.2, E4.4, E4.5, E7.4, E7.5, E7.6, E7.11, E8.2, E8.3, E8.5, E8.6, E8.8, E8.14, E8.15, E9.1, E9.5, E9.6 | **moved to R2** | Not deleted: retain their ids and their content, and do not block v1. Each was cut because v1 is capped at 49 MUSTs (R0's 8 plus R1's 41) and these are the ones a first release can ship without while staying honest. |
 
 ### 8.4 What the audit checks
 

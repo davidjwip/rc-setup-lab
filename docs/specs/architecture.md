@@ -828,7 +828,7 @@ export type PropertyView =
   renders the state** (eight values) and the **tier rides alongside as a word** (`firm` / `inferred` /
   `speculative`), because the state is the thing that decides whether a number is shown at all. The
   badge component therefore needs a state map, not five more hand-drawn variants; that is a design task
-  with an architectural constraint attached, and it is listed in the disagreements.
+  with an architectural constraint attached; it is carried as an open question at the end of this document.
 - **Compare refuses a delta unless both sides carry a number, and labels the two tiers.** Two `valued`
   views render a delta; anything against `refused` or `noAnswer` renders both states and no delta; and
   a delta between an `inferred` and a `firm` value is labelled with both tiers, because "wheel rate up

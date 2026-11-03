@@ -21,7 +21,7 @@ reviewer can diff against round 1 without re-reading everything.
 |---|---|---|---|
 | 1 | **Frame is ISO 8855** — x forward, **y left**, z up, origin on the ground plane at the **rear axle centre**. Stated once, as normative, with the note that `spec.md` §4.2's y-right/mid-wheelbase frame is superseded (the `spec.md` edit is R2-B's). | A1 | 01 §2 |
 | 2 | **Per-wheel signed conventions.** Camber, toe, KPI and scrub radius are per-wheel quantities: positive camber = top outboard, positive toe = toe-in, and every y-difference carries the side sign `s` (+1 left, −1 right). Car-level quantities (roll-centre height, load transfer, balance) are frame-free and never signed per side. | A3 | 01 §3, 02 §3.6–3.7 |
-| 3 | **Storage is mm, g, deg on disk** (R-2), converted to SI at exactly one boundary — the `setup_physics` adapter. The `\|c\| > 3 m` guard becomes `\|c\| > 3000 mm`. 01 §5's example file and §8 are re-stated in mm. | A2 | 00 §2, 01 §5–§6 |
+| 3 | **Storage is mm, g, deg on disk** (R-2), converted to SI at exactly one boundary — the `packages/physics` adapter. The `\|c\| > 3 m` guard becomes `\|c\| > 3000 mm`. 01 §5's example file and §8 are re-stated in mm. | A2 | 00 §2, 01 §5–§6 |
 | 4 | **No implicit 10⁻³ anywhere.** Every equation states its symbols' units and applies its own conversion explicitly. Fixed: (5.7), (5.8), (5.9), (6.3), (6.7)–(6.9), (9.9), (9.12). | A4 | 05 §3, 06 §3, 09 §4 |
 | 5 | **Reference-car sprung masses corrected** to 0.24375 kg front / 0.31125 kg rear per corner. Front ride frequency 10.781 Hz (was 9.560), rear 10.286 Hz (was 9.073); every damping ratio in module 7 rises 12.8%. | B1 | 05 §6, 07 §6 |
 | 6 | **Anti-dive example rebuilt.** The reference car's hinge lower arm has no side-view line; the module returns `Undefined(noSideViewConstruction)` and the 316.1 % case is withdrawn. Three defensible readings give no-anti-geometry twice and 773 % once, which is the finding. | B2, B7 | 03 §3.1, §5.2 |
@@ -155,10 +155,10 @@ Three layers, one conversion, and **no implicit power of ten anywhere**.
 |---|---|---|
 | Chassis/vehicle/setup JSON on disk | **mm, g, deg** (also N/mm, N·s/m, °/mm) | what a caliper and a setup sheet produce; a file read by a human must not need a conversion |
 | Equations *in this document* | **mm, g, deg**, each equation carrying an explicit unit line | the reader checks arithmetic with the numbers they measured |
-| Inside `setup_physics` | **SI**: m, kg, N/m, N·s/m, rad | `AGENTS.md`; keeps the numerical core consistent with published constants |
+| Inside `packages/physics` | **SI**: m, kg, N/m, N·s/m, rad | `AGENTS.md`; keeps the numerical core consistent with published constants |
 | UI | mm, g, N/mm, °, °/mm | display only |
 
-**The single boundary.** The adapter in `setup_physics` (the `PhysicsInput` constructor) is the
+**The single boundary.** The adapter in `packages/physics` (the `PhysicsInput` constructor) is the
 only place a length is divided by 1000 or an angle converted to radians. Nothing above it and
 nothing below it converts again. A module function never receives a number whose unit it has to
 guess.
@@ -333,7 +333,7 @@ invented citations. What survives is the only part that constrains us:
 ## 8. Golden tests
 
 Every module ends with a table of golden cases. They are the acceptance criteria for the module and
-the source of `app/test/golden/`. Conventions:
+the source of `packages/physics/test/golden/`. Conventions:
 
 - IDs are `G<module>.<n>`, e.g. `G02.3`. The test name contains the ID so
   `npm run spec:audit` can trace spec → test.
