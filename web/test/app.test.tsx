@@ -14,6 +14,15 @@ describe('R0 screen', () => {
     expect(html).toContain('Show the maths');
   });
 
+  it('offers a front/rear toggle and starts on the measured front view', () => {
+    const html = renderToStaticMarkup(createElement(App));
+    expect(html).toContain('aria-label="Axle"');
+    expect(html).toContain('aria-pressed="true">Front</button>');
+    expect(html).toContain('aria-pressed="false">Rear</button>');
+    expect(html).toContain('Front-view drawing');
+    expect(html).not.toContain('rear geometry mirrored from the front');
+  });
+
   it('prints the substituted roll-centre arithmetic', () => {
     const html = renderToStaticMarkup(createElement(App));
     expect(html).toContain('-435.69 mm');

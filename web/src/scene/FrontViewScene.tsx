@@ -20,6 +20,8 @@ interface FrontViewSceneProps {
 const VIEW_WIDTH = 340;
 const VIEW_HEIGHT = 132;
 
+const DERIVED_NOTICE = 'rear geometry mirrored from the front — not measured';
+
 const HARDPOINT_LABELS: Record<HardpointId, string> = {
   lca_in: 'Lower arm inner',
   lca_out: 'Lower arm outer',
@@ -60,6 +62,10 @@ export function FrontViewScene({ scene, labels }: FrontViewSceneProps) {
     scene.rollCentreRay,
   ];
 
+  const accessibleDescription = scene.derivedGeometry
+    ? `${labels.description} ${DERIVED_NOTICE}`
+    : labels.description;
+
   return (
     <figure className="scene-figure">
       <div className="scene-well">
@@ -67,10 +73,19 @@ export function FrontViewScene({ scene, labels }: FrontViewSceneProps) {
           className="scene-svg"
           viewBox={`0 0 ${VIEW_WIDTH} ${VIEW_HEIGHT}`}
           role="img"
-          aria-label={labels.description}
+          aria-label={accessibleDescription}
           data-scene="front-view"
         >
-          <title>{labels.description}</title>
+          <title>{accessibleDescription}</title>
+
+          {scene.derivedGeometry ? (
+            <g className="scene-derived-badge" data-field="derived_geometry">
+              <rect x={6} y={6} width={VIEW_WIDTH - 12} height={18} rx={4} />
+              <text x={VIEW_WIDTH / 2} y={18} textAnchor="middle">
+                {DERIVED_NOTICE}
+              </text>
+            </g>
+          ) : null}
 
           <line
             className="scene-ground"
@@ -227,6 +242,7 @@ export function FrontViewScene({ scene, labels }: FrontViewSceneProps) {
         </svg>
       </div>
       <figcaption className="scene-legend">
+        {scene.derivedGeometry ? <span className="scene-derived-note">{DERIVED_NOTICE}</span> : null}
         <span>Solid lines — lower arm and upper link.</span>
         <span>Dashed lines — construction lines to the instant centre and roll centre.</span>
         <span>Filled dot — roll centre, value and band beside it.</span>
