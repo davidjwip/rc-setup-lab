@@ -261,6 +261,200 @@ summary:focus-visible {
   font-size: 0.76rem;
 }
 
+.scene-figure,
+.camber-figure {
+  margin: 0;
+}
+
+.scene-well {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #0d1319;
+  padding: 12px;
+}
+
+.scene-svg,
+.camber-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.scene-ground {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+
+.scene-centreline {
+  stroke: var(--line);
+  stroke-width: 1;
+  stroke-dasharray: 3 4;
+}
+
+.scene-axis-label,
+.scene-label,
+.scene-hardpoint-label,
+.scene-note {
+  font-size: 9px;
+  font-weight: 600;
+  fill: var(--muted);
+}
+
+.scene-note {
+  fill: var(--warn);
+  font-size: 8.5px;
+}
+
+.scene-arm,
+.scene-link {
+  stroke: var(--muted);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+}
+
+.scene-construction {
+  stroke: var(--warn);
+  stroke-width: 1.1;
+  stroke-dasharray: 4 4;
+}
+
+.scene-wheel {
+  fill: none;
+  stroke: var(--line);
+  stroke-width: 1.6;
+}
+
+.scene-carrier {
+  fill: rgba(111, 211, 199, 0.08);
+  stroke: var(--muted);
+  stroke-width: 1.1;
+}
+
+.scene-hardpoint {
+  cursor: default;
+}
+
+.scene-hardpoint-hit {
+  fill: transparent;
+}
+
+.scene-hardpoint-dot {
+  fill: var(--panel);
+  stroke: var(--muted);
+  stroke-width: 1.5;
+}
+
+.scene-hardpoint-label {
+  opacity: 0;
+  fill: var(--ink);
+  pointer-events: none;
+}
+
+.scene-hardpoint:hover .scene-hardpoint-label,
+.scene-hardpoint:focus .scene-hardpoint-label {
+  opacity: 1;
+}
+
+.scene-hardpoint:hover .scene-hardpoint-dot,
+.scene-hardpoint:focus .scene-hardpoint-dot {
+  fill: var(--accent);
+  stroke: var(--accent);
+}
+
+.scene-contact {
+  cursor: default;
+}
+
+.scene-contact-mark {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.6;
+}
+
+.scene-roll-centre circle {
+  fill: var(--accent);
+  stroke: var(--accent);
+  stroke-width: 1.5;
+}
+
+.scene-instant circle {
+  fill: var(--panel);
+  stroke: var(--accent);
+  stroke-width: 1.6;
+}
+
+.scene-value-label {
+  fill: var(--accent);
+}
+
+.scene-band-label {
+  fill: var(--warn);
+  font-size: 8.5px;
+}
+
+.scene-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1.45;
+}
+
+.camber-figure {
+  margin-top: 14px;
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+
+.camber-caption {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  justify-content: space-between;
+  margin-bottom: 4px;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.camber-caption span:first-child {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.camber-axis,
+.camber-tick {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+
+.camber-tick-label,
+.camber-axis-label {
+  fill: var(--muted);
+  font-size: 8.5px;
+}
+
+.camber-line {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.camber-static {
+  fill: var(--accent);
+  stroke: var(--panel);
+  stroke-width: 1.5;
+}
+
+.camber-static-label {
+  fill: var(--ink);
+  font-size: 9px;
+  font-weight: 600;
+}
+
 @media (max-width: 760px) {
   .grid {
     grid-template-columns: 1fr;

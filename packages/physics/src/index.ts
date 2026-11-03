@@ -18,6 +18,38 @@ export {
 } from './result/solved.js';
 
 export { solveFrontView, solveFrontViewAtBump } from './frontView/kinematics.js';
+export {
+  CAMBER_SWEEP_MAX_M,
+  CAMBER_SWEEP_MIN_M,
+  CAMBER_SWEEP_SAMPLES,
+  SCENE_ASPECT,
+  SCENE_INSTANT_CENTRE_MAX_X_M,
+  SCENE_INSTANT_CENTRE_MAX_Y_M,
+  SCENE_INSTANT_CENTRE_MIN_Y_M,
+  SCENE_PADDING_M,
+  buildCamberSeries,
+  buildFrontViewScene,
+  clipSegment,
+} from './scene/scene.js';
+export type {
+  CamberSample,
+  CamberSeries,
+  CamberSeriesResult,
+  CamberSeriesUnavailable,
+  FrontViewScene,
+  HardpointId,
+  SceneBounds,
+  SceneCarrier,
+  SceneHardpoint,
+  SceneInstantCentre,
+  ScenePoint,
+  SceneRay,
+  SceneReason,
+  SceneRollCentre,
+  SceneSegment,
+  SceneWheel,
+  SegmentRole,
+} from './scene/types.js';
 export { solveRates, solveRatesFromRatio } from './rates/rates.js';
 export { solveAntiRollBar, solveRollStiffness } from './roll/roll.js';
 export {
