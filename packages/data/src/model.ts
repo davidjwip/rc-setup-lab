@@ -54,6 +54,12 @@ export interface FrontAxleDocument {
   readonly tyreRadius: MeasuredValue<number> | null;
   readonly bumpLimit: MeasuredValue<number> | null;
   readonly droopLimit: MeasuredValue<number> | null;
+  readonly springRate: MeasuredValue<number> | null;
+}
+
+export interface MassDocument {
+  readonly sprungFront: MeasuredValue<number> | null;
+  readonly sprungRear: MeasuredValue<number> | null;
 }
 
 export interface CarModelDocument {
@@ -67,5 +73,6 @@ export interface CarModelDocument {
   readonly sources: Readonly<Record<string, SourceRecord>>;
   readonly corners: Partial<Record<CornerKey, CornerDocument>>;
   readonly axles: { readonly front: FrontAxleDocument };
+  readonly mass: MassDocument;
   readonly raw: unknown;
 }

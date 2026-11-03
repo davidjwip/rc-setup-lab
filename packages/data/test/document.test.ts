@@ -9,6 +9,7 @@ import {
   radiansToDegrees,
   updateCornerPointMm,
   buildFrontViewInput,
+  buildRatesInput,
 } from '../src/index.js';
 
 function clone<T>(value: T): T {
@@ -40,6 +41,36 @@ describe('document model', () => {
     expect(input.value.wheelCentre_m.value.y).toBeCloseTo(0.086, 12);
     expect(input.value.bumpLimit_m).toBeCloseTo(0.006, 12);
     expect(input.value.side).toBe(1);
+  });
+
+  it('exposes the spring rate, damper mounts and sprung mass with their sources', () => {
+    const parsed = parseCarModel(rawModel);
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    expect(parsed.value.axles.front.springRate?.value).toBeCloseTo(3.5, 12);
+    expect(parsed.value.mass.sprungFront?.value).toBeCloseTo(487.49, 12);
+    expect(parsed.value.mass.sprungRear?.value).toBeCloseTo(622.49, 12);
+
+    const input = buildRatesInput(parsed.value, 'LF');
+    expect(input.ok).toBe(true);
+    if (!input.ok) return;
+    expect(input.value.springRate_Npm.value).toBeCloseTo(3500, 9);
+    expect(input.value.springRate_Npm.ref).toBe('axles.front.spring.rate');
+    expect(input.value.damperLo_m.value.y).toBeCloseTo(0.06, 12);
+    expect(input.value.damperLo_m.value.z).toBeCloseTo(0.008875, 12);
+    expect(input.value.damperUp_m.value.y).toBeCloseTo(0.044, 12);
+    expect(input.value.sprungMass_kg?.value).toBeCloseTo(0.243745, 12);
+    expect(input.value.sprungMass_kg?.ref).toBe('body.mass.sprung_front');
+  });
+
+  it('refuses a rear rates input when the document has no rear axle data', () => {
+    const parsed = parseCarModel(rawModel);
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    const input = buildRatesInput(parsed.value, 'LR');
+    expect(input.ok).toBe(false);
+    if (input.ok) return;
+    expect(input.errors.some((error) => error.path === 'axles.rear.spring.rate')).toBe(true);
   });
 
   it('builds the mirrored right-hand corner with the correct side sign', () => {

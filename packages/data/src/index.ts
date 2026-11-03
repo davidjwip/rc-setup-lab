@@ -23,6 +23,7 @@ export type {
   CornerPointKey,
   Frame,
   FrontAxleDocument,
+  MassDocument,
   MeasuredPoint,
   MeasuredValue,
   Point3Mm,
@@ -30,5 +31,5 @@ export type {
   SourceType,
 } from './model.js';
 export { parseCarModel, parseCarModelJson } from './parse.js';
-export { SIDE_SIGN, buildFrontViewInput, cornerFor } from './build.js';
+export { SIDE_SIGN, buildFrontViewInput, buildRatesInput, cornerFor } from './build.js';
 export { updateCornerPointMm } from './edit.js';

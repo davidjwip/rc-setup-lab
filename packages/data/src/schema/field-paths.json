@@ -8,10 +8,13 @@
     "sources",
     "body.reference_ride_height",
     "body.wheelbase",
+    "body.mass.sprung_front",
+    "body.mass.sprung_rear",
     "axles.<axle>.track",
     "axles.<axle>.tyre_radius",
     "axles.<axle>.droop_limit_wheel",
     "axles.<axle>.bump_limit_wheel",
+    "axles.<axle>.spring.rate",
     "corners.<corner>.arm_type.lower",
     "corners.<corner>.arm_type.upper",
     "corners.<corner>.points.lca_in_a",
@@ -21,10 +24,15 @@
     "corners.<corner>.points.uca_in_a",
     "corners.<corner>.points.uca_in_b",
     "corners.<corner>.points.uca_out",
-    "corners.<corner>.points.wc"
+    "corners.<corner>.points.wc",
+    "corners.<corner>.points.damper_lo",
+    "corners.<corner>.points.damper_up"
   ],
   "outputs": [
     "roll_centre_height",
-    "camber_gain"
+    "camber_gain",
+    "motion_ratio",
+    "wheel_rate",
+    "ride_frequency"
   ]
 }
