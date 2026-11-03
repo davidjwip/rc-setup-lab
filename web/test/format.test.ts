@@ -3,11 +3,15 @@ import {
   formatBandFromMetres,
   formatCamberGain,
   formatCriticalDamping,
+  formatFrontShare,
   formatInstallationRatio,
   formatLengthFromMetres,
   formatRideFrequency,
   formatRollCentreHeight,
+  formatRollStiffness,
+  formatRollStiffnessSi,
   formatSpringRateFromNpm,
+  formatTorsionalStiffness,
   formatWheelRateFromNpm,
 } from '../src/format/format.js';
 
@@ -31,5 +35,12 @@ describe('display formatting', () => {
     expect(formatRideFrequency(10.781)).toBe('10.8 Hz');
     expect(formatInstallationRatio(0.565308)).toBe('0.57');
     expect(formatCriticalDamping(33.023)).toBe('33.02 N·s/m');
+  });
+
+  it('converts roll stiffness to N·m/deg and prints the front share as a percentage', () => {
+    expect(formatRollStiffness(37.274)).toBe('0.65 N·m/deg');
+    expect(formatRollStiffnessSi(37.274)).toBe('37.27 N·m/rad');
+    expect(formatTorsionalStiffness(0.43792)).toBe('0.438 N·m/rad');
+    expect(formatFrontShare(0.5678)).toBe('56.8 %');
   });
 });

@@ -28,4 +28,21 @@ describe('R0 screen', () => {
     expect(html).toContain('k_w = k_s × IR²');
     expect(html).toContain('33.02 N·s/m');
   });
+
+  it('renders the roll-stiffness card with the front share as the headline', () => {
+    const html = renderToStaticMarkup(createElement(App));
+    expect(html).toContain('Roll stiffness');
+    expect(html).toContain('56.8 %');
+    expect(html).toContain('front share');
+    expect(html).toContain('higher front share');
+    expect(html).toContain('0.65 N·m/deg');
+  });
+
+  it('prints the anti-roll bar rate chain in the maths', () => {
+    const html = renderToStaticMarkup(createElement(App));
+    expect(html).toContain('k_θ');
+    expect(html).toContain('k_bar');
+    expect(html).toContain('0.438 N·m/rad');
+    expect(html).toContain('IR_arm');
+  });
 });
