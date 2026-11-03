@@ -37,6 +37,16 @@
       "type": "derived",
       "method": "corner weights minus unsprung mass (docs/specs/physics/06 §6.1)",
       "by": "Setup Lab"
+    },
+    "s_estimated": {
+      "type": "estimated",
+      "method": "unsprung corner weighing (docs/specs/physics/01 §4.5)",
+      "by": "Setup Lab"
+    },
+    "s_default": {
+      "type": "estimated",
+      "method": "stated default 28.0 mm (D-18)",
+      "by": "Setup Lab"
     }
   },
   "body": {
@@ -48,7 +58,25 @@
       "value": 257.0,
       "source": "s_worked"
     },
+    "cg": {
+      "height": {
+        "value": 28.0,
+        "source": "s_default"
+      },
+      "front_mass_share": {
+        "value": 45.0,
+        "source": "s_derived"
+      },
+      "unsprung_height": {
+        "value": 20.0,
+        "source": "s_estimated"
+      }
+    },
     "mass": {
+      "total": {
+        "value": 1350.0,
+        "source": "s_worked"
+      },
       "sprung_front": {
         "value": 487.49,
         "source": "s_derived"
@@ -56,6 +84,14 @@
       "sprung_rear": {
         "value": 622.49,
         "source": "s_derived"
+      },
+      "unsprung_front": {
+        "value": 120.0,
+        "source": "s_estimated"
+      },
+      "unsprung_rear": {
+        "value": 120.0,
+        "source": "s_estimated"
       }
     }
   },

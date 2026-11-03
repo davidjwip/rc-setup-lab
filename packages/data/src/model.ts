@@ -73,8 +73,28 @@ export interface AxleDocument {
 export type FrontAxleDocument = AxleDocument;
 
 export interface MassDocument {
+  readonly total: MeasuredValue<number> | null;
   readonly sprungFront: MeasuredValue<number> | null;
   readonly sprungRear: MeasuredValue<number> | null;
+  readonly unsprungFront: MeasuredValue<number> | null;
+  readonly unsprungRear: MeasuredValue<number> | null;
+}
+
+/**
+ * One row of the `body.cg.components[]` table. `mass` is grams and `height` is
+ * the stored `z` in millimetres; the builder converts both to SI.
+ */
+export interface CgComponentDocument {
+  readonly component: string;
+  readonly mass: MeasuredValue<number>;
+  readonly height: MeasuredValue<number>;
+}
+
+export interface CgDocument {
+  readonly height: MeasuredValue<number> | null;
+  readonly frontMassShare: MeasuredValue<number> | null;
+  readonly unsprungHeight: MeasuredValue<number> | null;
+  readonly components: readonly CgComponentDocument[] | null;
 }
 
 export interface CarModelDocument {
@@ -86,11 +106,13 @@ export interface CarModelDocument {
   readonly units: Readonly<Record<string, string>>;
   readonly symmetry: boolean;
   readonly sources: Readonly<Record<string, SourceRecord>>;
+  readonly wheelbase: MeasuredValue<number> | null;
   readonly corners: Partial<Record<CornerKey, CornerDocument>>;
   readonly axles: {
     readonly front: AxleDocument;
     readonly rear: AxleDocument | null;
   };
   readonly mass: MassDocument;
+  readonly cg: CgDocument;
   readonly raw: unknown;
 }

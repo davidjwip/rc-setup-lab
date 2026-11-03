@@ -8,8 +8,15 @@
     "sources",
     "body.reference_ride_height",
     "body.wheelbase",
+    "body.cg.height",
+    "body.cg.front_mass_share",
+    "body.cg.unsprung_height",
+    "body.cg.components[]",
+    "body.mass.total",
     "body.mass.sprung_front",
     "body.mass.sprung_rear",
+    "body.mass.unsprung_front",
+    "body.mass.unsprung_rear",
     "axles.<axle>.track",
     "axles.<axle>.tyre_radius",
     "axles.<axle>.droop_limit_wheel",
@@ -41,6 +48,7 @@
     "motion_ratio",
     "wheel_rate",
     "ride_frequency",
-    "roll_stiffness"
+    "roll_stiffness",
+    "load_transfer_split"
   ]
 }

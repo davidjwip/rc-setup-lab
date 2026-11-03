@@ -6,6 +6,8 @@ import type {
   ArmTypeDocument,
   AxleDocument,
   CarModelDocument,
+  CgComponentDocument,
+  CgDocument,
   CornerDocument,
   CornerKey,
   CornerPointKey,
@@ -185,10 +187,68 @@ function readMass(
 ): MassDocument {
   const body = asRecord(raw['body']);
   const mass = body === null ? null : asRecord(body['mass']);
-  if (mass === null) return { sprungFront: null, sprungRear: null };
+  if (mass === null) {
+    return {
+      total: null,
+      sprungFront: null,
+      sprungRear: null,
+      unsprungFront: null,
+      unsprungRear: null,
+    };
+  }
   return {
+    total: readOptionalMeasuredNumber(mass, 'body.mass', 'total', errors, sources),
     sprungFront: readOptionalMeasuredNumber(mass, 'body.mass', 'sprung_front', errors, sources),
     sprungRear: readOptionalMeasuredNumber(mass, 'body.mass', 'sprung_rear', errors, sources),
+    unsprungFront: readOptionalMeasuredNumber(mass, 'body.mass', 'unsprung_front', errors, sources),
+    unsprungRear: readOptionalMeasuredNumber(mass, 'body.mass', 'unsprung_rear', errors, sources),
+  };
+}
+
+function readCg(
+  raw: Record<string, unknown>,
+  errors: DataError[],
+  sources: Readonly<Record<string, SourceRecord>>,
+): CgDocument {
+  const body = asRecord(raw['body']);
+  const cg = body === null ? null : asRecord(body['cg']);
+  if (cg === null) {
+    return { height: null, frontMassShare: null, unsprungHeight: null, components: null };
+  }
+
+  const rawComponents = cg['components'];
+  let components: CgComponentDocument[] | null = null;
+  if (rawComponents !== undefined) {
+    if (!Array.isArray(rawComponents)) {
+      errors.push(
+        dataError('invalidValue', 'body.cg.components', 'components must be an array of objects'),
+      );
+    } else {
+      components = [];
+      rawComponents.forEach((entry, index) => {
+        const node = asRecord(entry);
+        const path = `body.cg.components[${index}]`;
+        if (node === null) {
+          errors.push(dataError('invalidValue', path, 'a component row must be an object'));
+          return;
+        }
+        const mass = readMeasuredNumber(node, path, 'mass', errors, sources);
+        const height = readMeasuredNumber(node, path, 'z', errors, sources);
+        if (mass === null || height === null) return;
+        components?.push({
+          component: asString(node['component']) ?? `component_${index}`,
+          mass,
+          height,
+        });
+      });
+    }
+  }
+
+  return {
+    height: readOptionalMeasuredNumber(cg, 'body.cg', 'height', errors, sources),
+    frontMassShare: readOptionalMeasuredNumber(cg, 'body.cg', 'front_mass_share', errors, sources),
+    unsprungHeight: readOptionalMeasuredNumber(cg, 'body.cg', 'unsprung_height', errors, sources),
+    components,
   };
 }
 
@@ -495,6 +555,12 @@ export function parseCarModel(rawInput: unknown): DataResult<CarModelDocument> {
   const rear = rawRear === null ? null : readAxle(rawRear, 'axles.rear', errors, sourceMap);
 
   const mass = readMass(raw, errors, sourceMap);
+  const cg = readCg(raw, errors, sourceMap);
+  const rawBody = asRecord(raw['body']);
+  const wheelbase =
+    rawBody === null
+      ? null
+      : readOptionalMeasuredNumber(rawBody, 'body', 'wheelbase', errors, sourceMap);
 
   if (errors.length > 0 || id === null || name === null || sources === null || front === null) {
     return fail(errors);
@@ -513,9 +579,11 @@ export function parseCarModel(rawInput: unknown): DataResult<CarModelDocument> {
     ),
     symmetry,
     sources,
+    wheelbase,
     corners,
     axles: { front, rear },
     mass,
+    cg,
     raw: rawInput,
   });
 }
