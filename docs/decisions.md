@@ -5,9 +5,17 @@ Anything that is a *proposal* lives in the backlog, not here.
 
 ---
 
+
+---
+
 **D-09 — Gate command is `dart run tool/gate.dart`.** Dave, 2026-10-30. It runs `dart analyze`
 and `dart test` per package plus schema/migration checks. Forecloses: nothing; the two individual
 commands still work locally, they simply are not the gate.
+
+**Superseded in form by D-19** (the stack moved to React): the gate is now `npm run gate`. The
+*contract* — one command, every package, a stage that cannot silently skip a package — stands.
+
+---
 
 ---
 
@@ -15,6 +23,11 @@ commands still work locally, they simply are not the gate.
 purchase, no iOS signing work in v1. Flutter stays (a single codebase keeps iOS a later build
 target, not a rewrite), but the v1 release path is Android only. Revisit when Dave says so; the
 decision that cannot be retrofitted is *individual vs organisation enrolment*, and it stays open.
+
+**Superseded by D-19.** There is no native iOS build to defer: one web URL serves both phones, so
+the enrolment question is closed rather than deferred.
+
+---
 
 ---
 
@@ -26,12 +39,16 @@ marketing claim of accuracy before a property is measured.
 
 ---
 
+---
+
 **D-12 — v1 scope: geometry, balance, static damping ratio.** Dave, 2026-10-30. Motor/ESC dyno,
 acceleration simulation, tyre model and composite grip scores are out of v1. Damping ratio is in —
 as an **estimate with a band, never as a validated number** (see D-13): `ζ` is reported at two
 stated shaft speeds, its signed *change* between sheets leads, and it is never presented as
 measured. The requirements now carry it as R1/E3.6 with the schema fields it needs (piston bore,
 shaft diameter, hole diameter, hole count, oil viscosity, blow-off force).
+
+---
 
 ---
 
@@ -60,6 +77,8 @@ remains the route to a measured ζ later, and upgrades this badge per property w
 
 ---
 
+---
+
 **D-14 — CG height is inferred, never measured.** Dave, 2026-10-30: "we can't really work out CG."
 Two derivation routes: a component-mass estimate (motor, battery, electronics, plate, corner
 unsprung masses, with positions) and a two-hang plumb-line procedure for a user who wants a real
@@ -69,10 +88,14 @@ Forecloses: any claim of measured accuracy on absolute load-transfer magnitudes.
 
 ---
 
+---
+
 **D-15 — Interpreter vocabulary and inputs.** Dave, 2026-10-30. Understeer / oversteer, not
 push/loose; phases entry / mid / exit. Sheets record optional conditions — carpet or asphalt,
 temperature, humidity, plus room for tyres and motor — and a diff spanning different conditions
 says so. **Grip is never measured or computed: it is inference**, and carries its own tier.
+
+---
 
 ---
 
@@ -91,6 +114,8 @@ this project must never ship.
 
 ---
 
+---
+
 **D-17 — Camber and toe are per-wheel signed, and mirroring does not negate them.** Ruled
 2026-10-31. "Positive camber = top outboard" and "positive toe = toe-in" are statements about the
 wheel, not about the car's axes, so a symmetric car has identical stored values left and right, and
@@ -101,12 +126,79 @@ Conversion to a global-frame angle happens inside the solver, once, and never in
 
 ---
 
+---
+
 **D-18 — CG height keeps 28.0 mm as the stated default, and the band tells the truth.** Ruled
 2026-10-31. The reference car's own component build-up gives 18.7 mm, which is 33% away; moving the
 goldens to it would swap one unmeasured number for another. So the default stays 28.0 mm, every
 consuming output is tiered `inferred`, and the band (±14% on TLLT, ±22% on roll angle, ±0.13 pp on
 balance) is displayed rather than hidden. The first plumb-line measurement on a real car replaces it
 per model, and the model records which route produced the number.
+
+---
+
+**D-19 — React reactive web app, not Flutter.** Dave, 2026-10-31. The app ships as a **reactive web
+application in React + TypeScript**, installable to the home screen (PWA) and working fully offline.
+Flutter and Dart are retired from the project completely — no Dart package, no `flutter` command, no
+`pubspec.yaml`.
+
+What this changes:
+
+- **Stack:** React 19 + TypeScript + Vite; a pure-TS physics package (no DOM, no React) beside a data
+  package that owns the schema and the single unit conversion; Zustand or equivalent for state; a
+  router for the three destinations.
+- **Gates:** `npm run gate` (typecheck + unit tests + schema/field drift check) replaces
+  `dart run tool/gate.dart`. One command, same contract.
+- **Distribution:** static hosting, no store. Zero running cost, and no 14-day closed test, no
+  Play Console fee, no Apple enrolment — D-10 (deferring iOS) and the store-release ACs are
+  superseded: both phone platforms are served by one URL.
+- **Offline:** service worker + local storage; the app must open and compute with no network on a
+  phone that has never seen it before the first load.
+- **The physics does not change.** Units, frame, goldens, bands and the schema are stack-neutral, and
+  every physics document survives this decision untouched.
+
+Forecloses: native-store presence without a wrapper (Capacitor/Tauri would be a later addition, not a
+rewrite), and any assumption that the first implementation has a native file system — import/export
+goes through the browser's file picker and download flow.
+
+---
+
+**D-20 — Persistence: IndexedDB, with the eviction problem answered rather than hoped away.**
+Ruled 2026-10-31 after the round-4 review flagged that "local storage" cannot hold a model library.
+Documents live in **IndexedDB** (one object store per document kind, content-addressed revisions);
+`localStorage` holds UI preferences only; `navigator.storage.persist()` is requested at first run.
+The iOS reality is stated on screen, not buried: **Safari evicts storage for sites not visited in
+seven days**, and an installed home-screen app is exempt. So the first run offers "add to home
+screen", the app shows a storage-state row, and it nags for an export when the last export is more
+than seven days old. Export/import is the user's real backup, not a nicety. File System Access API
+where the browser has it, download/upload everywhere else.
+
+---
+
+**D-21 — Web performance budgets, re-baselined and provisional.** Ruled 2026-10-31. The 16 ms drag
+budget was written for Dart; JavaScript in a browser on a mid-range Android is a different machine.
+Provisional budgets until measured on a real device: **first load ≤ 350 KB gzipped JS**, **total
+cached assets ≤ 2 MB**, **a model document ≤ 100 KB**, **slider-drag recompute ≤ 8 ms at p50 and
+≤ 16 ms at p95**. The app must stay interactive while dragging — dropping frames is a defect, not a
+trade-off. These are marked provisional in `spec.md` and re-baselined after the first measurement on
+Dave's reference phone; the AC cites the measured number, not this estimate.
+
+---
+
+**D-22 — Import/export semantics, and the one capability we knowingly lose.** Ruled 2026-10-31.
+A web app cannot be the handler for a `.json` file tapped in email, so **file association is an
+accepted loss**, recorded rather than glossed. The flows that remain: "Open from device" (file
+picker), drag-and-drop on desktop, and paste-a-document on any platform. Export is a download, and
+"export everything" produces one archive the user can keep. Nothing depends on a native file system.
+
+---
+
+**D-23 — Drawing: SVG for the suspension scene, canvas for series, and neither computes physics.**
+Ruled 2026-10-31. The suspension view is **SVG** — crisp at any pixel ratio, inspectable, testable
+against the same geometry objects the physics returns, and accessible to a screen reader. Series plots
+(damper curves, roll against lateral g, load-transfer split) use a small chart library behind a
+wrapper, switching to canvas only above a few thousand points. Any painter or chart component that
+calls a trigonometry function is a review failure: it renders numbers the physics package produced.
 
 ## Proposals awaiting a decision
 
