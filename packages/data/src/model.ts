@@ -49,13 +49,27 @@ export interface CornerDocument {
   readonly points: Partial<Record<CornerPointKey, MeasuredPoint>>;
 }
 
-export interface FrontAxleDocument {
+export type ArbTypeDocument = 'torsion_bar' | 'blade' | 'fixed' | 'none';
+
+export interface ArbDocument {
+  readonly type: ArbTypeDocument;
+  readonly rateAtLink: MeasuredValue<number> | null;
+  readonly barDiameter: MeasuredValue<number> | null;
+  readonly span: MeasuredValue<number> | null;
+  readonly armLength: MeasuredValue<number> | null;
+  readonly shearModulus: MeasuredValue<number> | null;
+}
+
+export interface AxleDocument {
   readonly track: MeasuredValue<number>;
   readonly tyreRadius: MeasuredValue<number> | null;
   readonly bumpLimit: MeasuredValue<number> | null;
   readonly droopLimit: MeasuredValue<number> | null;
   readonly springRate: MeasuredValue<number> | null;
+  readonly arb: ArbDocument | null;
 }
+
+export type FrontAxleDocument = AxleDocument;
 
 export interface MassDocument {
   readonly sprungFront: MeasuredValue<number> | null;
@@ -72,7 +86,10 @@ export interface CarModelDocument {
   readonly symmetry: boolean;
   readonly sources: Readonly<Record<string, SourceRecord>>;
   readonly corners: Partial<Record<CornerKey, CornerDocument>>;
-  readonly axles: { readonly front: FrontAxleDocument };
+  readonly axles: {
+    readonly front: AxleDocument;
+    readonly rear: AxleDocument | null;
+  };
   readonly mass: MassDocument;
   readonly raw: unknown;
 }

@@ -82,6 +82,60 @@
           "value": 3.5,
           "source": "s_worked"
         }
+      },
+      "arb": {
+        "type": "torsion_bar",
+        "bar_diameter": {
+          "value": 1.5,
+          "source": "s_worked"
+        },
+        "span": {
+          "value": 90.0,
+          "source": "s_worked"
+        },
+        "arm_length": {
+          "value": 20.0,
+          "source": "s_worked"
+        },
+        "shear_modulus": {
+          "value": 79.3,
+          "source": "s_worked"
+        }
+      }
+    },
+    "rear": {
+      "track": {
+        "value": 174.0,
+        "source": "s_worked"
+      },
+      "tyre_radius": {
+        "value": 32.0,
+        "source": "s_worked"
+      },
+      "spring": {
+        "rate": {
+          "value": 2.6,
+          "source": "s_worked"
+        }
+      },
+      "arb": {
+        "type": "torsion_bar",
+        "bar_diameter": {
+          "value": 1.2,
+          "source": "s_worked"
+        },
+        "span": {
+          "value": 90.0,
+          "source": "s_worked"
+        },
+        "arm_length": {
+          "value": 20.0,
+          "source": "s_worked"
+        },
+        "shear_modulus": {
+          "value": 79.3,
+          "source": "s_worked"
+        }
       }
     }
   },
