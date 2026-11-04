@@ -118,7 +118,8 @@ describe('anti-dive and anti-squat from two inner pivot screws (#34)', () => {
         `anti-squat at ${shimMm} mm`,
       ),
     );
-    expect(values[0]).toBeLessThan(0);
+    expect(values[0]).toBeCloseTo(-23.71, 1);
+    expect(values[4]).toBeCloseTo(-781.8, 1);
     for (let index = 1; index < values.length; index += 1) {
       expect(values[index]!).toBeLessThan(values[index - 1]!);
     }
