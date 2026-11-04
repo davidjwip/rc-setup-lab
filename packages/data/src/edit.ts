@@ -534,6 +534,59 @@ export function updateAxleTrack(
   return error === null ? parseCarModel(raw) : fail([error]);
 }
 
+/**
+ * Enter a shim between the two lower-arm inner pivot screws. The shim is the
+ * signed height difference introduced between the screws: positive means the
+ * aft screw sits higher. Each screw moves by half the shim from the current
+ * midpoint, so a shim never moves the midpoint and the front-view construction
+ * (which uses that midpoint) is untouched.
+ */
+export function updateAxleLowerInnerShimMm(
+  model: CarModelDocument,
+  axle: AxleEdit,
+  shimMm: number,
+): DataResult<CarModelDocument> {
+  const cornerKey = AXLE_CORNER[axle];
+  if (!Number.isFinite(shimMm)) {
+    return fail([
+      dataError(
+        'invalidValue',
+        `corners.${cornerKey}.points.lca_in_a`,
+        'shim must be a finite number of millimetres',
+      ),
+    ]);
+  }
+
+  const fore = model.corners[cornerKey]?.points.lca_in_a;
+  const aft = model.corners[cornerKey]?.points.lca_in_b;
+  if (fore === undefined) {
+    return fail([
+      dataError(
+        'missingField',
+        `corners.${cornerKey}.points.lca_in_a`,
+        'the fore inner pivot screw is missing',
+      ),
+    ]);
+  }
+  if (aft === undefined) {
+    return fail([
+      dataError(
+        'missingField',
+        `corners.${cornerKey}.points.lca_in_b`,
+        'the aft inner pivot screw is missing',
+      ),
+    ]);
+  }
+
+  const midpointMm = (fore.value[2] + aft.value[2]) / 2;
+  const foreZ = midpointMm - shimMm / 2;
+  const aftZ = midpointMm + shimMm / 2;
+
+  const withFore = updateCornerPointMm(model, cornerKey, 'lca_in_a', 2, foreZ);
+  if (!withFore.ok) return withFore;
+  return updateCornerPointMm(withFore.value, cornerKey, 'lca_in_b', 2, aftZ);
+}
+
 export type ChassisValueField =
   | 'ride_height'
   | 'thickness'
