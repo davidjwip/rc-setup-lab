@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import {
   buildFrontViewInput,
   buildLoadTransferInput,
@@ -60,6 +60,8 @@ import {
   formatTorsionalStiffness,
   formatWheelRateFromNpm,
 } from './format/format.js';
+import { GlossaryView } from './glossary/GlossaryView.js';
+import { currentHash, routeFromHash, type Route } from './route.js';
 
 interface FieldRow {
   readonly key: CornerPointKey;
@@ -110,7 +112,7 @@ function ParseErrors({ errors }: { readonly errors: readonly DataError[] }) {
   );
 }
 
-export function App() {
+function AnalysisView() {
   const [model, setModel] = useState<CarModelDocument | null>(
     initialParse.ok ? initialParse.value : null,
   );
@@ -243,7 +245,12 @@ export function App() {
   return (
     <main className="shell">
       <header className="masthead">
-        <p className="eyebrow">Setup Lab · Slice 0</p>
+        <div className="masthead-row">
+          <p className="eyebrow">Setup Lab · Slice 0</p>
+          <a className="text-link" href="#glossary">
+            Glossary
+          </a>
+        </div>
         <h1>Front- and rear-view kinematics</h1>
         <p className="lede">
           {model.name}. Left-front and left-rear corners, ISO 8855: x forward, y left, z up. Move a
@@ -840,4 +847,20 @@ export function App() {
       </footer>
     </main>
   );
+}
+
+export function App() {
+  const [route, setRoute] = useState<Route>(() => routeFromHash(currentHash()));
+
+  useEffect(() => {
+    const onHashChange = () => setRoute(routeFromHash(currentHash()));
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, []);
+
+  if (route.view === 'glossary') {
+    return <GlossaryView entryId={route.entryId} />;
+  }
+
+  return <AnalysisView />;
 }
