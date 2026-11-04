@@ -145,6 +145,8 @@ a direction and a sensitivity, not a target.
 
 ---
 
+> **Units.** The percentage multiplies `tan θ · L/h` by the axle's **dimensionless** share of the car's weight at the traction limit, `Fz/(m·g)`. Using `Fz/m` (m/s²) instead inflates every result by exactly g — an early build of this module reported −590 % where the geometry says −60 %. `axleLoadPerMass_mps2` is kept as a reported working quantity and is not an input to the percentage.
+
 ## 5. Worked example (reference car, one front screw +2 mm)
 
 Reference front corner in the ground frame: `lca_in_a = (238, 12)`, `lca_in_b = (272, 14)`,
@@ -163,8 +165,9 @@ tan θ_f = 13.81/(257 − 374.76) = −0.1173
 At 1.0 g braking, `m = 1.35 kg`, `h = 28 mm`, `L = 257 mm`:
 
 ```text
-Fz_front/m = 9.81·0.45 + 9.81·0.028/0.257 = 5.4833 m/s²
-anti-dive  = (−0.1173)·(257/28)·(5.4833)·100 = −590.19 %
+Fz_front/m = 9.81·0.45 + 9.81·0.028/0.257 = 5.4833 m/s²   (reported as a working quantity)
+share      = (Fz_front/m)/g = 5.4833/9.81 = 0.55895          (dimensionless, used in the percentage)
+anti-dive  = (−0.1173)·(257/28)·(0.55895)·100 = −60.16 %
 ```
 
 Negative: the rear screw up moved the instant centre to the wrong side of the front patch, so
@@ -195,10 +198,10 @@ sign; equal screw heights again return exactly 0.0 %.
 | ID | Input | Expected | Origin |
 |---|---|---|---|
 | G03.1 | reference screws level, `a_x = −1 g` | anti-dive 0.0 %, anti-squat 0.0 % | §3.4 |
-| G03.2 | front aft screw +2 mm, `a_x = −1 g` | `tan θ_f = −0.1173`; SVIC (374.76, 13.81) mm; anti-dive −590.19 % | §5 |
-| G03.3 | front aft screw +1…+5 mm | monotonic decreasing: −416.86 … −1106.83 % | §3 |
+| G03.2 | front aft screw +2 mm, `a_x = −1 g` | `tan θ_f = −0.1173`; SVIC (374.76, 13.81) mm; anti-dive **−60.16 %** | §5 |
+| G03.3 | front aft screw +1…+5 mm | monotonic decreasing: −42.49 … −112.83 % | §3 |
 | G03.4 | rear screw up, front | anti-dive < 0 (pro-dive) | §3.3 |
 | G03.5 | fixed geometry, `|a_x|` 0.25…2.0 g | monotonic decreasing | §3.3 |
-| G03.6 | front `Fz_front/m` at 1 g | 5.4833 m/s² | §5 |
+| G03.6 | front `Fz_front/m` at 1 g | 5.4833 m/s² — a working quantity, **not** the percentage input; the percentage uses `share = 0.55895` | §5 |
 | G03.7 | non-zero-slope parallel links | `Undefined(parallelLinks)` | §3.4 |
 | G03.8 | missing CG height | `Undefined(incompleteModel)` | §2 |

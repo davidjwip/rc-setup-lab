@@ -151,8 +151,26 @@ function emptyAxleWorking(): AntiDiveAxleWorking {
   };
 }
 
+/**
+ * The axles share of the cars weight at the traction limit, dimensionless.
+ *
+ * Not `N / kg`: that is m/s², and multiplying a percentage by it inflates the
+ * answer by g (a 2 mm shim read -590 % instead of -60 %). The share is
+ * `dynamicLoad / (mass * g)`, so gravity belongs in the denominator.
+ */
 function perMass(dynamicLoad_N: number, mass_kg: number): number {
   return dynamicLoad_N / mass_kg;
+}
+
+/**
+ * The axle's share of the car's weight at the traction limit, dimensionless.
+ *
+ * Not `N / kg`: that is m/s² (kept separately as `axleLoadPerMass_mps2`), and
+ * multiplying a percentage by it inflates the answer by g — a 2 mm shim read
+ * -590 % instead of -60 %. The share is `dynamicLoad / (mass * g)`.
+ */
+function weightShare(dynamicLoad_N: number, mass_kg: number, gravity_mps2: number): number {
+  return dynamicLoad_N / (mass_kg * gravity_mps2);
 }
 
 /**
@@ -167,8 +185,9 @@ function percentage(
   cgHeight_m: number,
   dynamicLoad_N: number,
   mass_kg: number,
+  gravity_mps2: number,
 ): number {
-  return tanTheta * (wheelbase_m / cgHeight_m) * perMass(dynamicLoad_N, mass_kg) * 100;
+  return tanTheta * (wheelbase_m / cgHeight_m) * weightShare(dynamicLoad_N, mass_kg, gravity_mps2) * 100;
 }
 
 function buildAxleResult(
@@ -191,6 +210,7 @@ function buildAxleResult(
     longitudinalTransfer_N,
   };
   const dynamicAxleLoad_N = staticAxleLoad_N + longitudinalTransfer_N;
+  const gravity_mps2 = input.gravity_mps2 ?? DEFAULT_GRAVITY_MPS2;
   working.dynamicAxleLoad_N = dynamicAxleLoad_N;
   working.axleLoadPerMass_mps2 = perMass(dynamicAxleLoad_N, mass_kg);
 
@@ -272,14 +292,15 @@ function buildAxleResult(
     cgHeight_m,
     dynamicAxleLoad_N,
     mass_kg,
+    gravity_mps2,
   );
 
   const bands: number[] = [value];
   const cgBand = input.cgHeightBand_m ?? null;
   if (cgBand !== null && cgBand.low > 0 && cgBand.high > 0) {
     bands.push(
-      percentage(tanTheta, wheelbase_m, cgBand.low, dynamicAxleLoad_N, mass_kg),
-      percentage(tanTheta, wheelbase_m, cgBand.high, dynamicAxleLoad_N, mass_kg),
+      percentage(tanTheta, wheelbase_m, cgBand.low, dynamicAxleLoad_N, mass_kg, gravity_mps2),
+      percentage(tanTheta, wheelbase_m, cgBand.high, dynamicAxleLoad_N, mass_kg, gravity_mps2),
     );
   }
   const band: Band | null =

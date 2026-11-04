@@ -118,8 +118,8 @@ describe('anti-dive and anti-squat from two inner pivot screws (#34)', () => {
         `anti-squat at ${shimMm} mm`,
       ),
     );
-    expect(values[0]).toBeCloseTo(-23.71, 1);
-    expect(values[4]).toBeCloseTo(-781.8, 1);
+    expect(values[0]).toBeCloseTo(-2.4154, 3);
+    expect(values[4]).toBeCloseTo(-79.6984, 3);
     for (let index = 1; index < values.length; index += 1) {
       expect(values[index]!).toBeLessThan(values[index - 1]!);
     }
@@ -137,8 +137,8 @@ describe('anti-dive and anti-squat from two inner pivot screws (#34)', () => {
     for (let index = 1; index < values.length; index += 1) {
       expect(values[index]!).toBeLessThan(values[index - 1]!);
     }
-    expect(values[0]).toBeCloseTo(-416.86, 1);
-    expect(values[4]).toBeCloseTo(-1106.83, 1);
+    expect(values[0]).toBeCloseTo(-42.4932, 3);
+    expect(values[4]).toBeCloseTo(-112.8266, 3);
   });
 
   it('is monotonic in |a_x| at fixed geometry', () => {
