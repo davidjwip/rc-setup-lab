@@ -337,6 +337,121 @@ export function updateAxleArbValue(
   return error === null ? parseCarModel(raw) : fail([error]);
 }
 
+/**
+ * Write the blade count for a blade bar. The value is a dimensionless count,
+ * never a length. It is scoped to the selected axle; the other axle and every
+ * hardpoint stay exactly as they are.
+ */
+export function updateAxleArbBlades(
+  model: CarModelDocument,
+  axle: AxleEdit,
+  count: number,
+): DataResult<CarModelDocument> {
+  const path = `axles.${axle}.arb.blades`;
+  if (!Number.isInteger(count) || count < 1) {
+    return fail([dataError('invalidValue', path, 'blade count must be a whole number of at least 1')]);
+  }
+  const raw = cloneRaw(model);
+  const axleNode = axleRecord(raw, axle);
+  if (axleNode === null) {
+    return fail([dataError('missingField', `axles.${axle}`, 'this axle is not in the document')]);
+  }
+  const arb = asRecord(axleNode['arb']);
+  if (arb === null) {
+    return fail([dataError('missingField', `axles.${axle}.arb`, 'this axle has no bar')]);
+  }
+  const error = setMeasuredNumber(arb, 'blades', count, raw, path);
+  return error === null ? parseCarModel(raw) : fail([error]);
+}
+
+const DAMPER_MOUNTS: readonly ('damper_lo' | 'damper_up')[] = ['damper_lo', 'damper_up'];
+
+/**
+ * Move one damper eye laterally (the front-view y axis) and label the moved
+ * point as a session edit. Positive is outboard on the stored left corner. The
+ * other two coordinates, the other corner and every axle value are untouched;
+ * the mount's own geometry is what changes the motion ratio.
+ */
+export function updateDamperMountLateralMm(
+  model: CarModelDocument,
+  axle: AxleEdit,
+  mount: 'damper_lo' | 'damper_up',
+  valueMm: number,
+): DataResult<CarModelDocument> {
+  const cornerKey = AXLE_CORNER[axle];
+  const path = `corners.${cornerKey}.points.${mount}`;
+  if (!DAMPER_MOUNTS.includes(mount)) {
+    return fail([dataError('missingField', path, 'this point is not a damper eye')]);
+  }
+  if (!Number.isFinite(valueMm)) {
+    return fail([dataError('invalidValue', path, 'value must be finite')]);
+  }
+
+  const raw = cloneRaw(model);
+  const corners = asRecord(raw['corners']);
+  const corner = corners === null ? null : asRecord(corners[cornerKey]);
+  if (corner === null) {
+    return fail([dataError('missingField', `corners.${cornerKey}`, 'this corner is not in the document')]);
+  }
+  const points = asRecord(corner['points']);
+  const measured = points === null ? null : asRecord(points[mount]);
+  const rawValue = measured === null ? null : measured['value'];
+  if (measured === null || !Array.isArray(rawValue) || rawValue.length !== 3) {
+    return fail([
+      dataError(
+        'missingField',
+        path,
+        'this damper eye is not in the document and cannot be moved',
+      ),
+    ]);
+  }
+
+  ensureSessionSource(raw);
+  rawValue[1] = valueMm;
+  measured['source'] = SESSION_SOURCE;
+  return parseCarModel(raw);
+}
+
+/**
+ * Restore one corner point exactly from the baseline, including its raw source
+ * record. Used when a shim is returned to zero, so the document is no longer
+ * marked as an edit and the point keeps the provenance it was measured with.
+ */
+export function restoreCornerPointMm(
+  model: CarModelDocument,
+  baseline: CarModelDocument,
+  cornerKey: CornerKey,
+  pointKey: CornerPointKey,
+): DataResult<CarModelDocument> {
+  const baselineRaw = asRecord(baseline.raw);
+  const baselineCorners = baselineRaw === null ? null : asRecord(baselineRaw['corners']);
+  const baselineCorner = baselineCorners === null ? null : asRecord(baselineCorners[cornerKey]);
+  const baselinePoints = baselineCorner === null ? null : asRecord(baselineCorner['points']);
+  const baselinePoint = baselinePoints === null ? null : asRecord(baselinePoints[pointKey]);
+  if (baselinePoint === null) {
+    return fail([
+      dataError(
+        'missingField',
+        `corners.${cornerKey}.points.${pointKey}`,
+        'the baseline has no such point to restore',
+      ),
+    ]);
+  }
+
+  const raw = cloneRaw(model);
+  const corners = asRecord(raw['corners']);
+  const corner = corners === null ? null : asRecord(corners[cornerKey]);
+  const points = corner === null ? null : asRecord(corner['points']);
+  if (points === null) {
+    return fail([
+      dataError('missingField', `corners.${cornerKey}.points`, 'this corner has no points'),
+    ]);
+  }
+
+  points[pointKey] = JSON.parse(JSON.stringify(baselinePoint)) as unknown;
+  return parseCarModel(raw);
+}
+
 function bodyRecord(raw: Record<string, unknown>): Record<string, unknown> | null {
   const body = raw['body'];
   if (body === undefined) {

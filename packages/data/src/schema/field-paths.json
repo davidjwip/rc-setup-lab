@@ -32,6 +32,7 @@
     "axles.<axle>.arb",
     "axles.<axle>.arb.type",
     "axles.<axle>.arb.rate_at_link",
+    "axles.<axle>.arb.blades",
     "axles.<axle>.arb.bar_diameter",
     "axles.<axle>.arb.span",
     "axles.<axle>.arb.arm_length",
