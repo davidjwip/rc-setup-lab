@@ -283,11 +283,11 @@
           "source": "s_modelled"
         },
         "tie_in": {
-          "value": [-22.0, 32.0, 30.0],
+          "value": [-22.0, 32.0, 22.0],
           "source": "s_modelled"
         },
         "tie_out": {
-          "value": [-1.0, 75.0, 31.0],
+          "value": [25.0, 73.0, 23.0],
           "source": "s_modelled"
         },
         "wc": {
@@ -339,11 +339,11 @@
           "source": "s_modelled"
         },
         "tie_in": {
-          "value": [-22.0, -32.0, 30.0],
+          "value": [-22.0, -32.0, 22.0],
           "source": "s_modelled"
         },
         "tie_out": {
-          "value": [-1.0, -75.0, 31.0],
+          "value": [25.0, -73.0, 23.0],
           "source": "s_modelled"
         },
         "wc": {

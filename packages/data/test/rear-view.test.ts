@@ -60,10 +60,10 @@ describe('rear corner modelled geometry', () => {
       expect(corner.toe?.source).toBe('s_modelled');
     }
 
-    expect(model.corners.LR?.points.tie_in?.value).toEqual([-22, 32, 30]);
-    expect(model.corners.LR?.points.tie_out?.value).toEqual([-1, 75, 31]);
-    expect(model.corners.RR?.points.tie_in?.value).toEqual([-22, -32, 30]);
-    expect(model.corners.RR?.points.tie_out?.value).toEqual([-1, -75, 31]);
+    expect(model.corners.LR?.points.tie_in?.value).toEqual([-22, 32, 22]);
+    expect(model.corners.LR?.points.tie_out?.value).toEqual([25, 73, 23]);
+    expect(model.corners.RR?.points.tie_in?.value).toEqual([-22, -32, 22]);
+    expect(model.corners.RR?.points.tie_out?.value).toEqual([25, -73, 23]);
     expect(model.corners.LR?.points.uca_in?.value).toEqual([-4, 44, 45]);
     expect(model.corners.LR?.points.arb_drop?.value).toEqual([1, 57, 2.5]);
     expect(model.corners.RR?.points.wc?.value).toEqual([0, -87, 25]);
@@ -168,12 +168,12 @@ describe('rear corner modelled geometry', () => {
     expect(rear.value.tieIn_m.value).toEqual({
       x: -22 / 1000,
       y: 32 / 1000,
-      z: 37 / 1000,
+      z: 29 / 1000,
     });
     expect(rear.value.tieOut_m.value).toEqual({
-      x: -1 / 1000,
-      y: 75 / 1000,
-      z: 38 / 1000,
+      x: 25 / 1000,
+      y: 73 / 1000,
+      z: 30 / 1000,
     });
     expect(rear.value.staticToe_rad.value).toBeCloseTo((0.5 * Math.PI) / 180, 12);
     expect(rear.value.staticToe_rad.ref).toBe('LR.toe');

@@ -42,7 +42,7 @@ describe('hardpoint editor follows the selected axle', () => {
     expect(inputTag(front, 'Tie rod inner y in mm')).not.toBe('');
     expect(inputTag(front, 'Tie rod outer z in mm')).not.toBe('');
     expect(inputTag(rear, 'Tie rod inner y in mm')).toContain('value="32"');
-    expect(inputTag(rear, 'Tie rod outer z in mm')).toContain('value="31"');
+    expect(inputTag(rear, 'Tie rod outer z in mm')).toContain('value="23"');
   });
 
   it('maps the axle selection onto the corner that receives an edit', () => {
