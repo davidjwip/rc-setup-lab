@@ -70,6 +70,27 @@ export type {
   ToeSeriesResult,
   ToeSeriesUnavailable,
 } from './steering/types.js';
+export {
+  CAMBER_STEER_ANGLES_DEG,
+  CAMBER_STEER_ANGLES_RAD,
+  CASTER_BAND_RAD,
+  KPI_BAND_RAD,
+  SCRUB_BAND_M,
+  TRAIL_BAND_M,
+  buildCamberInSteerSeries,
+  rotateCarrierAboutKingpin,
+  solveCamberInSteer,
+  solveSteeringAxis,
+} from './caster/caster.js';
+export type {
+  CamberInSteerResult,
+  CamberInSteerSample,
+  CamberInSteerSeries,
+  CamberInSteerUnavailable,
+  CasterInput,
+  SteeringAxisResult,
+  SteeringAxisWorking,
+} from './caster/types.js';
 export type { Vec3 } from './geometry/vec3.js';
 export { solveRates, solveRatesFromRatio } from './rates/rates.js';
 export { solveDampingRatio } from './damping/damping.js';

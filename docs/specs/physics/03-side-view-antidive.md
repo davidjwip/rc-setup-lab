@@ -131,7 +131,7 @@ zero" rule; it is recorded here rather than hidden in a tolerance.
 
 1. **2D projection of a 3D linkage.** The hinge axis is tilted by shims, and the projection
    ignores the y component. Provenance is `modelled`.
-2. **Caster is not modelled yet.** It contributes to anti-dive through the steering axis, so the
+2. **Caster is modelled (04 §3.7) but its anti-dive contribution is not yet included.** It acts through the steering axis, so the
    figure reads **conservative**; the UI says so.
 3. **Rigid links, rigid chassis, no compliance.** Tyre carcass, chassis flex and damper oil move
    most of the visible dive at 1/10 scale.

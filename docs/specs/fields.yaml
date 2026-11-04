@@ -297,14 +297,44 @@ outputs:
     unit: percentage
     unit_si: "1"
     display: "%"
-    note: "Front share of longitudinal load transfer carried by the links under braking, evaluated at the traction limit. Signed: negative is pro-dive. Caster is not modelled (D-27)."
+    note: "Front share of longitudinal load transfer carried by the links under braking, evaluated at the traction limit. Signed: negative is pro-dive. Caster enters through the upper link, not as a separate steering-axis term (D-28)."
     ac: E3.19
   - id: anti_squat
     unit: percentage
     unit_si: "1"
     display: "%"
-    note: "Rear share of longitudinal load transfer carried by the links under acceleration, evaluated at the traction limit. Signed: negative is pro-squat. Caster is not modelled (D-27)."
+    note: "Rear share of longitudinal load transfer carried by the links under acceleration, evaluated at the traction limit. Signed: negative is pro-squat. Caster enters through the upper link, not as a separate steering-axis term (D-28)."
     ac: E3.20
+  - id: caster
+    unit: angle
+    unit_si: rad
+    display: "°"
+    note: "Derived from the line through `lca_out` and `uca_out`; positive = the axis top leans rearward. No stored caster drives it (D-28)."
+    ac: E3.21
+  - id: kpi
+    unit: angle
+    unit_si: rad
+    display: "°"
+    note: "Kingpin inclination, per wheel; positive = the axis top leans inboard. Mirrored corners keep the same per-wheel sign (D-17, D-28)."
+    ac: E3.22
+  - id: scrub_radius
+    unit: length
+    unit_si: m
+    display: "mm"
+    note: "Where the steering axis meets the road versus the contact patch; positive = the axis meets the road inboard. Evaluated at the ground the car has (D-28)."
+    ac: E3.23
+  - id: trail
+    unit: length
+    unit_si: m
+    display: "mm"
+    note: "Mechanical trail; positive = the axis meets the road ahead of the contact patch (D-28)."
+    ac: E3.24
+  - id: camber_in_steer
+    unit: angle
+    unit_si: rad
+    display: "°"
+    note: "Per wheel, from a rigid rotation of the upright about the kingpin axis at 0/5/10/15/20/25/30° of steer. Positive camber = top outboard; positive steer = left; the reported value isolates caster (D-28)."
+    ac: E3.25
 
 # =============================================================================
 # FIELDS — car_model
@@ -694,7 +724,7 @@ fields:
       req: "yes"
       on_absence: REFUSE
       plausible: [15, 60]
-      consumed_by: [roll_centre_height, load_transfer_split, camber_gain, bump_steer]
+      consumed_by: [roll_centre_height, load_transfer_split, camber_gain, bump_steer, scrub_radius, trail]
       notes: "Stored wheel radius. It is the **input that places the derived hub** (`hub.z = wheel_radius - (thickness + ride_height)`), so the wheel centre is exactly one radius above the derived ground at every ride height. The Chassis panel edits the diameter (`2 × radius`) but this remains the single stored value (D-25). A setup's `conditions.tyre.diameter` overrides it for one run."
 
     - path: axles.<axle>.roll_centre_validity
@@ -954,8 +984,8 @@ fields:
       req: "yes"
       on_absence: REFUSE
       plausible: null
-      consumed_by: [motion_ratio, roll_centre_height, camber_gain, bump_steer]
-      notes: "Lower ball joint on the upright, stored as an **offset from the derived hub centre** (`outboard = hub + offset`), not as a chassis-frame point. Shims edit this offset; the composed absolute point is what the solver consumes. Also the carrier's lower reference point — there is no second key for it."
+      consumed_by: [motion_ratio, roll_centre_height, camber_gain, bump_steer, caster, kpi, scrub_radius, trail, camber_in_steer]
+      notes: "Lower ball joint on the upright, stored as an **offset from the derived hub centre** (`outboard = hub + offset`), not as a chassis-frame point. Shims edit this offset; the composed absolute point is what the solver consumes. Also the carrier's lower reference point — there is no second key for it. With the upper ball stud it defines the steering axis (D-28)."
 
     - path: corners.<corner>.points.uca_in
       type: point
@@ -990,8 +1020,8 @@ fields:
       req: "yes"
       on_absence: REFUSE
       plausible: null
-      consumed_by: [motion_ratio, roll_centre_height, camber_gain, bump_steer]
-      notes: "Upper ball stud on the carrier, stored as an **offset from the derived hub centre**; with `lca_out` it defines the carrier span and, with the hub, the carrier frame. Shims edit the offset (D-25)."
+      consumed_by: [motion_ratio, roll_centre_height, camber_gain, bump_steer, caster, kpi, scrub_radius, trail, camber_in_steer]
+      notes: "Upper ball stud on the carrier, stored as an **offset from the derived hub centre**; with `lca_out` it defines the carrier span and, with the hub, the carrier frame. Shims edit the offset (D-25). With the lower ball joint it defines the steering axis; moving it rearward raises caster and changes the upper-link side-view line (D-28)."
 
     - path: corners.<corner>.points.tie_in
       type: point
@@ -1370,7 +1400,7 @@ fields:
       on_absence: OMIT
       plausible: [0, 15]
       consumed_by: []
-      notes: "Reference only in v1; shown as such (E2.5)."
+      notes: "Reference only. The app derives caster from `lca_out` and `uca_out` and does not consume this field, so typing a caster cannot move another output (D-28)."
 
     - path: corners.<corner>.ride_height
       type: value

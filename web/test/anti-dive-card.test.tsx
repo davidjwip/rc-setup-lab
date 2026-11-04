@@ -13,7 +13,7 @@ describe('anti-dive and anti-squat card', () => {
       expect(html.match(/<h2>Anti-dive and anti-squat<\/h2>/g)).toHaveLength(1);
       expect(html).toContain('two inner pivot screws');
       expect(html).toContain('front view uses their midpoint');
-      expect(html).toContain('Caster is not modelled');
+      expect(html).toContain('Caster is not a separate term');
       expect(html).toContain('modelled');
       expect(html).toContain('Anti-dive');
       expect(html).toContain('Anti-squat');
@@ -25,6 +25,6 @@ describe('anti-dive and anti-squat card', () => {
     expect(html).toContain('±1.0 g');
     expect(html.match(/0\.0 %/g)?.length).toBeGreaterThanOrEqual(2);
     expect(html).toContain('traction limit');
-    expect(html).toContain('conservative');
+    expect(html).toContain('double-wishbone');
   });
 });

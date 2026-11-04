@@ -1008,6 +1008,15 @@ summary:focus-visible,
   stroke-linecap: round;
 }
 
+.camber-line-inside {
+  stroke: var(--accent);
+}
+
+.camber-line-outside {
+  stroke: var(--muted);
+  stroke-dasharray: 4 3;
+}
+
 .camber-static {
   fill: var(--accent);
   stroke: var(--panel);

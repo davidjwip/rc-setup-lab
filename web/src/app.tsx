@@ -3,6 +3,7 @@ import {
   absoluteCornerPointMm,
   buildAntiDiveInput,
   buildAxleRates,
+  buildCasterInput,
   buildFrontViewInput,
   buildLoadTransferInput,
   buildRollStiffnessInput,
@@ -26,6 +27,7 @@ import {
   type DataError,
 } from '@setuplab/data';
 import {
+  buildCamberInSteerSeries,
   buildCamberSeries,
   buildFrontViewScene,
   buildToeSeries,
@@ -34,6 +36,7 @@ import {
   solveFrontView,
   solveLoadTransfer,
   solveRollStiffness,
+  solveSteeringAxis,
 } from '@setuplab/physics';
 import rawModel from '../../assets/models/reference-touring-car.json';
 import { ChassisEditor } from './editor/ChassisEditor.js';
@@ -43,6 +46,7 @@ import { RatesEditor } from './editor/RatesEditor.js';
 import { describeRateChange, rateSnapshot, type RateChange } from './editor/rates.js';
 import { AntiDiveChart } from './scene/AntiDiveChart.js';
 import { CamberGainChart } from './scene/CamberGainChart.js';
+import { CasterChart } from './scene/CasterChart.js';
 import { FrontViewScene } from './scene/FrontViewScene.js';
 import { ToeGainChart } from './scene/ToeGainChart.js';
 import {
@@ -50,7 +54,12 @@ import {
   toggleInstantCentre,
   writeInstantCentrePreference,
 } from './scene/instantCentrePreference.js';
-import { buildAntiDiveChart, buildCamberChart, buildToeChart } from './scene/presenter.js';
+import {
+  buildAntiDiveChart,
+  buildCamberChart,
+  buildCamberSteerChart,
+  buildToeChart,
+} from './scene/presenter.js';
 import {
   ANGLE_UNIT,
   CAMBER_GAIN_UNIT,
@@ -63,6 +72,7 @@ import {
   ROLL_SENSITIVITY_UNIT,
   ROLL_STIFFNESS_UNIT,
   WHEEL_RATE_UNIT,
+  formatAngleBand,
   formatAngleDegrees,
   formatAntiDiveBand,
   formatAntiDivePercent,
@@ -269,6 +279,52 @@ export function AnalysisView({
     () => (antiDiveCurve === null ? null : buildAntiDiveChart(antiDiveCurve)),
     [antiDiveCurve],
   );
+  const casterLeftInput = useMemo(
+    () => (model === null ? null : buildCasterInput(model, 'LF')),
+    [model],
+  );
+  const casterRightInput = useMemo(
+    () => (model === null ? null : buildCasterInput(model, 'RF')),
+    [model],
+  );
+  const casterLeft = useMemo(
+    () =>
+      casterLeftInput !== null && casterLeftInput.ok
+        ? solveSteeringAxis(casterLeftInput.value)
+        : null,
+    [casterLeftInput],
+  );
+  const casterRight = useMemo(
+    () =>
+      casterRightInput !== null && casterRightInput.ok
+        ? solveSteeringAxis(casterRightInput.value)
+        : null,
+    [casterRightInput],
+  );
+  const camberSteerLeft = useMemo(
+    () =>
+      casterLeftInput !== null && casterLeftInput.ok
+        ? buildCamberInSteerSeries(casterLeftInput.value)
+        : null,
+    [casterLeftInput],
+  );
+  const camberSteerRight = useMemo(
+    () =>
+      casterRightInput !== null && casterRightInput.ok
+        ? buildCamberInSteerSeries(casterRightInput.value)
+        : null,
+    [casterRightInput],
+  );
+  const casterChart = useMemo(
+    () =>
+      camberSteerLeft !== null &&
+      camberSteerLeft.kind === 'series' &&
+      camberSteerRight !== null &&
+      camberSteerRight.kind === 'series'
+        ? buildCamberSteerChart(camberSteerLeft, camberSteerRight)
+        : null,
+    [camberSteerLeft, camberSteerRight],
+  );
   const scene = useMemo(
     () =>
       inputResult !== null && inputResult.ok && result !== null
@@ -327,6 +383,7 @@ export function AnalysisView({
     antiSquatResult !== null && antiSquatResult.rear.percent.kind === 'defined'
       ? antiSquatResult.rear.percent
       : null;
+  const antiDiveContributions = antiDiveResult?.front.contributions ?? null;
 
   if (!initialParse.ok) return <ParseErrors errors={initialParse.errors} />;
   if (model === null || inputResult === null || result === null) {
@@ -696,6 +753,111 @@ export function AnalysisView({
             </p>
           </article>
 
+          {axle === 'front' && casterLeft !== null ? (
+            <article className="card result-card caster-card">
+              <div className="card-heading">
+                <h2>Caster and steering-axis geometry</h2>
+                <span className="pill">derived · front only</span>
+              </div>
+              {casterLeft.caster_rad.kind === 'defined' ? (
+                <div className="value-row">
+                  <span className="value">{formatAngleDegrees(casterLeft.caster_rad.value)}</span>
+                  <span className="band">
+                    caster · positive = axis top rearward
+                    {casterLeft.caster_rad.band === null
+                      ? ''
+                      : ` · band ${formatAngleBand(casterLeft.caster_rad.band)}`}
+                  </span>
+                </div>
+              ) : (
+                <p className="no-answer">{stateLabel(casterLeft.caster_rad)}</p>
+              )}
+              {casterLeft.kpi_rad.kind === 'defined' ? (
+                <div className="value-row">
+                  <span className="value">{formatAngleDegrees(casterLeft.kpi_rad.value)}</span>
+                  <span className="band">
+                    KPI · positive = axis top inboard
+                    {casterLeft.kpi_rad.band === null
+                      ? ''
+                      : ` · band ${formatAngleBand(casterLeft.kpi_rad.band)}`}
+                  </span>
+                </div>
+              ) : (
+                <p className="no-answer">{stateLabel(casterLeft.kpi_rad)}</p>
+              )}
+              {casterLeft.scrub_m.kind === 'defined' ? (
+                <div className="value-row">
+                  <span className="value">
+                    {formatLengthFromMetres(casterLeft.scrub_m.value, 2)}
+                  </span>
+                  <span className="band">
+                    scrub radius · positive = axis meets the road inboard
+                    {casterLeft.scrub_m.band === null
+                      ? ''
+                      : ` · band ${formatBandFromMetres(casterLeft.scrub_m.band)}`}
+                  </span>
+                </div>
+              ) : (
+                <p className="no-answer">{stateLabel(casterLeft.scrub_m)}</p>
+              )}
+              {casterLeft.trail_m.kind === 'defined' ? (
+                <div className="value-row">
+                  <span className="value">
+                    {formatLengthFromMetres(casterLeft.trail_m.value, 2)}
+                  </span>
+                  <span className="band">
+                    trail · positive = axis meets the road ahead of the patch
+                    {casterLeft.trail_m.band === null
+                      ? ''
+                      : ` · band ${formatBandFromMetres(casterLeft.trail_m.band)}`}
+                  </span>
+                </div>
+              ) : (
+                <p className="no-answer">{stateLabel(casterLeft.trail_m)}</p>
+              )}
+              <p className="hint">
+                The axis is the line through the two ball joints already modelled: no new
+                measurement. Caster and KPI are angles of that line, so they depend on the stored
+                hub offsets and are unchanged by ride height or wheel diameter; scrub and trail are
+                where the same line meets the road. The right corner is the mirror: caster and trail
+                are identical, KPI and scrub keep their per-wheel sign.
+              </p>
+              {casterChart !== null ? (
+                <CasterChart view={casterChart} />
+              ) : (
+                <p className="no-answer">
+                  The camber-in-steer curve needs both front corners and a steering axis.
+                </p>
+              )}
+              <p className="hint">
+                Camber is read by rotating the rigid upright about the real kingpin axis, not from
+                a caster × sin δ approximation. The series isolates caster: it is the rotated
+                upright minus the same upright with caster zeroed, so zero caster is exactly zero at
+                every angle. Positive steer turns the car left, so the left wheel is inside and the
+                right wheel outside; positive camber is top outboard.
+              </p>
+              {antiDiveContributions !== null ? (
+                <p className="hint">
+                  Anti-dive split at braking: links{' '}
+                  {antiDiveContributions.links.kind === 'defined'
+                    ? formatAntiDivePercent(antiDiveContributions.links.value)
+                    : stateLabel(antiDiveContributions.links)}{' '}
+                  · steering axis: not modelled (TODO) · total{' '}
+                  {antiDiveContributions.total.kind === 'defined'
+                    ? formatAntiDivePercent(antiDiveContributions.total.value)
+                    : stateLabel(antiDiveContributions.total)}. A double-wishbone&apos;s kingpin
+                  axis is not a chassis force path; the ball joints are carried by the arms, so a
+                  separate axis term would be a strut model and would double-count the upper link.
+                </p>
+              ) : null}
+              <p className="footnote">
+                Provenance: derived from <code>lca_out</code>, <code>uca_out</code> and the derived
+                wheel centre. Bands are the V5 setup-station pass marks (±0.3°, ±1 mm), not
+                propagated tolerances.
+              </p>
+            </article>
+          ) : null}
+
           {ratesResult !== null ? (
             <article className="card result-card">
               <div className="card-heading">
@@ -961,9 +1123,10 @@ export function AnalysisView({
               <p className="no-answer">The longitudinal curve needs a solved corner.</p>
             )}
             <p className="footnote">
-              Provenance: modelled. Caster is not modelled yet, so the figure reads conservative.
-              The angle comes from a 2D side-view projection of a real 3D linkage; the band is the
-              CG-height uncertainty, not a claim of measured accuracy.
+              Provenance: modelled. Caster is not a separate term here: a double-wishbone&apos;s
+              kingpin axis is not a chassis force path, and caster already enters through the upper
+              link&apos;s x. The angle comes from a 2D side-view projection of a real 3D linkage; the
+              band is the CG-height uncertainty, not a claim of measured accuracy.
             </p>
           </article>
 

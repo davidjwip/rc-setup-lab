@@ -15,6 +15,11 @@ height at a given bump — which is the **carrier transform** (02 §3.2.3), not 
 | Toe curve vs bump | ° vs mm | the bump-steer signature, **toe-in positive** |
 | Bump-steer coefficient | °/mm | slope of the toe curve at static ride height, toe-in positive |
 | Axle total toe change | ° | `τ_L + τ_R`; the number a racer reads off two toe bars |
+| Caster | ° | the steering axis in side view; positive = axis top leans rearward |
+| KPI | ° | kingpin inclination, per wheel; positive = axis top leans inboard |
+| Scrub radius | mm | where the axis meets the road versus the contact patch; positive = inboard |
+| Trail | mm | mechanical trail; positive = the axis meets the road ahead of the patch |
+| Camber in steer | ° | per-wheel camber change at 0/5/10/15/20/25/30° of steer, positive = top outboard |
 
 Two sub-models share one plan-view construction: steering (**rack → angles**) and bump steer
 (**bump → toe**). Both reduce to "intersect a circle about the rack end with a circle about the
@@ -202,6 +207,61 @@ if |s| > s_max:  Undefined(outOfRackTravel)                                    (
 ```
 
 `noIntersection` remains as a load-time check (a tie rod that cannot span its own geometry).
+
+### 3.7 Steering-axis geometry and camber in steer (D-28)
+
+The axis is the 3-D line **Lₒ → Uₒ** through the two ball joints the model already stores. No new
+measurement and no stored caster: the adapter composes the hub offsets into the ground frame once
+(D-25), and this module consumes those absolute points.
+
+```text
+Δx/Δz = (Uₒ.x − Lₒ.x)/(Uₒ.z − Lₒ.z)
+Δy/Δz = (Uₒ.y − Lₒ.y)/(Uₒ.z − Lₒ.z)
+x_g   = Lₒ.x − (Δx/Δz)·Lₒ.z
+y_g   = Lₒ.y − (Δy/Δz)·Lₒ.z
+
+caster = atan2(−(Uₒ.x − Lₒ.x), Uₒ.z − Lₒ.z)      positive = axis top leans rearward   (4.15)
+KPI    = s · atan2(−(Uₒ.y − Lₒ.y), Uₒ.z − Lₒ.z)  positive = axis top leans inboard    (4.16)
+trail  = x_g − x_cp                              positive = axis meets the road ahead (4.17)
+scrub  = s · (y_cp − y_g)                        positive = axis meets the road inboard(4.18)
+```
+
+`x_cp` and `y_cp` are the contact patch directly below the hub. Caster and trail use x, which
+mirroring does not touch; KPI and scrub keep the per-wheel side sign `s` (D-17). A rear corner has no
+steering axis and is refused (`Undefined(noSteeringAxis)`); the card is not rendered for it.
+
+**Reference car.** From `lca_out = (259, 78, 7)`, `uca_out = (254, 72.8, 44)` and
+`wc = (257, 86, 32)` mm:
+
+```text
+caster = atan(5/37) = 7.6961°          KPI = atan(5.2/37) = 8.0000°
+x_g    = 259.9459 mm                   y_g = 78.9838 mm
+trail  = 259.9459 − 257.00 = 2.9459 mm
+scrub  = 86.00 − 78.9838 = 7.0162 mm
+```
+
+**Camber in steer.** The rigid upright is rotated about the real kingpin axis by the steer angle —
+the same carrier transform as §3.4, extended from the front-view plane to three dimensions. The
+reported value is the camber change **attributable to caster**: the actual rotated upright minus the
+same rotation with caster zeroed (same y and z). This is a full rigid-body rotation, not
+`caster · sin δ`; it is exactly zero when caster is zero even if KPI is non-zero. The series is
+sampled at 0/5/10/15/20/25/30°. Positive steer = the car turns left, so at a positive angle the left
+wheel is inside and the right wheel outside; positive camber = top outboard.
+
+**Zero case.** With both ball joints on the same x, caster is 0, every camber-in-steer sample is 0,
+and there is no steering-axis anti-dive term.
+
+**Anti-dive.** A double-wishbone's kingpin axis is not a chassis force path; its ends are carried by
+the lower arm and the upper link. This module therefore adds **no separate steering-axis anti-dive
+percentage**. Caster already enters module 03 through the upper link's x, so the card reports
+`links · steering axis: not modelled (TODO) · total`, with the total equal to the link term. A strut
+model would be a different linkage and is not silently substituted.
+
+**Hub invariance (D-25).** Caster and KPI are angles of the axis and are built from the stored
+offsets, so they are bit-identical across ride-height and wheel-diameter changes. Scrub and trail are
+the axis's ground intersection: a ride-height change leaves every outboard ground-frame point where
+it was, so all four are bit-identical; a wheel-diameter change translates the upright vertically, so
+the angles stay bit-identical and scrub/trail follow the ground the car actually has.
 
 ---
 
