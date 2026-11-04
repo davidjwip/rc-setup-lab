@@ -65,7 +65,7 @@ describe('hardpoint edits follow the selected axle', () => {
 
   it('moves the rear ARB motion ratio, roll-stiffness share and balance through an exposed point', () => {
     const baseline = parseReference();
-    const edited = updateCornerPointMm(baseline, 'LR', 'lca_out', 2, 3);
+    const edited = updateCornerPointMm(baseline, 'LR', 'lca_out', 2, -22);
     expect(edited.ok).toBe(true);
     if (!edited.ok) return;
 

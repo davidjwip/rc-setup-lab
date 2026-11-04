@@ -23,8 +23,8 @@ describe('document model', () => {
     if (!result.ok) return;
     expect(result.value.id).toBe('mdl_reference_tc_front');
     expect(result.value.symmetry).toBe(true);
-    expect(result.value.corners.LF?.points.lca_out?.value).toEqual([259, 78, 0]);
-    expect(result.value.corners.RF?.points.lca_out?.value).toEqual([259, -78, 0]);
+    expect(result.value.corners.LF?.points.lca_out?.value).toEqual([2, -8, -25]);
+    expect(result.value.corners.RF?.points.lca_out?.value).toEqual([2, 8, -25]);
     expect(result.value.sources['s_worked']?.type).toBe('measured');
   });
 
@@ -130,7 +130,9 @@ describe('document model', () => {
     const input = buildFrontViewInput(edited.value, 'LF');
     expect(input.ok).toBe(true);
     if (!input.ok) return;
-    expect(input.value.lcaOut_m.value.z).toBeCloseTo(0.0075, 12);
+    // The edit writes the hub-relative z offset; the boundary adds the derived hub.
+    expect(edited.value.corners.LF?.points.lca_out?.value).toEqual([2, -8, 0.5]);
+    expect(input.value.lcaOut_m.value.z).toBeCloseTo(0.0325, 12);
     expect(input.value.lcaOut_m.ref).toBe('LF.points.lca_out');
   });
 

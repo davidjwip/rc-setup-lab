@@ -25,12 +25,15 @@
 # happened to it. Nothing is silently reinterpreted: an old name is either an
 # accepted import alias or a refusal with the new name in the message.
 #
-#  D1. `schema_version` is **1.1.0**. The vertical datum moved from the ground
+#  D1. `schema_version` is **1.2.0**. The vertical datum moved from the ground
 #      plane to the top surface of the chassis plate; 1.0.x documents are
 #      migrated on load by a rigid translation `z' = z - (thickness +
-#      ride_height)`. The migration is recorded in `sources`, so a migrated
-#      document exported and reloaded is not shifted twice (spec §4.7 requires
-#      one fixture per version the app writes).
+#      ride_height)`. 1.1.x documents are then migrated to hub-relative
+#      outboard points: `offset = outboard - wc`, the stored `wc` is removed,
+#      and `axles.<axle>.tyre_radius` is stored explicitly. Each migration is
+#      recorded in `sources`, so a migrated document exported and reloaded is
+#      not migrated twice (spec §4.7 requires one fixture per version the app
+#      writes). See D-25.
 #  D2. Every stored numerical value is an object `{ "value": <n>, "source": <id> }`
 #      per D-16: a value without a source is a schema error, not a review note.
 #      Retired: `{ "v": n, "s": id }` (spec §4.1 rule 2 up to v0.2) and the bare
@@ -134,6 +137,14 @@
 #      spec's unstated "two stated defaults" are retired: 5 mm/s sits below the
 #      model's friction floor, where physics/07 says the model does not apply at
 #      all.
+#  D19. Corner points are split by what they attach to (D-25). `lca_in_a`,
+#      `lca_in_b`, `uca_in`/`uca_in_a`/`uca_in_b`, `tie_in`, `damper_lo`,
+#      `damper_up` and `arb_drop` are chassis-fixed and stored absolute.
+#      `lca_out`, `uca_out` and `tie_out` are hub-fixed and stored as offsets
+#      from the derived wheel centre. `wc` is **not stored**: the hub is
+#      `(axle_x, ±track/2, wheel_radius - (thickness + ride_height))`, with
+#      axle_x = wheelbase at the front and 0 at the rear. The adapter composes
+#      `outboard = hub + offset`; physics still consumes absolute coordinates.
 #
 # -----------------------------------------------------------------------------
 # SIGN CONVENTIONS AND MIRRORING (D-17)
@@ -158,7 +169,7 @@
 # -----------------------------------------------------------------------------
 
 meta:
-  schema_version: "1.1.0"
+  schema_version: "1.2.0"
   kinds: [car_model, setup]
   frame:
     standard: ISO 8855
@@ -420,7 +431,7 @@ fields:
       on_absence: REFUSE
       plausible: [1, 30]
       consumed_by: [roll_centre_height, camber_gain, bump_steer]
-      notes: "Ground clearance under the **bottom** of the plate. It is no longer the datum: with `body.chassis.thickness` it derives the ground plane at `z = -(thickness + ride_height)`. Replaces `measured_at_ride_height` (physics/01 §5). Editable per vehicle in the Chassis panel, default 5.0 mm. The only other route to the ground plane is `body.chassis.thickness`; neither moves a stored hardpoint. The wheel diameter is **inferred** from the wheel centre and this ground plane (`2 × (wc.z − z_ground)`), never stored and never a user input. See also `body.chassis.ride_height_basis`."
+      notes: "Ground clearance under the **bottom** of the plate. It is no longer the datum: with `body.chassis.thickness` it derives the ground plane at `z = -(thickness + ride_height)`. Replaces `measured_at_ride_height` (physics/01 §5). Editable per vehicle in the Chassis panel, default 5.0 mm. With the wheel radius it places the **derived hub** (`hub.z = wheel_radius - (thickness + ride_height)`); every hub-fixed outboard point rides with the hub, while chassis-fixed points stay byte-identical. See D-25 and `body.chassis.ride_height_basis`."
 
     - path: body.wheelbase
       type: value
@@ -562,7 +573,7 @@ fields:
       on_absence: OMIT
       plausible: [0.5, 5.0]
       consumed_by: []
-      notes: "Plate thickness, caliper-measured. Required for the chassis-datum conversion: the derived ground plane is `z = -(thickness + reference_ride_height)`. Editable per vehicle in the Chassis panel, default 2.0 mm. It enters the ground plane only through that sum, beside `body.reference_ride_height`, and moves no stored hardpoint. The wheel diameter is **inferred** from the wheel centre and the derived ground plane, never stored and never an input. Moves mass, CG height and ride height (see `ride_height_basis`), never the roll centre."
+      notes: "Plate thickness, caliper-measured. Required for the chassis-datum conversion: the derived ground plane is `z = -(thickness + reference_ride_height)`. Editable per vehicle in the Chassis panel, default 2.0 mm. It enters the ground plane only through that sum, beside `body.reference_ride_height`, and moves no stored chassis-fixed hardpoint; the hub and its outboard points move relative to the plate. Moves mass, CG height and ride height (see `ride_height_basis`), never the roll centre directly."
 
     - path: body.chassis.span
       type: value
@@ -620,7 +631,7 @@ fields:
       on_absence: REFUSE
       plausible: [15, 60]
       consumed_by: [roll_centre_height, load_transfer_split, camber_gain, bump_steer]
-      notes: "Contact-patch height and the bump/droop conversion. A setup's `conditions.tyre.diameter` overrides it for one run."
+      notes: "Stored wheel radius. It is the **input that places the derived hub** (`hub.z = wheel_radius - (thickness + ride_height)`), so the wheel centre is exactly one radius above the derived ground at every ride height. The Chassis panel edits the diameter (`2 × radius`) but this remains the single stored value (D-25). A setup's `conditions.tyre.diameter` overrides it for one run."
 
     - path: axles.<axle>.roll_centre_validity
       type: value
@@ -880,7 +891,7 @@ fields:
       on_absence: REFUSE
       plausible: null
       consumed_by: [motion_ratio, roll_centre_height, camber_gain, bump_steer]
-      notes: "Lower ball joint. Also the carrier's lower reference point — there is no second key for it."
+      notes: "Lower ball joint on the upright, stored as an **offset from the derived hub centre** (`outboard = hub + offset`), not as a chassis-frame point. Shims edit this offset; the composed absolute point is what the solver consumes. Also the carrier's lower reference point — there is no second key for it."
 
     - path: corners.<corner>.points.uca_in
       type: point
@@ -916,7 +927,7 @@ fields:
       on_absence: REFUSE
       plausible: null
       consumed_by: [motion_ratio, roll_centre_height, camber_gain, bump_steer]
-      notes: "Upper ball stud on the carrier; with `lca_out` it defines the carrier span and, with `wc`, the carrier frame."
+      notes: "Upper ball stud on the carrier, stored as an **offset from the derived hub centre**; with `lca_out` it defines the carrier span and, with the hub, the carrier frame. Shims edit the offset (D-25)."
 
     - path: corners.<corner>.points.tie_in
       type: point
@@ -934,16 +945,7 @@ fields:
       on_absence: REFUSE
       plausible: null
       consumed_by: [bump_steer, ackermann_toe]
-      notes: "Outer tie-rod ball on the steering arm (front) or rear toe link on the carrier (rear)."
-
-    - path: corners.<corner>.points.wc
-      type: point
-      unit: length
-      req: "yes"
-      on_absence: REFUSE
-      plausible: null
-      consumed_by: [motion_ratio, roll_centre_height, camber_gain, bump_steer, load_transfer_split]
-      notes: "Wheel centre at the reference ride height. Fixes track and scrub radius; the contact patch is derived from it."
+      notes: "Outer tie-rod ball on the steering arm (front) or rear toe link on the carrier (rear), stored as an **offset from the derived hub centre**. Shims edit the offset; the composed absolute point is what the solver consumes (D-25)."
 
     - path: corners.<corner>.points.damper_lo
       type: point
@@ -1403,7 +1405,7 @@ fields:
       on_absence: OMIT
       plausible: [-5, 5]
       consumed_by: [camber_gain, roll_centre_height]
-      notes: "Positive = track increase per side; moves `points.wc` and the contact patch, not the ball joints."
+      notes: "Positive = track increase per side; moves the derived hub (`hub.y = ±track/2`) and the contact patch, not the stored outboard offsets."
 
     - path: corners.<corner>.tyre_pressure
       type: value
@@ -1535,8 +1537,7 @@ worksheet:
   - step: ride_height
     prompt: "Ride height, all four corners"
     datum: "flat plate the wheels stand on, to the chassis underside"
-    fields: [body.reference_ride_height, corners.<corner>.ride_height,
-             corners.<corner>.points.wc]
+    fields: [body.reference_ride_height, corners.<corner>.ride_height]
   - step: wheelbase_and_track
     prompt: "Wheelbase and track"
     datum: "flat plate, hub face to hub face at static ride height"

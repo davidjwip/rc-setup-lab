@@ -8,13 +8,16 @@ export interface ChassisRange {
 }
 
 /**
- * fields.yaml ranges: `body.reference_ride_height` is 1–30 mm and
- * `body.chassis.thickness` is 0.5–5.0 mm. The editor refuses outside them
- * rather than clamping, matching the hardpoint and rates editors.
+ * fields.yaml ranges: `body.reference_ride_height` is 1–30 mm,
+ * `body.chassis.thickness` is 0.5–5.0 mm and `axles.<axle>.tyre_radius` is
+ * 15–60 mm (a 30–120 mm diameter). The editor refuses outside them rather than
+ * clamping, matching the hardpoint and rates editors.
  */
 export const CHASSIS_RANGES: Readonly<Record<ChassisValueField, ChassisRange>> = {
   ride_height: { min: 1, max: 30, unit: 'mm', step: 0.1 },
   thickness: { min: 0.5, max: 5.0, unit: 'mm', step: 0.1 },
+  front_wheel_diameter: { min: 30, max: 120, unit: 'mm', step: 0.1 },
+  rear_wheel_diameter: { min: 30, max: 120, unit: 'mm', step: 0.1 },
 };
 
 export type ChassisCheck =

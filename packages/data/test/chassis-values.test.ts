@@ -1,21 +1,24 @@
-import { describe, expect, it } from "vitest";
-import { solveFrontView, solveLoadTransfer, solveRollStiffness } from "@setuplab/physics";
-import rawModel from "../../../assets/models/reference-touring-car.json";
+import { describe, expect, it } from 'vitest';
+import { solveFrontView, solveLoadTransfer, solveRollStiffness } from '@setuplab/physics';
+import rawModel from '../../../assets/models/reference-touring-car.json';
 import {
+  absoluteCornerPointMm,
   buildAxleRates,
   buildFrontViewInput,
   buildLoadTransferInput,
   buildRollStiffnessInput,
   derivedGroundPlaneMm,
+  hubCentreMm,
   inferredWheel,
   parseCarModel,
   reportedRollCentreHeightM,
   updateChassisRideHeight,
   updateChassisThickness,
-  updateCornerPointMm,
+  updateWheelDiameter,
+  wheelSize,
   type CarModelDocument,
-} from "../src/index.js";
-import fieldPaths from "../src/schema/field-paths.json";
+} from '../src/index.js';
+import fieldPaths from '../src/schema/field-paths.json';
 
 function parse(input: unknown): CarModelDocument {
   const parsed = parseCarModel(input);
@@ -25,200 +28,148 @@ function parse(input: unknown): CarModelDocument {
 
 function update(
   model: CarModelDocument,
-  field: "ride_height" | "thickness",
+  field: 'ride_height' | 'thickness',
   valueMm: number,
 ): CarModelDocument {
   const edited =
-    field === "ride_height"
+    field === 'ride_height'
       ? updateChassisRideHeight(model, valueMm)
       : updateChassisThickness(model, valueMm);
   if (!edited.ok) throw new Error(JSON.stringify(edited.errors));
   return edited.value;
 }
 
-function movePoint(
-  model: CarModelDocument,
-  corner: "LF" | "LR",
-  zMm: number,
-): CarModelDocument {
-  const edited = updateCornerPointMm(model, corner, "wc", 2, zMm);
-  if (!edited.ok) throw new Error(JSON.stringify(edited.errors));
-  return edited.value;
-}
-
 function defined(value: unknown): number {
   const solved = value as { kind?: string; value?: number };
-  if (solved.kind !== "defined" || solved.value === undefined) {
+  if (solved.kind !== 'defined' || solved.value === undefined) {
     throw new Error(`expected a defined value, got ${String(solved.kind)}`);
   }
   return solved.value;
 }
 
 function frontRollCentreMm(model: CarModelDocument): number {
-  const input = buildFrontViewInput(model, "LF");
+  const input = buildFrontViewInput(model, 'LF');
   if (!input.ok) throw new Error(JSON.stringify(input.errors));
   const heightM = reportedRollCentreHeightM(model, solveFrontView(input.value));
-  if (heightM === null) throw new Error("front roll centre is not defined");
+  if (heightM === null) throw new Error('front roll centre is not defined');
   return heightM * 1000;
 }
 
 function rearRollCentreMm(model: CarModelDocument): number {
-  const input = buildFrontViewInput(model, "LR");
+  const input = buildFrontViewInput(model, 'LR');
   if (!input.ok) throw new Error(JSON.stringify(input.errors));
   const heightM = reportedRollCentreHeightM(model, solveFrontView(input.value));
-  if (heightM === null) throw new Error("rear roll centre is not defined");
+  if (heightM === null) throw new Error('rear roll centre is not defined');
   return heightM * 1000;
 }
 
-function rates(model: CarModelDocument, axle: "front" | "rear") {
+function rates(model: CarModelDocument, axle: 'front' | 'rear') {
   const result = buildAxleRates(model, axle);
   if (!result.ok) throw new Error(JSON.stringify(result.errors));
   return result.value;
 }
 
-describe("chassis ride height and plate thickness", () => {
-  it("moves both roll-centre heights by exactly +1 mm for a 1 mm ride-height change and leaves the rates bit-identical", () => {
+const CHASSIS_POINTS = [
+  'lca_in_a',
+  'lca_in_b',
+  'uca_in',
+  'tie_in',
+  'damper_lo',
+  'damper_up',
+  'arb_drop',
+] as const;
+const OUTBOARD_POINTS = ['lca_out', 'uca_out', 'tie_out'] as const;
+
+describe('chassis values place the derived hub', () => {
+  it('moves the hub and every outboard point down 1 mm for a 1 mm ride-height rise, leaving every chassis point unchanged', () => {
     const base = parse(rawModel);
-    const raised = update(base, "ride_height", 6.0);
+    const raised = update(base, 'ride_height', 6.0);
 
     expect(derivedGroundPlaneMm(raised)).toBeCloseTo(-8.0, 12);
-    expect(frontRollCentreMm(raised) - frontRollCentreMm(base)).toBeCloseTo(1.0, 12);
-    expect(rearRollCentreMm(raised) - rearRollCentreMm(base)).toBeCloseTo(1.0, 12);
+    const baseHub = hubCentreMm(base, 'LF');
+    const raisedHub = hubCentreMm(raised, 'LF');
+    if (baseHub === null || raisedHub === null) throw new Error('hub missing');
+    expect(raisedHub.z - baseHub.z).toBeCloseTo(-1, 12);
 
-    for (const axle of ["front", "rear"] as const) {
-      const before = rates(base, axle);
-      const after = rates(raised, axle);
-      expect(defined(after.wheelRate)).toBeCloseTo(defined(before.wheelRate), 12);
-      expect(defined(after.rideFrequency)).toBeCloseTo(defined(before.rideFrequency), 12);
+    for (const corner of ['LF', 'LR'] as const) {
+      for (const key of OUTBOARD_POINTS) {
+        const before = absoluteCornerPointMm(base, corner, key);
+        const after = absoluteCornerPointMm(raised, corner, key);
+        if (before === null || after === null) throw new Error('outboard missing');
+        expect(after.value[2]).toBeCloseTo(before.value[2] - 1, 12);
+      }
+      for (const key of CHASSIS_POINTS) {
+        expect(JSON.stringify(raised.corners[corner]?.points[key])).toBe(
+          JSON.stringify(base.corners[corner]?.points[key]),
+        );
+      }
     }
 
-    for (const corner of ["LF", "LR"] as const) {
-      const baseInput = buildFrontViewInput(base, corner);
-      const raisedInput = buildFrontViewInput(raised, corner);
-      if (!baseInput.ok || !raisedInput.ok) throw new Error("front-view input refused");
-      expect(defined(solveFrontView(raisedInput.value).camberGain)).toBeCloseTo(
-        defined(solveFrontView(baseInput.value).camberGain),
-        12,
-      );
-    }
-
-    expect(JSON.stringify(raised.corners.LF?.points)).toBe(
-      JSON.stringify(base.corners.LF?.points),
-    );
-    expect(JSON.stringify(raised.corners.LR?.points)).toBe(
-      JSON.stringify(base.corners.LR?.points),
-    );
+    // The arm has rotated, so the roll centre follows the geometry rather than +1 mm.
+    expect(frontRollCentreMm(raised)).not.toBeCloseTo(frontRollCentreMm(base) + 1, 6);
+    expect(rearRollCentreMm(raised)).not.toBeCloseTo(rearRollCentreMm(base) + 1, 6);
   });
 
-  it("worked example: ride height 5.0 → 6.0 mm moves both ends and both inferred diameters by the documented amount", () => {
+  it('moves the derived ground plane by the plate thickness and lets the arms decide the roll-centre change', () => {
     const base = parse(rawModel);
-    const raised = update(base, "ride_height", 6.0);
-
-    expect(frontRollCentreMm(base)).toBeCloseTo(9.9749, 4);
-    expect(frontRollCentreMm(raised)).toBeCloseTo(10.9749, 4);
-    expect(rearRollCentreMm(base)).toBeCloseTo(17.8985, 4);
-    expect(rearRollCentreMm(raised)).toBeCloseTo(18.8985, 4);
-
-    expect(inferredWheel(base, "front").inferredDiameterMm).toBeCloseTo(64.0, 12);
-    expect(inferredWheel(base, "rear").inferredDiameterMm).toBeCloseTo(64.0, 12);
-    expect(inferredWheel(raised, "front").inferredDiameterMm).toBeCloseTo(66.0, 12);
-    expect(inferredWheel(raised, "rear").inferredDiameterMm).toBeCloseTo(66.0, 12);
-  });
-
-  it("moves the roll-centre heights by exactly +1 mm when the plate thickens, and only thickness + ride height reaches the ground plane", () => {
-    const base = parse(rawModel);
-    const thicker = update(base, "thickness", 3.0);
+    const thicker = update(base, 'thickness', 3.0);
 
     expect(derivedGroundPlaneMm(thicker)).toBeCloseTo(-8.0, 12);
-    expect(frontRollCentreMm(thicker) - frontRollCentreMm(base)).toBeCloseTo(1.0, 12);
-    expect(rearRollCentreMm(thicker) - rearRollCentreMm(base)).toBeCloseTo(1.0, 12);
-
-    const plateHeavy = update(update(base, "ride_height", 7.0), "thickness", 1.0);
-    const shimHeavy = update(update(base, "ride_height", 3.0), "thickness", 5.0);
-
-    expect(derivedGroundPlaneMm(plateHeavy)).toBeCloseTo(
-      derivedGroundPlaneMm(shimHeavy) ?? 0,
-      12,
-    );
-    const plateInput = buildFrontViewInput(plateHeavy, "LF");
-    const shimInput = buildFrontViewInput(shimHeavy, "LF");
-    if (!plateInput.ok || !shimInput.ok) throw new Error("front-view input refused");
-    expect(plateInput.value.lcaIn_m.value.z).toBeCloseTo(
-      shimInput.value.lcaIn_m.value.z,
-      12,
-    );
-
-    const tyreChangedRaw = JSON.parse(JSON.stringify(rawModel)) as {
-      axles: { front: { tyre_radius: { value: number } } };
-    };
-    tyreChangedRaw.axles.front.tyre_radius.value = 36;
-    expect(derivedGroundPlaneMm(parse(tyreChangedRaw))).toBeCloseTo(
-      derivedGroundPlaneMm(base) ?? 0,
-      12,
-    );
+    expect(frontRollCentreMm(thicker)).not.toBeCloseTo(frontRollCentreMm(base) + 1, 6);
+    expect(rearRollCentreMm(thicker)).not.toBeCloseTo(rearRollCentreMm(base) + 1, 6);
   });
 
-  it("computes each axle's wheel diameter from the wheel centre and ground plane, never from the stored tyre radius", () => {
+  it('raises the hub and outboard points when the wheel diameter grows and leaves the ride height alone', () => {
     const base = parse(rawModel);
-    const frontBase = inferredWheel(base, "front");
-    const rearBase = inferredWheel(base, "rear");
+    const bigger = updateWheelDiameter(base, 'front', 66.0);
+    if (!bigger.ok) throw new Error(JSON.stringify(bigger.errors));
 
-    expect(frontBase?.heightAboveGroundMm).toBeCloseTo(32.0, 12);
-    expect(frontBase?.inferredDiameterMm).toBeCloseTo(64.0, 12);
-    expect(rearBase?.inferredDiameterMm).toBeCloseTo(64.0, 12);
+    expect(bigger.value.referenceRideHeight?.value).toBeCloseTo(5.0, 12);
+    const baseHub = hubCentreMm(base, 'LF');
+    const bigHub = hubCentreMm(bigger.value, 'LF');
+    if (baseHub === null || bigHub === null) throw new Error('hub missing');
+    expect(bigHub.z - baseHub.z).toBeCloseTo(1, 12);
 
-    const moved = movePoint(base, "LF", 27.0);
-    const frontMoved = inferredWheel(moved, "front");
-    const rearMoved = inferredWheel(moved, "rear");
+    const before = absoluteCornerPointMm(base, 'LF', 'uca_out');
+    const after = absoluteCornerPointMm(bigger.value, 'LF', 'uca_out');
+    if (before === null || after === null) throw new Error('outboard missing');
+    expect(after.value[2] - before.value[2]).toBeCloseTo(1, 12);
 
-    expect(frontMoved?.inferredRadiusMm).toBeCloseTo(34.0, 12);
-    expect(frontMoved?.inferredDiameterMm).toBeCloseTo(68.0, 12);
-    expect(frontMoved?.storedTyreRadiusMm).toBeCloseTo(32.0, 12);
-    expect(rearMoved?.inferredDiameterMm).toBeCloseTo(64.0, 12);
-    expect(derivedGroundPlaneMm(moved)).toBeCloseTo(derivedGroundPlaneMm(base) ?? 0, 12);
-    expect(moved.corners.LF?.points.lca_out?.value).toEqual(
-      base.corners.LF?.points.lca_out?.value,
-    );
-    expect(moved.axles.front.tyreRadius?.value).toBe(base.axles.front.tyreRadius?.value);
-
-    const raised = update(base, "ride_height", 6.0);
-    expect(inferredWheel(raised, "front")?.inferredDiameterMm).toBeCloseTo(66.0, 12);
-    expect(inferredWheel(raised, "rear")?.inferredDiameterMm).toBeCloseTo(66.0, 12);
+    for (const key of CHASSIS_POINTS) {
+      expect(JSON.stringify(bigger.value.corners.LF?.points[key])).toBe(
+        JSON.stringify(base.corners.LF?.points[key]),
+      );
+    }
   });
 
-  it("has no car-model schema path, document key or exported edit for a user-supplied wheel diameter", async () => {
+  it('reports the stored radius as the wheel-centre height above ground, with no second diameter to disagree with it', () => {
+    const base = parse(rawModel);
+    for (const axle of ['front', 'rear'] as const) {
+      const wheel = wheelSize(base, axle);
+      if (wheel === null) throw new Error('wheel missing');
+      expect(wheel.heightAboveGroundMm).toBeCloseTo(wheel.radiusMm, 12);
+      expect(wheel.diameterMm).toBeCloseTo(64.0, 12);
+      expect(inferredWheel(base, axle).consistencyMessage).toBeNull();
+      expect(inferredWheel(base, axle).inferredDiameterMm).toBeCloseTo(64.0, 12);
+    }
+
+    const raised = update(base, 'ride_height', 6.0);
+    expect(wheelSize(raised, 'front')?.heightAboveGroundMm).toBeCloseTo(32.0, 12);
+    expect(inferredWheel(raised, 'front').inferredDiameterMm).toBeCloseTo(64.0, 12);
+  });
+
+  it('still has no schema path or document key for a separate wheel-diameter field', () => {
     const base = parse(rawModel);
     expect(
       fieldPaths.carModel.some((path) => /(wheel|tyre|tire).*diameter/i.test(path)),
     ).toBe(false);
     expect(JSON.stringify(base.raw)).not.toMatch(/(wheel|tyre|tire)[^"]*diameter/i);
-    expect("wheelDiameter" in base).toBe(false);
-    const data = await import("../src/index.js");
-    expect(
-      Object.keys(data).filter((name) => /(wheel|tyre|tire).*diameter/i.test(name)),
-    ).toEqual([]);
+    expect('wheelDiameter' in base).toBe(false);
   });
 
-  it("surfaces the inferred-vs-recorded wheel note above 0.5 mm and stays silent below it", () => {
+  it('keeps the reference car own golden values', () => {
     const base = parse(rawModel);
-    expect(inferredWheel(base, "front")?.consistencyMessage).toBeNull();
-
-    const above = movePoint(base, "LF", 26.0);
-    const message = inferredWheel(above, "front")?.consistencyMessage ?? "";
-    expect(message).toContain("66.0 mm across");
-    expect(message).toContain("records 64.0 mm");
-    expect(message).toContain("check the wheel centre height or the ride height");
-
-    const below = movePoint(base, "LF", 25.4);
-    expect(inferredWheel(below, "front")?.consistencyMessage).toBeNull();
-
-    const raised = update(base, "ride_height", 6.0);
-    expect(inferredWheel(raised, "front")?.consistencyMessage).toContain("66.0 mm across");
-  });
-
-  it("keeps the reference car's own golden values", () => {
-    const base = parse(rawModel);
-    const frontRates = rates(base, "front");
+    const frontRates = rates(base, 'front');
     const rollInput = buildRollStiffnessInput(base);
     if (!rollInput.ok) throw new Error(JSON.stringify(rollInput.errors));
     const roll = solveRollStiffness(rollInput.value);

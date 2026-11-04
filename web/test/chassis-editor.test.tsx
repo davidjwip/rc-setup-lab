@@ -6,7 +6,7 @@ import {
   chassisDatum,
   parseCarModel,
   updateChassisValue,
-  updateCornerPointMm,
+  updateWheelDiameter,
   type CarModelDocument,
 } from '@setuplab/data';
 import { buildFrontViewScene, solveFrontView } from '@setuplab/physics';
@@ -32,10 +32,21 @@ function update(
   return edited.value;
 }
 
-function moveWheelCentre(model: CarModelDocument, zMm: number): CarModelDocument {
-  const edited = updateCornerPointMm(model, 'LF', 'wc', 2, zMm);
+function setWheelDiameter(
+  model: CarModelDocument,
+  axle: 'front' | 'rear',
+  diameterMm: number,
+): CarModelDocument {
+  const edited = updateWheelDiameter(model, axle, diameterMm);
   if (!edited.ok) throw new Error(JSON.stringify(edited.errors));
   return edited.value;
+}
+
+function fieldText(html: string, field: string): string {
+  const escaped = field.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return (
+    html.match(new RegExp(`data-field="${escaped}"[^>]*>([^<]*)<`))?.[1] ?? ''
+  );
 }
 
 function inputTag(html: string, label: string): string {
@@ -92,31 +103,34 @@ describe('chassis panel', () => {
     expect(html).toContain('field-unit">mm');
   });
 
-  it('shows both axles inferred wheel diameters with an inferred badge and no diameter input', () => {
+  it('shows labelled wheel-diameter inputs and the derived hub height for both axles', () => {
     const html = renderChassis(referenceModel());
 
-    expect(html).toContain('Front wheel diameter');
-    expect(html).toContain('Rear wheel diameter');
-    expect(html).toContain('inferred');
-    expect(html).toContain('64.0 mm');
+    expect(inputTag(html, 'Front wheel diameter in mm')).toContain('value="64"');
+    expect(inputTag(html, 'Rear wheel diameter in mm')).toContain('value="64"');
+    expect(html).toContain('Front hub z (chassis frame)');
+    expect(html).toContain('Rear hub z (chassis frame)');
+    expect(html).toContain('Front wheel centre above ground');
     expect(html).toContain('Plate top above ground');
     expect(html).toContain('Ground plane z (chassis frame)');
-    expect(html).not.toMatch(/<input[^>]*(diameter|wheel diameter)/i);
+    expect(html).not.toContain('inferred');
   });
 
-  it('shows the quiet consistency note above 0.5 mm and hides it below', () => {
+  it('keeps the wheel-centre-above-ground readout equal to the radius at every ride height and diameter', () => {
     const base = referenceModel();
-    expect(renderChassis(base)).not.toContain(
-      'check the wheel centre height or the ride height',
-    );
+    const raised = update(base, 'ride_height', 6.0);
+    const bigger = setWheelDiameter(base, 'front', 66.0);
 
-    const above = renderChassis(moveWheelCentre(base, 26.0));
-    expect(above).toContain('66.0 mm across');
-    expect(above).toContain('records 64.0 mm');
-    expect(above).toContain('check the wheel centre height or the ride height');
+    for (const model of [base, raised]) {
+      const html = renderChassis(model);
+      expect(fieldText(html, 'front_wheel_centre_height')).toBe('32.0 mm');
+      expect(fieldText(html, 'rear_wheel_centre_height')).toBe('32.0 mm');
+      expect(html).not.toContain('check the wheel centre height or the ride height');
+    }
 
-    const below = renderChassis(moveWheelCentre(base, 25.4));
-    expect(below).not.toContain('check the wheel centre height or the ride height');
+    const biggerHtml = renderChassis(bigger);
+    expect(fieldText(biggerHtml, 'front_wheel_centre_height')).toBe('33.0 mm');
+    expect(fieldText(biggerHtml, 'rear_wheel_centre_height')).toBe('32.0 mm');
   });
 
   it('renders the same per-vehicle panel in Front, Rear and Both', () => {
@@ -133,7 +147,7 @@ describe('chassis panel', () => {
     }
   });
 
-  it('moves the drawing ground line and its accessible roll-centre value when ride height changes', () => {
+  it('keeps the road line fixed but rotates the arms and changes the roll centre when ride height changes', () => {
     const base = referenceModel();
     const raised = update(base, 'ride_height', 6.0);
     const baseDatum = chassisDatum(base);
@@ -150,11 +164,11 @@ describe('chassis panel', () => {
     );
 
     expect(groundLineY(baseHtml)).not.toBe('');
-    expect(groundLineY(baseHtml)).not.toBe(groundLineY(raisedHtml));
+    expect(groundLineY(raisedHtml)).toBe(groundLineY(baseHtml));
     expect(contactPatchPath(baseHtml)).not.toBe('');
-    expect(contactPatchPath(baseHtml)).not.toBe(contactPatchPath(raisedHtml));
+    expect(contactPatchPath(raisedHtml)).toBe(contactPatchPath(baseHtml));
     expect(baseHtml).toContain('9.97 mm');
-    expect(raisedHtml).toContain('10.97 mm');
+    expect(raisedHtml).toContain('11.58 mm');
     expect(raisedHtml).toContain('ground (derived, z -8.0 mm)');
   });
 });

@@ -26,20 +26,25 @@ export interface MeasuredValue<T> {
 export type Point3Mm = readonly [number, number, number];
 export type MeasuredPoint = MeasuredValue<Point3Mm>;
 
-export type CornerPointKey =
+/**
+ * Chassis-fixed points are stored absolute in the chassis frame; hub-fixed
+ * points are stored as offsets from the derived wheel centre. `wc` is always
+ * derived and is accepted here only by the composition helpers.
+ */
+export type ChassisFixedPointKey =
   | 'lca_in_a'
   | 'lca_in_b'
-  | 'lca_out'
   | 'uca_in'
   | 'uca_in_a'
   | 'uca_in_b'
-  | 'uca_out'
-  | 'wc'
   | 'tie_in'
-  | 'tie_out'
   | 'damper_lo'
   | 'damper_up'
   | 'arb_drop';
+
+export type HubFixedPointKey = 'lca_out' | 'uca_out' | 'tie_out';
+
+export type CornerPointKey = ChassisFixedPointKey | HubFixedPointKey | 'wc';
 
 export interface ArmTypeDocument {
   readonly lower: 'hinge' | 'wishbone';

@@ -29,8 +29,10 @@ describe('hardpoint editor follows the selected axle', () => {
     expect(inputTag(html, 'Upper link inner z in mm')).toContain('value="45"');
     expect(inputTag(html, 'Upper link inner z in mm')).not.toContain('value="38"');
     expect(inputTag(html, 'Lower arm inner (hinge point) z in mm')).toContain('value="9"');
-    expect(inputTag(html, 'Lower ball joint y in mm')).toContain('value="80"');
-    expect(inputTag(html, 'Upper ball stud z in mm')).toContain('value="46"');
+    expect(inputTag(html, 'Lower ball joint offset y in mm')).toContain('value="-7"');
+    expect(inputTag(html, 'Upper ball stud offset z in mm')).toContain('value="21"');
+    expect(html).toContain('80.0 mm, 0.0 mm');
+    expect(html).toContain('73.5 mm, 46.0 mm');
     expect(html).toContain('Rear-view drawing');
     expect(html).toContain('Hardpoints · rear-left');
   });
@@ -40,9 +42,9 @@ describe('hardpoint editor follows the selected axle', () => {
     const rear = renderToStaticMarkup(createElement(AnalysisView, { initialAxle: 'rear' }));
 
     expect(inputTag(front, 'Tie rod inner y in mm')).not.toBe('');
-    expect(inputTag(front, 'Tie rod outer z in mm')).not.toBe('');
+    expect(inputTag(front, 'Tie rod outer offset z in mm')).not.toBe('');
     expect(inputTag(rear, 'Tie rod inner y in mm')).toContain('value="32"');
-    expect(inputTag(rear, 'Tie rod outer z in mm')).toContain('value="23"');
+    expect(inputTag(rear, 'Tie rod outer offset z in mm')).toContain('value="-2"');
   });
 
   it('edits the damper mounts at both ends and shows the derived motion ratio beside them', () => {

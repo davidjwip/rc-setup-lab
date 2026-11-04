@@ -20,10 +20,14 @@ import type {
   SpringLocation,
 } from './model.js';
 
-/** The datum this build writes. `1.0.x` is the ground-plane origin and migrates. */
-export const CURRENT_SCHEMA_VERSION = '1.1.0';
+/** The schema this build writes: hub-relative outboard points, derived hub. */
+export const CURRENT_SCHEMA_VERSION = '1.2.0';
 
+const CHASSIS_DATUM_SCHEMA_VERSION = '1.1.0';
 const DATUM_MIGRATION_SOURCE = 's_datum_migration';
+const HUB_MIGRATION_SOURCE = 's_hub_migration';
+
+const HUB_FIXED_POINT_KEYS: readonly string[] = ['lca_out', 'uca_out', 'tie_out'];
 const FRAME_ORIGIN =
   'top surface of the chassis plate, rear axle centre, vehicle centreline';
 /** A v1 model without a plate thickness cannot have measured the datum; use the reference plate. */
@@ -57,6 +61,17 @@ function asString(value: unknown): string | null {
 
 function asNumber(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+function asPoint(value: unknown): [number, number, number] | null {
+  if (!Array.isArray(value) || value.length !== 3) return null;
+  const coordinates: number[] = [];
+  for (const coordinate of value) {
+    const number = asNumber(coordinate);
+    if (number === null) return null;
+    coordinates.push(number);
+  }
+  return coordinates as [number, number, number];
 }
 
 function isCornerKey(value: string): value is CornerKey {
@@ -400,7 +415,7 @@ function readArmType(
 }
 
 function requiredPointKeys(armType: ArmTypeDocument): readonly CornerPointKey[] {
-  const keys: CornerPointKey[] = ['lca_in_a', 'lca_in_b', 'lca_out', 'uca_out', 'wc'];
+  const keys: CornerPointKey[] = ['lca_in_a', 'lca_in_b', 'lca_out', 'uca_out'];
   if (armType.upper === 'single_link') return [...keys, 'uca_in'];
   return [...keys, 'uca_in_a', 'uca_in_b'];
 }
@@ -447,7 +462,6 @@ function readCorner(
     'uca_in_a',
     'uca_in_b',
     'uca_out',
-    'wc',
     'tie_in',
     'tie_out',
     'damper_lo',
@@ -614,7 +628,7 @@ function migrateToChassisDatum(rawInput: Record<string, unknown>): Record<string
   const rack = asRecord(asRecord(front?.['steering'])?.['rack']);
   if (rack !== null) shiftValueZ(rack['z'], offsetMm);
 
-  raw['schema_version'] = CURRENT_SCHEMA_VERSION;
+  raw['schema_version'] = CHASSIS_DATUM_SCHEMA_VERSION;
   const frame = ensureRecord(raw, 'frame');
   frame['origin'] = FRAME_ORIGIN;
 
@@ -630,6 +644,121 @@ function migrateToChassisDatum(rawInput: Record<string, unknown>): Record<string
   return raw;
 }
 
+/**
+ * v1.1.0 stored every corner point as an absolute chassis-frame coordinate.
+ * v1.2.0 stores the three upright points (`lca_out`, `uca_out`, `tie_out`) as
+ * offsets from the wheel centre and derives the wheel centre from the wheel
+ * radius, track, wheelbase, plate thickness and ride height:
+ *
+ * ```text
+ * offset = outboard - wc
+ * hub.z  = wheel_radius - (thickness + ride_height)
+ * ```
+ *
+ * The wheel radius is stored explicitly (`axles.<axle>.tyre_radius`). Where the
+ * old document's stored radius disagreed with the wheel centre it is rewritten
+ * from `wc.z + thickness + ride_height`, because the old wheel centre is what
+ * the geometry actually used. A migrated document exported and reloaded is not
+ * migrated twice.
+ */
+function migrateToHubRelative(rawInput: Record<string, unknown>): Record<string, unknown> {
+  const version = asString(rawInput['schema_version']);
+  if (version === null) return rawInput;
+  const parts = version.split('.');
+  const major = Number.parseInt(parts[0] ?? '', 10);
+  const minor = Number.parseInt(parts[1] ?? '', 10);
+  if (major !== 1 || minor >= 2) return rawInput;
+
+  const body = asRecord(rawInput['body']);
+  const thickness = asNumber(
+    asRecord(asRecord(body?.['chassis'])?.['thickness'])?.['value'],
+  );
+  const rideHeight = asNumber(asRecord(body?.['reference_ride_height'])?.['value']);
+  if (thickness === null || rideHeight === null) return rawInput;
+
+  const raw = cloneRecord(rawInput);
+  const migratedBody = asRecord(raw['body']);
+  const wheelbase = asNumber(asRecord(migratedBody?.['wheelbase'])?.['value']);
+  const rawCorners = asRecord(raw['corners']);
+  const rawAxles = asRecord(raw['axles']);
+
+  const wcByAxle: Record<'front' | 'rear', [number, number, number] | null> = {
+    front: null,
+    rear: null,
+  };
+  if (rawCorners !== null) {
+    for (const [cornerKey, cornerValue] of Object.entries(rawCorners)) {
+      if (!isCornerKey(cornerKey)) continue;
+      const points = asRecord(asRecord(cornerValue)?.['points']);
+      const wc = points === null ? null : asPoint(asRecord(points['wc'])?.['value']);
+      if (wc === null) continue;
+      const axleKey: 'front' | 'rear' =
+        cornerKey === 'LF' || cornerKey === 'RF' ? 'front' : 'rear';
+      if (wcByAxle[axleKey] === null) wcByAxle[axleKey] = wc;
+    }
+  }
+
+  // Store the radius explicitly. Using the old wheel centre keeps the hub where
+  // the geometry had it even if the old tyre_radius disagreed.
+  for (const axleKey of ['front', 'rear'] as const) {
+    const wc = wcByAxle[axleKey];
+    const axle = asRecord(rawAxles?.[axleKey]);
+    if (wc === null || axle === null) continue;
+    const impliedRadiusMm = wc[2] + thickness + rideHeight;
+    const existing = asRecord(axle['tyre_radius']);
+    if (existing === null || asNumber(existing['value']) === null) {
+      axle['tyre_radius'] = { value: impliedRadiusMm, source: HUB_MIGRATION_SOURCE };
+    } else {
+      const stored = asNumber(existing['value']);
+      if (stored === null || Math.abs(stored - impliedRadiusMm) > 1e-9) {
+        existing['value'] = impliedRadiusMm;
+        existing['source'] = HUB_MIGRATION_SOURCE;
+      }
+    }
+  }
+
+  // Rewrite each stored outboard point as an offset and drop the stored hub.
+  if (rawCorners !== null) {
+    for (const cornerValue of Object.values(rawCorners)) {
+      const points = asRecord(asRecord(cornerValue)?.['points']);
+      if (points === null) continue;
+      const wc = asPoint(asRecord(points['wc'])?.['value']);
+      if (wc === null) continue;
+      for (const pointKey of HUB_FIXED_POINT_KEYS) {
+        const stored = asRecord(points[pointKey]);
+        const absolute = stored === null ? null : asPoint(stored['value']);
+        if (stored === null || absolute === null) continue;
+        stored['value'] = [
+          absolute[0] - wc[0],
+          absolute[1] - wc[1],
+          absolute[2] - wc[2],
+        ];
+      }
+      delete points['wc'];
+    }
+  }
+
+  raw['schema_version'] = CURRENT_SCHEMA_VERSION;
+  const sources = asRecord(raw['sources']);
+  if (sources !== null) {
+    sources[HUB_MIGRATION_SOURCE] = {
+      type: 'derived',
+      method: 'schema migration 1.1.0 → 1.2.0: hub-relative outboard points',
+      note: `outboard = stored offset + derived hub; wc removed; wheel radius stored explicitly${wheelbase === null ? '' : `; wheelbase ${wheelbase} mm`}`,
+      from: [
+        'corners.<corner>.points.wc',
+        'axles.<axle>.track',
+        'axles.<axle>.tyre_radius',
+        'body.wheelbase',
+        'body.reference_ride_height',
+        'body.chassis.thickness',
+      ],
+    };
+  }
+
+  return raw;
+}
+
 export function parseCarModel(rawInput: unknown): DataResult<CarModelDocument> {
   const inputRecord = asRecord(rawInput);
   if (inputRecord === null) {
@@ -637,7 +766,8 @@ export function parseCarModel(rawInput: unknown): DataResult<CarModelDocument> {
   }
 
   const errors: DataError[] = [];
-  const raw = migrateToChassisDatum(inputRecord);
+  const datumMigrated = migrateToChassisDatum(inputRecord);
+  const raw = migrateToHubRelative(datumMigrated);
   const schemaVersion = asString(raw['schema_version']);
   if (schemaVersion === null) {
     errors.push(dataError('missingField', 'schema_version', 'schema_version is required'));
@@ -734,6 +864,9 @@ export function parseCarModel(rawInput: unknown): DataResult<CarModelDocument> {
       errors.push(dataError('missingField', 'corners.LF', 'the left-front corner is required'));
     } else if (corners.RF === undefined && symmetry) {
       corners.RF = mirrorCorner(corners.LF);
+    }
+    if (corners.LR !== undefined && corners.RR === undefined && symmetry) {
+      corners.RR = mirrorCorner(corners.LR);
     }
   }
 

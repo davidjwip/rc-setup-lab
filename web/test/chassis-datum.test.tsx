@@ -12,7 +12,7 @@ describe('chassis datum in the UI', () => {
     const html = renderToStaticMarkup(createElement(AnalysisView));
     expect(html).toContain('top surface of the chassis plate');
     expect(html).toContain('The ground plane is derived below it');
-    expect(html).toContain('z (mm, plate top)');
+    expect(html).toContain('z / offset z (mm)');
   });
 
   it('draws the ground line as derived and keeps the datum note visible', () => {

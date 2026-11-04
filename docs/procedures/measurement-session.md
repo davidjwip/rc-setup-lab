@@ -50,13 +50,15 @@ downstream is shifted and nothing looks obviously wrong.
 
 | Field | How | Sanity check |
 |---|---|---|
-| `wc` front/rear, x | distance from the rear axle line along the plate | wheelbase 240–270 mm on a 1/10 TC |
-| `wc` y | distance from the centreline to the wheel centre mark | track 160–180 mm |
-| `wc` z | wheel centre height above the plate | equals tyre radius if the tyre is round — a 0.5 mm mismatch means the tyre is loaded or flat-spotted |
+| `body.wheelbase` | distance from the rear axle line to the front axle line along the plate | wheelbase 240–270 mm on a 1/10 TC |
+| `axles.<axle>.track` | hub face to hub face at static ride height (or contact-patch centres) | track 160–180 mm |
 | `tyre_radius` | measured, not from the maker | 30–33 mm |
 
-If `wc.z` and `tyre_radius` disagree by more than 0.5 mm, stop and find out why. That disagreement
-is the car telling you the corner is preloaded.
+There is no `wc` point to record: the wheel centre is **derived** from the wheel radius, track,
+wheelbase, plate thickness and ride height (D-25). Because it is built from the radius, the wheel
+centre is exactly one radius above the ground at every ride height, so the old `wc.z`-versus-radius
+mismatch check no longer exists. If a wheel looks loaded or flat-spotted, fix the tyre and re-measure
+the radius.
 
 ---
 
@@ -77,10 +79,13 @@ For each corner (`LF`, `RF`, `LR`, `RR`) record x, y, z of:
 | `uca_out` | centre of the upper ball stud on the carrier | |
 | `tie_in` | inner tie-rod ball (rack end) | usually needs the top deck or bumper off — this is the one that decides whether bump steer ships |
 | `tie_out` | outer tie-rod ball on the steering arm | |
-| `wc` | wheel centre | mark it with a plumb line onto the plate first |
 | `damper_lo` | lower damper eye centre | |
 | `damper_up` | upper damper eye centre | with the car at ride height, not hanging |
 | `arb_drop` | ARB drop-link attachment on the lower arm | only if a bar is fitted |
+
+Measure every point **absolute**, as a chassis-frame `[x, y, z]`. The app stores `lca_out`, `uca_out`
+and `tie_out` as offsets from the derived wheel centre and the rest absolute; that conversion happens on
+import, so there is no separate offset to calculate by hand.
 
 **Sanity checks as you go** — if one fails, the point is wrong, not the car:
 

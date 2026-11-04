@@ -26,12 +26,14 @@ export type {
   CarModelDocument,
   CgComponentDocument,
   CgDocument,
+  ChassisFixedPointKey,
   CornerDamperDocument,
   CornerDocument,
   CornerKey,
   CornerPointKey,
   Frame,
   FrontAxleDocument,
+  HubFixedPointKey,
   MassDocument,
   MeasuredPoint,
   MeasuredValue,
@@ -40,6 +42,20 @@ export type {
   SourceType,
   SpringLocation,
 } from './model.js';
+export {
+  CHASSIS_FIXED_POINT_KEYS,
+  HUB_FIXED_POINT_KEYS,
+  absoluteCornerPointMm,
+  axleForCorner,
+  hubCentreMeasured,
+  hubCentreMm,
+  isHubFixedPointKey,
+  wheelSize,
+  type AxleKey,
+  type HubCentre,
+  type StoredCornerPointKey,
+  type WheelSize,
+} from './hub.js';
 export { CURRENT_SCHEMA_VERSION, parseCarModel, parseCarModelJson } from './parse.js';
 export {
   RIDE_HEIGHT_MISMATCH_TOLERANCE_MM,
@@ -53,7 +69,6 @@ export {
   tyreRadiusConsistency,
   wheelCentreHeightAboveGroundMm,
   wheelGroundPlaneMm,
-  type AxleKey,
   type ChassisDatum,
   type InferredWheel,
   type TyreRadiusConsistency,
@@ -81,5 +96,6 @@ export {
   updateChassisThickness,
   updateChassisValue,
   updateCornerPointMm,
+  updateWheelDiameter,
   type ChassisValueField,
 } from './edit.js';

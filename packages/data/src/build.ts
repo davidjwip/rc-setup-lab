@@ -17,6 +17,7 @@ import {
   type Vec3,
 } from '@setuplab/physics';
 import { dataError, fail, ok, type DataError, type DataResult } from './errors.js';
+import { absoluteCornerPointMm, hubCentreMeasured } from './hub.js';
 import type {
   ArbDocument,
   AxleDocument,
@@ -153,23 +154,23 @@ function sourcedPoint3(
 }
 
 function point3(
-  corner: CornerDocument,
+  model: CarModelDocument,
   cornerKey: CornerKey,
   pointKey: CornerPointKey,
   offsetMm: number,
 ): Sourced<Vec3> | null {
-  const measured = corner.points[pointKey];
-  return measured === undefined ? null : sourcedPoint3(cornerKey, pointKey, measured, offsetMm);
+  const measured = absoluteCornerPointMm(model, cornerKey, pointKey);
+  return measured === null ? null : sourcedPoint3(cornerKey, pointKey, measured, offsetMm);
 }
 
 function point(
-  corner: CornerDocument,
+  model: CarModelDocument,
   cornerKey: CornerKey,
   pointKey: CornerPointKey,
   offsetMm: number,
 ): Sourced<Vec2> | null {
-  const measured = corner.points[pointKey];
-  return measured === undefined ? null : sourcedPoint(cornerKey, pointKey, measured, offsetMm);
+  const measured = absoluteCornerPointMm(model, cornerKey, pointKey);
+  return measured === null ? null : sourcedPoint(cornerKey, pointKey, measured, offsetMm);
 }
 
 /**
@@ -186,9 +187,9 @@ function derivedArbMotionRatio(
   const offsetMm = datumOffsetMm(model);
   if (offsetMm === null) return null;
 
-  const inner = point(corner.value, cornerKey, 'lca_in_a', offsetMm);
-  const outer = point(corner.value, cornerKey, 'lca_out', offsetMm);
-  const drop = point(corner.value, cornerKey, 'arb_drop', offsetMm);
+  const inner = point(model, cornerKey, 'lca_in_a', offsetMm);
+  const outer = point(model, cornerKey, 'lca_out', offsetMm);
+  const drop = point(model, cornerKey, 'arb_drop', offsetMm);
   if (inner === null || outer === null || drop === null) return null;
 
   const armY = outer.value.y - inner.value.y;
@@ -274,17 +275,17 @@ export function buildFrontViewInput(
   if (offsetMm === null) {
     return fail(missingDatumErrors());
   }
-  const lcaIn = point(corner.value, cornerKey, 'lca_in_a', offsetMm);
-  const lcaOut = point(corner.value, cornerKey, 'lca_out', offsetMm);
+  const lcaIn = point(model, cornerKey, 'lca_in_a', offsetMm);
+  const lcaOut = point(model, cornerKey, 'lca_out', offsetMm);
   const upperInnerKey: CornerPointKey =
     corner.value.armType.upper === 'single_link' ? 'uca_in' : 'uca_in_a';
-  const ucaIn = point(corner.value, cornerKey, upperInnerKey, offsetMm);
-  const ucaOut = point(corner.value, cornerKey, 'uca_out', offsetMm);
-  const wheelCentre = point(corner.value, cornerKey, 'wc', offsetMm);
-  const tieIn = point(corner.value, cornerKey, 'tie_in', offsetMm);
-  const tieOut = point(corner.value, cornerKey, 'tie_out', offsetMm);
-  const damperLo = point(corner.value, cornerKey, 'damper_lo', offsetMm);
-  const damperUp = point(corner.value, cornerKey, 'damper_up', offsetMm);
+  const ucaIn = point(model, cornerKey, upperInnerKey, offsetMm);
+  const ucaOut = point(model, cornerKey, 'uca_out', offsetMm);
+  const wheelCentre = point(model, cornerKey, 'wc', offsetMm);
+  const tieIn = point(model, cornerKey, 'tie_in', offsetMm);
+  const tieOut = point(model, cornerKey, 'tie_out', offsetMm);
+  const damperLo = point(model, cornerKey, 'damper_lo', offsetMm);
+  const damperUp = point(model, cornerKey, 'damper_up', offsetMm);
 
   if (lcaIn === null) {
     errors.push(dataError('missingField', `corners.${cornerKey}.points.lca_in_a`, 'required'));
@@ -393,7 +394,7 @@ export function buildToeInput(
   ];
   const points: Partial<Record<CornerPointKey, Sourced<Vec3>>> = {};
   for (const key of keys) {
-    const value = point3(corner.value, cornerKey, key, offsetMm);
+    const value = point3(model, cornerKey, key, offsetMm);
     if (value === null) {
       errors.push(dataError('missingField', `corners.${cornerKey}.points.${key}`, 'required for bump steer'));
     } else {
@@ -519,8 +520,8 @@ export function buildRatesInput(
   const errors: DataError[] = [];
   const offsetMm = datumOffsetMm(model);
   if (offsetMm === null) return fail(missingDatumErrors());
-  const damperLo = point(corner.value, cornerKey, 'damper_lo', offsetMm);
-  const damperUp = point(corner.value, cornerKey, 'damper_up', offsetMm);
+  const damperLo = point(model, cornerKey, 'damper_lo', offsetMm);
+  const damperUp = point(model, cornerKey, 'damper_up', offsetMm);
   const springRate = axle.springRate;
 
   if (damperLo === null) {

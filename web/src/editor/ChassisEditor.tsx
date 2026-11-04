@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  inferredWheel,
+  hubCentreMm,
+  wheelSize,
   type CarModelDocument,
   type ChassisValueField,
 } from '@setuplab/data';
@@ -22,8 +23,10 @@ function shown(value: number | null): string {
 export function ChassisEditor({ model, edited, onCommit }: ChassisEditorProps) {
   const [error, setError] = useState<string | null>(null);
   const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
-  const front = inferredWheel(model, 'front');
-  const rear = inferredWheel(model, 'rear');
+  const frontWheel = wheelSize(model, 'front');
+  const rearWheel = wheelSize(model, 'rear');
+  const frontHub = hubCentreMm(model, 'LF');
+  const rearHub = hubCentreMm(model, 'LR');
   const plateTopAboveGroundMm =
     model.chassisThickness !== null && model.referenceRideHeight !== null
       ? model.chassisThickness.value + model.referenceRideHeight.value
@@ -85,6 +88,24 @@ export function ChassisEditor({ model, edited, onCommit }: ChassisEditorProps) {
       range: CHASSIS_RANGES.thickness,
       value: model.chassisThickness?.value ?? null,
     },
+    {
+      field: 'front_wheel_diameter',
+      label: 'Front wheel diameter',
+      range: CHASSIS_RANGES.front_wheel_diameter,
+      value:
+        model.axles.front.tyreRadius === null
+          ? 64.0
+          : model.axles.front.tyreRadius.value * 2,
+    },
+    {
+      field: 'rear_wheel_diameter',
+      label: 'Rear wheel diameter',
+      range: CHASSIS_RANGES.rear_wheel_diameter,
+      value:
+        model.axles.rear?.tyreRadius === null || model.axles.rear === null
+          ? 64.0
+          : model.axles.rear.tyreRadius.value * 2,
+    },
   ];
 
   return (
@@ -93,8 +114,9 @@ export function ChassisEditor({ model, edited, onCommit }: ChassisEditorProps) {
         <div>
           <h2>Chassis</h2>
           <p className="hint">
-            Ride height and plate thickness locate the ground plane below the plate. They are
-            per-vehicle, not per corner, so the same values apply to the front and rear views.
+            Ride height, plate thickness and wheel diameter place the derived hub. They are
+            per-vehicle values, so the same chassis and wheel settings apply to the front and rear
+            views.
           </p>
         </div>
         <span className="pill">{edited ? 'edited this session' : 'millimetres'}</span>
@@ -136,32 +158,28 @@ export function ChassisEditor({ model, edited, onCommit }: ChassisEditorProps) {
           <dd>{shown(groundPlaneMm)}</dd>
         </div>
         {[
-          { name: 'Front', wheel: front },
-          { name: 'Rear', wheel: rear },
-        ].map(({ name, wheel }) => (
+          { name: 'Front', hub: frontHub, wheel: frontWheel },
+          { name: 'Rear', hub: rearHub, wheel: rearWheel },
+        ].map(({ name, hub, wheel }) => (
           <div key={name} data-field={`${name.toLowerCase()}_wheel`}>
+            <dt>{name} hub z (chassis frame)</dt>
+            <dd>{shown(hub?.z ?? null)}</dd>
             <dt>{name} wheel centre above ground</dt>
-            <dd>{shown(wheel.heightAboveGroundMm)}</dd>
-            <dt>
-              {name} wheel diameter{' '}
-              <span className="estimate-badge">inferred</span>
-            </dt>
-            <dd data-field={`${name.toLowerCase()}_inferred_diameter`}>
-              {shown(wheel.inferredDiameterMm)}
+            <dd data-field={`${name.toLowerCase()}_wheel_centre_height`}>
+              {shown(wheel?.heightAboveGroundMm ?? null)}
             </dd>
-            {wheel.consistencyMessage === null ? null : (
-              <p className="chassis-note" role="status">
-                <strong>{name}:</strong> {wheel.consistencyMessage}
-              </p>
-            )}
+            <dt>{name} wheel diameter</dt>
+            <dd data-field={`${name.toLowerCase()}_wheel_diameter`}>
+              {shown(wheel?.diameterMm ?? null)}
+            </dd>
           </div>
         ))}
       </dl>
 
       <p className="footnote">
-        Wheel diameter is inferred from the wheel centre height and the ground plane
-        (<code>2 × (wc.z − z_ground)</code>). It is never an input and it never rewrites the
-        axle&apos;s recorded tyre radius.
+        The hub is derived, never stored: <code>hub.z = wheel_radius − (plate thickness +
+        ride height)</code>. Every outboard ball stud rides with it, so raising ride height moves the
+        hub and the outboard points down in the chassis frame while the inner pivots stay put.
       </p>
 
       {error === null ? null : (
