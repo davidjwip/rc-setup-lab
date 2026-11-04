@@ -47,10 +47,16 @@ export {
   derivedGroundPlaneMm,
   groundOffsetMm,
   impliedRideHeightMm,
+  inferredWheel,
   reportedRollCentreHeightM,
   rideHeightConsistency,
+  tyreRadiusConsistency,
+  wheelCentreHeightAboveGroundMm,
   wheelGroundPlaneMm,
+  type AxleKey,
   type ChassisDatum,
+  type InferredWheel,
+  type TyreRadiusConsistency,
 } from './datum.js';
 export {
   SIDE_SIGN,
@@ -71,5 +77,9 @@ export {
   updateAxleArbValue,
   updateAxleDamperCoefficient,
   updateAxleSpringRate,
+  updateChassisRideHeight,
+  updateChassisThickness,
+  updateChassisValue,
   updateCornerPointMm,
+  type ChassisValueField,
 } from './edit.js';

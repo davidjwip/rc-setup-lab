@@ -19,6 +19,8 @@ import type { CarModelDocument, CornerKey, MeasuredPoint, MeasuredValue } from '
 /** A disagreement above this is surfaced; at or below it the values agree. */
 export const RIDE_HEIGHT_MISMATCH_TOLERANCE_MM = 0.5;
 
+export type AxleKey = 'front' | 'rear';
+
 const LENGTH_UNIT = 'mm';
 
 export interface ChassisDatum {
@@ -32,6 +34,13 @@ export interface ChassisDatum {
   readonly wheelGroundPlaneMm: number | null;
   readonly tyreRadiusMm: number | null;
   readonly wheelCentreZMm: number | null;
+  /** `wc.z - z_ground`: the wheel-centre height the plate datum implies. */
+  readonly wheelCentreHeightMm: number | null;
+  /** The radius the wheel centre height implies; compared with the stored radius. */
+  readonly impliedTyreRadiusMm: number | null;
+  /** `implied_tyre_radius - stored_radius`; positive means the centre sits too high. */
+  readonly radiusMismatchMm: number | null;
+  readonly radiusMismatchMessage: string | null;
   readonly impliedRideHeightMm: number | null;
   readonly mismatchMm: number | null;
   readonly mismatchMessage: string | null;
@@ -68,6 +77,99 @@ function mismatchText(storedMm: number, impliedMm: number): string {
   return `Ride height says ${storedMm.toFixed(1)} ${LENGTH_UNIT}, the wheel centre and tyre size imply ${impliedMm.toFixed(1)} ${LENGTH_UNIT} — check which you measured.`;
 }
 
+function radiusMismatchText(heightMm: number, storedRadiusMm: number): string {
+  const deltaMm = heightMm - storedRadiusMm;
+  const magnitude = Math.abs(deltaMm).toFixed(1).replace(/\.0$/, '');
+  const rideHeightCause = deltaMm > 0 ? 'higher' : 'lower';
+  const wheelCentreCause = deltaMm > 0 ? 'low' : 'high';
+  return `Wheel centre sits ${heightMm.toFixed(1)} ${LENGTH_UNIT} above the ground; that is ${(heightMm * 2).toFixed(1)} ${LENGTH_UNIT} across, but the model records ${(storedRadiusMm * 2).toFixed(1)} ${LENGTH_UNIT} — either the ride height is ${magnitude} ${LENGTH_UNIT} ${rideHeightCause} than measured or the wheel centre is ${magnitude} ${LENGTH_UNIT} ${wheelCentreCause}; check the wheel centre height or the ride height.`;
+}
+
+function axleCorner(axle: AxleKey): CornerKey {
+  return axle === 'front' ? 'LF' : 'LR';
+}
+
+/** The stored wheel centre's z in the chassis frame, or null when it is absent. */
+function wheelCentreZMm(model: CarModelDocument, axle: AxleKey): number | null {
+  const wheelCentre = model.corners[axleCorner(axle)]?.points.wc ?? null;
+  return wheelCentre === null ? null : wheelCentre.value[2];
+}
+
+/** `wc.z - z_ground`, the wheel-centre height above the plate-derived ground. */
+export function wheelCentreHeightAboveGroundMm(
+  model: CarModelDocument,
+  axle: AxleKey,
+): number | null {
+  const offsetMm = groundOffsetMm(model);
+  const centreZMm = wheelCentreZMm(model, axle);
+  return offsetMm === null || centreZMm === null ? null : centreZMm + offsetMm;
+}
+
+export interface InferredWheel {
+  readonly axle: AxleKey;
+  /** `wc.z - z_ground`: the wheel centre's height above the derived ground. */
+  readonly heightAboveGroundMm: number | null;
+  /** The radius the wheel centre height implies; the ground plane is its origin. */
+  readonly inferredRadiusMm: number | null;
+  readonly inferredDiameterMm: number | null;
+  /** The radius recorded on the axle, shown for comparison only. */
+  readonly storedTyreRadiusMm: number | null;
+  readonly mismatchMm: number | null;
+  readonly consistencyMessage: string | null;
+}
+
+/**
+ * The wheel diameter the plate-derived ground plane and the stored wheel centre
+ * imply. It is never read from `tyre_radius`: the stored radius is compared
+ * against it, and a disagreement above 0.5 mm names both numbers. The ground
+ * plane is never moved to make the two agree.
+ */
+export function inferredWheel(model: CarModelDocument, axle: AxleKey): InferredWheel {
+  const heightAboveGroundMm = wheelCentreHeightAboveGroundMm(model, axle);
+  const storedTyreRadiusMm = finite(model.axles[axle]?.tyreRadius ?? null);
+  const inferredRadiusMm = heightAboveGroundMm;
+  const inferredDiameterMm = inferredRadiusMm === null ? null : inferredRadiusMm * 2;
+  const mismatchMm =
+    inferredRadiusMm === null || storedTyreRadiusMm === null
+      ? null
+      : inferredRadiusMm - storedTyreRadiusMm;
+  return {
+    axle,
+    heightAboveGroundMm,
+    inferredRadiusMm,
+    inferredDiameterMm,
+    storedTyreRadiusMm,
+    mismatchMm,
+    consistencyMessage:
+      mismatchMm !== null && Math.abs(mismatchMm) > RIDE_HEIGHT_MISMATCH_TOLERANCE_MM
+        ? radiusMismatchText(inferredRadiusMm as number, storedTyreRadiusMm as number)
+        : null,
+  };
+}
+
+export interface TyreRadiusConsistency {
+  readonly axle: AxleKey;
+  readonly storedRadiusMm: number | null;
+  readonly wheelCentreHeightMm: number | null;
+  readonly mismatchMm: number | null;
+  readonly message: string | null;
+}
+
+/** The same check as `inferredWheel`, named for the stored-radius comparison. */
+export function tyreRadiusConsistency(
+  model: CarModelDocument,
+  axle: AxleKey,
+): TyreRadiusConsistency {
+  const wheel = inferredWheel(model, axle);
+  return {
+    axle,
+    storedRadiusMm: wheel.storedTyreRadiusMm,
+    wheelCentreHeightMm: wheel.heightAboveGroundMm,
+    mismatchMm: wheel.mismatchMm,
+    message: wheel.consistencyMessage,
+  };
+}
+
 /**
  * Resolve the datum for a model. Returns null when the conversion cannot be
  * made, i.e. either `body.chassis.thickness` or
@@ -96,6 +198,18 @@ export function chassisDatum(model: CarModelDocument): ChassisDatum | null {
       ? mismatchText(rideHeightMm, impliedRideHeightMm as number)
       : null;
 
+  const wheelCentreHeightMm =
+    wheelCentreZMm === null ? null : wheelCentreZMm + groundOffsetMm;
+  const impliedTyreRadiusMm = wheelCentreHeightMm;
+  const radiusMismatchMm =
+    impliedTyreRadiusMm === null || tyreRadiusMm === null
+      ? null
+      : impliedTyreRadiusMm - tyreRadiusMm;
+  const radiusMismatchMessage =
+    radiusMismatchMm !== null && Math.abs(radiusMismatchMm) > RIDE_HEIGHT_MISMATCH_TOLERANCE_MM
+      ? radiusMismatchText(impliedTyreRadiusMm as number, tyreRadiusMm as number)
+      : null;
+
   return {
     thicknessMm,
     rideHeightMm,
@@ -105,6 +219,10 @@ export function chassisDatum(model: CarModelDocument): ChassisDatum | null {
       tyreRadiusMm === null || wheelCentreZMm === null ? null : wheelCentreZMm - tyreRadiusMm,
     tyreRadiusMm,
     wheelCentreZMm,
+    wheelCentreHeightMm,
+    impliedTyreRadiusMm,
+    radiusMismatchMm,
+    radiusMismatchMessage,
     impliedRideHeightMm,
     mismatchMm,
     mismatchMessage,

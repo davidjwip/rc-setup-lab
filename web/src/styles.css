@@ -259,19 +259,22 @@ h2 {
   color: var(--muted);
 }
 
-.rates-summary {
+.rates-summary,
+.chassis-summary {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px 14px;
   margin: 14px 0 0;
 }
 
-.rates-summary div {
+.rates-summary div,
+.chassis-summary div {
   border-top: 1px solid var(--line);
   padding-top: 8px;
 }
 
-.rates-summary dt {
+.rates-summary dt,
+.chassis-summary dt {
   color: var(--muted);
   font-size: 0.72rem;
   font-weight: 700;
@@ -279,10 +282,23 @@ h2 {
   text-transform: uppercase;
 }
 
-.rates-summary dd {
+.rates-summary dd,
+.chassis-summary dd {
   margin: 4px 0 0;
   font-variant-numeric: tabular-nums;
   font-weight: 700;
+}
+
+.chassis-summary div:has(.chassis-note) {
+  grid-column: 1 / -1;
+}
+
+.chassis-note {
+  margin: 8px 0 0;
+  color: var(--warn);
+  font-size: 0.8rem;
+  font-weight: 400;
+  line-height: 1.45;
 }
 
 .motion-ratio {
