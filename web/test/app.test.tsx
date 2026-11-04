@@ -36,12 +36,14 @@ describe('Setup Lab shell', () => {
     expect(html).not.toContain('Front-view drawing');
   });
 
-  it('routes Geometry and Shock to their real pages and keeps Transfer a placeholder', () => {
+  it('routes Geometry, Shock and Transfer to their real pages', () => {
     expect(renderWithHash('#geometry')).toContain('data-axle="front"');
     expect(renderWithHash('#geometry')).not.toContain('coming in the next slice');
     expect(renderWithHash('#shock')).toContain('data-axle="front"');
     expect(renderWithHash('#shock')).toContain('data-axle="rear"');
     expect(renderWithHash('#shock')).not.toContain('coming in the next slice');
-    expect(renderWithHash('#transfer')).toContain('coming in the next slice');
+    expect(renderWithHash('#transfer')).toContain('data-axle="front"');
+    expect(renderWithHash('#transfer')).toContain('data-axle="rear"');
+    expect(renderWithHash('#transfer')).not.toContain('coming in the next slice');
   });
 });

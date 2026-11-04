@@ -9,7 +9,7 @@ export type ValueProvenance =
 
 export type ValueValidation = 'unvalidated' | 'validated' | 'not_validatable';
 
-export type ValueSize = 'small' | 'medium' | 'large';
+export type ValueSize = 'small' | 'medium' | 'large' | 'hero';
 
 export interface ValueProps {
   /** Already formatted by `web/src/format/`; never a number string with a unit in it. */
@@ -62,7 +62,7 @@ export function Value({
 
   return (
     <span
-      className={`value-block value-block--${size}`}
+      className={`value-block value-block--${size}${size === 'hero' ? ' numHero' : ''}`}
       role="group"
       aria-label={spoken}
       data-value
