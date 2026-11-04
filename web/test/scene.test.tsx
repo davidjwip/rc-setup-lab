@@ -63,7 +63,7 @@ describe('FrontViewScene', () => {
     expect(html).toContain('data-field="roll_centre"');
   });
 
-  it('renders the derived rear badge and names it in the aria-label', () => {
+  it('renders the modelled rear badge and names it in the aria-label', () => {
     const front = renderToStaticMarkup(
       createElement(FrontViewScene, {
         scene: referenceScene(),
@@ -87,12 +87,14 @@ describe('FrontViewScene', () => {
       }),
     );
 
-    const notice = 'rear geometry mirrored from the front — not measured';
+    const notice = 'rear geometry modelled — not measured';
     expect(rear).toContain(notice);
+    expect(rear).toContain('data-field="modelled_geometry"');
     expect(rear).toContain(
       `aria-label="Rear-view elevation of the left-rear corner. ${notice}"`,
     );
     expect(front).not.toContain(notice);
+    expect(front).not.toContain('data-field="modelled_geometry"');
     expect(front).toContain('aria-label="Front-view elevation of the left-front corner."');
     expect(front).not.toBe(rear);
   });

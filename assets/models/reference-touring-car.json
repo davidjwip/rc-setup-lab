@@ -48,9 +48,9 @@
       "method": "stated default 28.0 mm (D-18)",
       "by": "Setup Lab"
     },
-    "s_rear_mirrored": {
-      "type": "derived",
-      "method": "mirrored from the LF/RF corner by symmetry about the vehicle centreline; rear hardpoints NOT measured",
+    "s_modelled": {
+      "type": "modelled",
+      "method": "modelled rear geometry — not measured",
       "by": "Setup Lab"
     }
   },
@@ -145,7 +145,6 @@
       }
     },
     "rear": {
-      "derived_from": "front",
       "track": {
         "value": 174.0,
         "source": "s_worked"
@@ -153,6 +152,14 @@
       "tyre_radius": {
         "value": 32.0,
         "source": "s_worked"
+      },
+      "droop_limit_wheel": {
+        "value": 6.0,
+        "source": "s_modelled"
+      },
+      "bump_limit_wheel": {
+        "value": 6.0,
+        "source": "s_modelled"
       },
       "spring": {
         "rate": {
@@ -241,48 +248,40 @@
       },
       "points": {
         "lca_in_a": {
-          "value": [238.0, 30.0, 12.0],
-          "source": "s_rear_mirrored"
+          "value": [-20.0, 30.0, 16.0],
+          "source": "s_modelled"
         },
         "lca_in_b": {
-          "value": [272.0, 30.0, 12.0],
-          "source": "s_rear_mirrored"
+          "value": [14.0, 30.0, 16.0],
+          "source": "s_modelled"
         },
         "lca_out": {
-          "value": [259.0, 78.0, 7.0],
-          "source": "s_rear_mirrored"
+          "value": [1.0, 80.0, 7.0],
+          "source": "s_modelled"
         },
         "uca_in": {
-          "value": [250.0, 42.0, 45.0],
-          "source": "s_rear_mirrored"
+          "value": [-4.0, 44.0, 52.0],
+          "source": "s_modelled"
         },
         "uca_out": {
-          "value": [254.0, 72.8, 44.0],
-          "source": "s_rear_mirrored"
-        },
-        "tie_in": {
-          "value": [225.0, 26.0, 30.0],
-          "source": "s_rear_mirrored"
-        },
-        "tie_out": {
-          "value": [243.68, 74.04, 32.0],
-          "source": "s_rear_mirrored"
+          "value": [0.0, 73.5, 53.0],
+          "source": "s_modelled"
         },
         "wc": {
-          "value": [257.0, 86.0, 32.0],
-          "source": "s_rear_mirrored"
+          "value": [0.0, 87.0, 32.0],
+          "source": "s_modelled"
         },
         "damper_lo": {
-          "value": [257.0, 60.0, 8.875],
-          "source": "s_rear_mirrored"
+          "value": [0.0, 59.0, 9.0],
+          "source": "s_modelled"
         },
         "damper_up": {
-          "value": [257.0, 44.0, 58.0],
-          "source": "s_rear_mirrored"
+          "value": [-2.0, 47.0, 56.0],
+          "source": "s_modelled"
         },
         "arb_drop": {
-          "value": [250.0, 55.0, 9.4],
-          "source": "s_rear_mirrored"
+          "value": [1.0, 57.0, 9.5],
+          "source": "s_modelled"
         }
       }
     },
@@ -293,48 +292,40 @@
       },
       "points": {
         "lca_in_a": {
-          "value": [238.0, -30.0, 12.0],
-          "source": "s_rear_mirrored"
+          "value": [-20.0, -30.0, 16.0],
+          "source": "s_modelled"
         },
         "lca_in_b": {
-          "value": [272.0, -30.0, 12.0],
-          "source": "s_rear_mirrored"
+          "value": [14.0, -30.0, 16.0],
+          "source": "s_modelled"
         },
         "lca_out": {
-          "value": [259.0, -78.0, 7.0],
-          "source": "s_rear_mirrored"
+          "value": [1.0, -80.0, 7.0],
+          "source": "s_modelled"
         },
         "uca_in": {
-          "value": [250.0, -42.0, 45.0],
-          "source": "s_rear_mirrored"
+          "value": [-4.0, -44.0, 52.0],
+          "source": "s_modelled"
         },
         "uca_out": {
-          "value": [254.0, -72.8, 44.0],
-          "source": "s_rear_mirrored"
-        },
-        "tie_in": {
-          "value": [225.0, -26.0, 30.0],
-          "source": "s_rear_mirrored"
-        },
-        "tie_out": {
-          "value": [243.68, -74.04, 32.0],
-          "source": "s_rear_mirrored"
+          "value": [0.0, -73.5, 53.0],
+          "source": "s_modelled"
         },
         "wc": {
-          "value": [257.0, -86.0, 32.0],
-          "source": "s_rear_mirrored"
+          "value": [0.0, -87.0, 32.0],
+          "source": "s_modelled"
         },
         "damper_lo": {
-          "value": [257.0, -60.0, 8.875],
-          "source": "s_rear_mirrored"
+          "value": [0.0, -59.0, 9.0],
+          "source": "s_modelled"
         },
         "damper_up": {
-          "value": [257.0, -44.0, 58.0],
-          "source": "s_rear_mirrored"
+          "value": [-2.0, -47.0, 56.0],
+          "source": "s_modelled"
         },
         "arb_drop": {
-          "value": [250.0, -55.0, 9.4],
-          "source": "s_rear_mirrored"
+          "value": [1.0, -57.0, 9.5],
+          "source": "s_modelled"
         }
       }
     }

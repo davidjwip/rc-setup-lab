@@ -31,7 +31,7 @@ describe('load-transfer data', () => {
     expect(parsed.value.cg.components).toBeNull();
   });
 
-  it('builds SI load-transfer input and reproduces G06.2/G06.4 from the reference asset', () => {
+  it('builds SI load-transfer input from the reference asset', () => {
     const parsed = parseCarModel(rawModel);
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
@@ -49,7 +49,8 @@ describe('load-transfer data', () => {
     expect(input.value.trackFront_m.value).toBeCloseTo(0.172, 12);
     expect(input.value.trackRear_m.value).toBeCloseTo(0.174, 12);
     expect(input.value.rollCentreFront_m.value).toBeCloseTo(0.0099749, 9);
-    expect(input.value.rollCentreRear_m.value).toBeCloseTo(0.006, 12);
+    expect(input.value.rollCentreRear_m.value).toBeCloseTo(0.01789851314583674, 12);
+    expect(input.value.rollCentreRear_m.confidence).toBe('modelled');
     expect(input.value.cgDefaultHeight_m?.value).toBeCloseTo(0.028, 12);
 
     const result = solveLoadTransfer(input.value);
@@ -66,7 +67,7 @@ describe('load-transfer data', () => {
     }
     expect(result.cgHeight.value).toBeCloseTo(0.028, 12);
     expect(relativeError(result.totalLateralLoadTransfer.value, 2.1435)).toBeLessThanOrEqual(1e-4);
-    expect(relativeError(result.balance.value * 100, 56.15)).toBeLessThanOrEqual(1e-4);
+    expect(relativeError(result.balance.value * 100, 47.01303)).toBeLessThanOrEqual(1e-4);
   });
 
   it('uses body.cg.components[] for the component-mass route when present (G06.9)', () => {

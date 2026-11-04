@@ -37,7 +37,7 @@ describe('anti-roll bar and roll-stiffness data', () => {
     expect(rear.arb?.barDiameter?.source).toBe('s_worked');
   });
 
-  it('builds SI roll input and reproduces G05.5 from the reference asset', () => {
+  it('builds SI roll input from the reference asset and keeps the front golden', () => {
     const parsed = parseCarModel(rawModel);
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
@@ -77,8 +77,14 @@ describe('anti-roll bar and roll-stiffness data', () => {
       return;
     }
     expect(relativeError(result.front.rollStiffness.value, 37.274)).toBeLessThanOrEqual(1e-4);
-    expect(relativeError(result.rear.rollStiffness.value, 28.368)).toBeLessThanOrEqual(1e-4);
-    expect(relativeError(result.frontShare.value * 100, 56.78)).toBeLessThanOrEqual(1e-4);
+    expect(relativeError(result.rear.rollStiffness.value, 23.7223)).toBeLessThanOrEqual(1e-4);
+    expect(relativeError(result.frontShare.value * 100, 61.10864)).toBeLessThanOrEqual(1e-4);
+
+    expect(input.value.front.antiRollBar.motionRatio?.value).toBeCloseTo(0.8, 12);
+    expect(input.value.front.antiRollBar.motionRatio?.confidence).toBe('assumed');
+    expect(input.value.rear.antiRollBar.motionRatio?.value).toBeCloseTo(0.5457187, 7);
+    expect(input.value.rear.antiRollBar.motionRatio?.confidence).toBe('modelled');
+    expect(input.value.rear.antiRollBar.motionRatio?.ref).toBe('LR.points.arb_drop');
   });
 
   it('carries a missing ARB span into the physics result as a named refusal', () => {
