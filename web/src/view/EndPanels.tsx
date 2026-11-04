@@ -86,7 +86,6 @@ export function BothEndPanel({
               <dd>
                 <span className="end-strip-value">{entry.value}</span>
                 <span className="end-strip-band">{entry.band}</span>
-                <span className="end-strip-badge">{entry.state}</span>
               </dd>
             </div>
           ))}

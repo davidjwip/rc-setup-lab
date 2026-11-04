@@ -19,6 +19,18 @@ export function formatNumber(value: number, digits = 2): string {
   return value.toFixed(digits);
 }
 
+/** A signed number for the value slot; the unit is a separate span. */
+export function formatSignedNumber(value: number, digits = 2): string {
+  const sign = value > 0 ? '+' : '';
+  return `${sign}${value.toFixed(digits)}`;
+}
+
+/** A band in degrees, printed the one way the Value component understands. */
+export function formatBandFromDegrees(band: Band, digits = 2): string {
+  const halfWidth = (band.high - band.low) / 2;
+  return `±${halfWidth.toFixed(digits)} ${ANGLE_UNIT}`;
+}
+
 /** Anti-dive / anti-squat: the solver returns percentage points, not a fraction. */
 export function formatAntiDivePercent(value: number, digits = 1): string {
   const sign = value > 0 ? '+' : '';
@@ -56,6 +68,29 @@ export function formatBandFromMetres(band: Band): string {
 export function formatCamberGain(radiansPerMetre: number): string {
   const degreesPerMillimetre = (radiansPerMetre * 180) / Math.PI / 1000;
   return `${degreesPerMillimetre.toFixed(2)} ${CAMBER_GAIN_UNIT}`;
+}
+
+/** The value slot only; the unit is a separate span inside `Value`. */
+export function formatCamberGainValue(radiansPerMetre: number, digits = 2): string {
+  const degreesPerMillimetre = (radiansPerMetre * 180) / Math.PI / 1000;
+  return degreesPerMillimetre.toFixed(digits);
+}
+
+/** The value slot only, signed. */
+export function formatToeGainValue(radiansPerMetre: number, digits = 3): string {
+  const degreesPerMillimetre = (radiansPerMetre * 180) / Math.PI / 1000;
+  const sign = degreesPerMillimetre > 0 ? '+' : '';
+  return `${sign}${degreesPerMillimetre.toFixed(digits)}`;
+}
+
+/** The value slot only; the unit is a separate span inside `Value`. */
+export function formatRollCentreHeightValue(metres: number, digits = 2): string {
+  return (metres * 1000).toFixed(digits);
+}
+
+/** The value slot only; the unit is a separate span inside `Value`. */
+export function formatFixedNumber(value: number, digits = 2): string {
+  return value.toFixed(digits);
 }
 
 /** Per-wheel toe, radians in the solver, degrees on screen. Positive = toe-in. */

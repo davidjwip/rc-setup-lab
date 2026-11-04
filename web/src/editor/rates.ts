@@ -201,7 +201,7 @@ export function describeRateChange(
         'ARB wheel rate',
         before.arbWheelRateNmm,
         after.arbWheelRateNmm,
-      )}, ${direction('front share', before.frontShare, after.frontShare)}.`;
+      )}, ${direction('front roll-stiffness share', before.frontShare, after.frontShare)}.`;
     case 'arbValue': {
       const label =
         change.field === 'bar_diameter'
@@ -219,7 +219,7 @@ export function describeRateChange(
         change.valueMm,
         2,
       )} mm: ${direction('ARB wheel rate', before.arbWheelRateNmm, after.arbWheelRateNmm)}, ${direction(
-        'front share',
+        'front roll-stiffness share',
         before.frontShare,
         after.frontShare,
       )}.`;

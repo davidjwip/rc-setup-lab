@@ -64,7 +64,7 @@ describe('page shell routes', () => {
 
   it('renders each route on first load', () => {
     expect(renderWithHash('#home')).toContain('<h1>Home</h1>');
-    expect(renderWithHash('#geometry')).toContain('<h1>Geometry</h1>');
+    expect(renderWithHash('#geometry')).toMatch(/<h1[^>]*>Geometry<\/h1>/);
     expect(renderWithHash('#shock')).toContain('<h1>Shock</h1>');
     expect(renderWithHash('#transfer')).toContain('<h1>Transfer</h1>');
   });
@@ -136,8 +136,13 @@ describe('page shell routes', () => {
     }
   });
 
-  it('marks the three future pages as coming in the next slice', () => {
-    for (const Page of [GeometryPage, ShockPage, TransferPage]) {
+  it('renders the real Geometry page and keeps the other two as placeholders', () => {
+    const geometry = renderToStaticMarkup(createElement(GeometryPage, { store: store() }));
+    expect(geometry).not.toContain('coming in the next slice');
+    expect(geometry).toContain('data-axle="front"');
+    expect(geometry).toContain('data-axle="rear"');
+
+    for (const Page of [ShockPage, TransferPage]) {
       const html = renderToStaticMarkup(createElement(Page, { store: store() }));
       expect(html).toContain('coming in the next slice');
     }

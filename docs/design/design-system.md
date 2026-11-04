@@ -513,6 +513,33 @@ Rules:
 - **A sheet that leaves the phone cannot outlive its caveat.** If the export omits the state, the whole feature is theatre: a printed sheet is the artefact most likely to be pinned to a pit table for a season.
 - Accessibility name: the value's label appends the state — "Roll centre, front, 22 millimetres, up 3 from saved, computed, not yet validated".
 
+### 10.14a `<Value>` component contract (web)
+
+Geometry, and every later page, renders every number through one component:
+
+```tsx
+<Value value unit provenance band validation accessibleName />
+```
+
+- `value` is the numeral only, already formatted by `web/src/format/`; `unit` is a separate
+  `<span>` inside the same labelled group. The component never formats a number.
+- `provenance` is one of `computed` (every contributing input was measured on this car),
+  `measured` (a stored measurement), `modelled`, `estimated`, `inferred`, `missing` or `undefined`.
+  The visible badge is the provenance word itself, so **an inferred, modelled or estimated value can
+  never carry `computed`**.
+- `validation` is the ring state from §10.14. The ring is always rendered; the words appear once per
+  surface, never after every value.
+- `band` is a formatted `±x` string, or `null`. A null band prints `no band` plus a `bandReason`
+  naming why the source stores no tolerance. The component never invents one.
+- `accessibleName` is the property and end ("Front roll-centre height"). The rendered group's
+  accessibility name appends the number, unit, band, provenance and validation in that order, so the
+  number, unit and ring are not read as three separate nodes.
+- Numerals use `font-variant-numeric: tabular-nums`. Large is `numLarge`; every other value is
+  `numMedium` or smaller, and no value is larger than the page `h1`.
+- For `missing` and `undefined` there is no numeral: the component prints **Not computable yet** or
+  **Undefined for this geometry** and a human `reason`. Solver codes (`lca_in`, `parallelLinks`) never
+  reach the screen.
+
 ### 10.15 Chassis card
 
 The model input that is not a hardpoint (GitHub #11). Material and thickness do **not** move the roll centre — the card says so, because the intuitive claim is the wrong one.

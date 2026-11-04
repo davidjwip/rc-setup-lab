@@ -351,13 +351,13 @@ export function RatesEditor({
           </dd>
         </div>
         <div>
-          <dt>Front share</dt>
+          <dt>Front roll-stiffness share</dt>
           <dd>
             {snapshot.frontShare === null ? 'not computable' : formatFrontShare(snapshot.frontShare)}
           </dd>
         </div>
         <div>
-          <dt>Balance</dt>
+          <dt>Front load-transfer share</dt>
           <dd>
             {snapshot.balance === null ? 'not computable' : formatFrontShare(snapshot.balance, 2)}
           </dd>

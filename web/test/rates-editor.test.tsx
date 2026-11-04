@@ -58,7 +58,8 @@ describe('rates editor follows the selected axle', () => {
     expect(html).toContain('Rates · front-left');
     expect(html).toContain('ARB wheel rate');
     expect(html).toContain('Axle roll stiffness');
-    expect(html).toContain('Front share');
+    expect(html).toContain('Front roll-stiffness share');
+    expect(html).toContain('Front load-transfer share');
     expect(html).toContain('modelled · not measured');
   });
 

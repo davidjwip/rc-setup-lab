@@ -35,7 +35,6 @@ export interface EndStripEntry {
   readonly label: string;
   readonly value: string;
   readonly band: string;
-  readonly state: string;
 }
 
 export interface EndPanelData {
@@ -47,23 +46,13 @@ export interface EndPanelData {
   readonly error: string | null;
 }
 
-export function stateLabel(value: Solved<unknown>): string {
-  switch (value.kind) {
-    case 'defined':
-      return `computed · ${value.tier} · not yet validated`;
-    case 'notMeasured':
-      return `not measured · ${value.missing.join(', ')}`;
-    case 'undefined':
-      return `undefined · ${value.reason}`;
-  }
-}
-
 export function buildSceneLabels(
   model: CarModelDocument,
   axle: Axle,
   scene: FrontViewScene,
   result: FrontViewResult,
   edited: boolean,
+  options: { readonly axleOnly?: boolean } = {},
 ): SceneLabels {
   const rollCentre = result.rollCentreHeight;
   const instantCentre = result.instantCentre;
@@ -85,7 +74,9 @@ export function buildSceneLabels(
   const side = scene.side === 1 ? 'left' : 'right';
   const axleName = axle === 'front' ? 'front' : 'rear';
   const descriptionParts = [
-    `${axle === 'front' ? 'Front' : 'Rear'}-view elevation of the ${side}-${axleName} corner.`,
+    options.axleOnly === true
+      ? `${axle === 'front' ? 'Front' : 'Rear'}-view elevation of the ${axleName} axle.`
+      : `${axle === 'front' ? 'Front' : 'Rear'}-view elevation of the ${side}-${axleName} corner.`,
     `Roll centre ${rollCentreValue} with band ${rollCentreBand}.`,
   ];
   if (scene.instantCentre.kind !== 'hidden') {
@@ -142,33 +133,24 @@ export function buildEndStrip(
           ? formatRollCentreHeight(reportedRollCentre)
           : '—',
       band: bandFor(rollCentre, formatBandFromMetres),
-      state: stateLabel(rollCentre),
     },
     {
       id: 'camber-gain',
       label: 'Camber gain',
       value: camberGain.kind === 'defined' ? formatCamberGain(camberGain.value) : '—',
       band: bandFor(camberGain, camberBand),
-      state: stateLabel(camberGain),
     },
     {
       id: 'toe-gain',
       label: 'Toe gain',
       value: toeGain !== null && toeGain.kind === 'defined' ? formatToeGain(toeGain.value) : '—',
       band: 'no band',
-      state:
-        toeGain === null
-          ? toeSeries?.kind === 'unavailable'
-            ? `undefined · ${toeSeries.reason}`
-            : 'not computable · no toe link'
-          : stateLabel(toeGain),
     },
     {
       id: 'wheel-rate',
       label: 'Wheel rate',
       value: wheelRate?.kind === 'defined' ? formatWheelRateFromNpm(wheelRate.value) : '—',
       band: wheelRate === undefined ? 'no band' : bandFor(wheelRate, formatBandFromNpm),
-      state: wheelRate === undefined ? 'not computable · no rates' : stateLabel(wheelRate),
     },
     {
       id: 'ride-frequency',
@@ -176,8 +158,6 @@ export function buildEndStrip(
       value: rideFrequency?.kind === 'defined' ? formatRideFrequency(rideFrequency.value) : '—',
       band:
         rideFrequency === undefined ? 'no band' : bandFor(rideFrequency, frequencyBand),
-      state:
-        rideFrequency === undefined ? 'not computable · no rates' : stateLabel(rideFrequency),
     },
   ];
 }
