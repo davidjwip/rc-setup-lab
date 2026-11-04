@@ -6,17 +6,17 @@ import { buildFrontViewScene, solveFrontView } from '@setuplab/physics';
 import rawModel from '../../assets/models/reference-touring-car.json';
 import { FrontViewScene } from '../src/scene/FrontViewScene.js';
 
-function sceneFor(corner: 'LF' | 'LR') {
+function sceneFor(corner: 'LF' | 'LR', includeInstantCentre = false) {
   const parsed = parseCarModel(rawModel);
   if (!parsed.ok) throw new Error('reference model did not parse');
   const input = buildFrontViewInput(parsed.value, corner);
   if (!input.ok) throw new Error(`reference ${corner} corner did not build`);
   const result = solveFrontView(input.value);
-  return buildFrontViewScene(input.value, result);
+  return buildFrontViewScene(input.value, result, { includeInstantCentre });
 }
 
-function referenceScene() {
-  return sceneFor('LF');
+function referenceScene(includeInstantCentre = false) {
+  return sceneFor('LF', includeInstantCentre);
 }
 
 describe('FrontViewScene', () => {
@@ -100,7 +100,7 @@ describe('FrontViewScene', () => {
   it('does not let colour alone carry the legend', () => {
     const html = renderToStaticMarkup(
       createElement(FrontViewScene, {
-        scene: referenceScene(),
+        scene: referenceScene(true),
         labels: {
           rollCentreValue: '9.97 mm',
           rollCentreBand: '±1.0 mm',
@@ -114,5 +114,55 @@ describe('FrontViewScene', () => {
     expect(html).toContain('Dashed lines');
     expect(html).toContain('Contact patch');
     expect(html).toContain('Instant centre');
+  });
+});
+
+describe('FrontViewScene instant-centre overlay', () => {
+  function render(includeInstantCentre: boolean): string {
+    return renderToStaticMarkup(
+      createElement(FrontViewScene, {
+        scene: referenceScene(includeInstantCentre),
+        labels: {
+          rollCentreValue: '9.97 mm',
+          rollCentreBand: '±1.0 mm',
+          instantCentre: includeInstantCentre ? '-435.69 mm, 60.51 mm' : null,
+          description: includeInstantCentre
+            ? 'Front-view elevation. Instant centre at -435.69 millimetres, 60.51 millimetres.'
+            : 'Front-view elevation. Roll centre 9.97 millimetres with band ±1.0 millimetres.',
+        },
+      }),
+    );
+  }
+
+  it('draws no instant-centre primitive or label when the overlay is off', () => {
+    const html = render(false);
+
+    expect(html).not.toContain('data-field="instant_centre"');
+    expect(html).not.toContain('href="#glossary/instant-centre"');
+    expect(html).not.toContain('data-field="lower-arm-ray"');
+    expect(html).not.toContain('data-field="upper-link-ray"');
+    expect(html).toContain('data-field="roll-centre-ray"');
+    expect(html).toContain('data-field="roll_centre"');
+    expect(html).toContain('9.97 mm');
+    expect(html).toContain('±1.0 mm');
+  });
+
+  it('draws the instant-centre primitive, label and rays when the overlay is on', () => {
+    const html = render(true);
+
+    expect(html).toContain('data-field="instant_centre"');
+    expect(html).toContain('href="#glossary/instant-centre"');
+    expect(html).toContain('data-field="lower-arm-ray"');
+    expect(html).toContain('data-field="upper-link-ray"');
+    expect(html).toContain('-435.69 mm, 60.51 mm');
+  });
+
+  it('describes only what is drawn in its aria-label', () => {
+    const off = render(false);
+    const on = render(true);
+
+    expect(off).toContain('aria-label="Front-view elevation. Roll centre 9.97 millimetres');
+    expect(off).not.toContain('aria-label="Front-view elevation. Instant centre');
+    expect(on).toContain('aria-label="Front-view elevation. Instant centre');
   });
 });

@@ -31,6 +31,7 @@ export {
   buildFrontViewScene,
   clipSegment,
 } from './scene/scene.js';
+export type { FrontViewSceneOptions } from './scene/scene.js';
 export type {
   CamberSample,
   CamberSeries,

@@ -28,7 +28,7 @@ function renderReferenceScene(): string {
 
   return renderToStaticMarkup(
     createElement(FrontViewScene, {
-      scene: buildFrontViewScene(input.value, result),
+      scene: buildFrontViewScene(input.value, result, { includeInstantCentre: true }),
       labels: {
         rollCentreValue: '9.97 mm',
         rollCentreBand: '±1.0 mm',

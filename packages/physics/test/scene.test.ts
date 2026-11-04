@@ -83,7 +83,7 @@ describe('front-view scene geometry', () => {
   it('maps the roll centre to the physics value and the ray to contact patch and instant centre', () => {
     const input = referenceCorner();
     const result = solveFrontView(input);
-    const scene = buildFrontViewScene(input, result);
+    const scene = buildFrontViewScene(input, result, { includeInstantCentre: true });
 
     expect(result.instantCentre.kind).toBe('defined');
     expect(result.rollCentreHeight.kind).toBe('defined');
@@ -125,7 +125,7 @@ describe('front-view scene geometry', () => {
   it('keeps the instant-centre rays collinear with their hardpoints', () => {
     const input = referenceCorner();
     const result = solveFrontView(input);
-    const scene = buildFrontViewScene(input, result);
+    const scene = buildFrontViewScene(input, result, { includeInstantCentre: true });
 
     expect(result.instantCentre.kind).toBe('defined');
     if (result.instantCentre.kind !== 'defined') return;
@@ -150,7 +150,7 @@ describe('front-view scene geometry', () => {
   it('renders a parallel-arm scene as values: rays omitted with a reason, roll centre still drawn', () => {
     const input = parallelCorner(false);
     const result = solveFrontView(input);
-    const scene = buildFrontViewScene(input, result);
+    const scene = buildFrontViewScene(input, result, { includeInstantCentre: true });
 
     expect(result.instantCentre.kind).toBe('undefined');
     expect(scene.instantCentre.kind).toBe('undefined');
@@ -184,7 +184,7 @@ describe('front-view scene geometry', () => {
   it('clips a far instant centre and marks the ray as clipped', () => {
     const input = farInstantCentreCorner();
     const result = solveFrontView(input);
-    const scene = buildFrontViewScene(input, result);
+    const scene = buildFrontViewScene(input, result, { includeInstantCentre: true });
 
     expect(result.instantCentre.kind).toBe('defined');
     expect(scene.instantCentre.kind).toBe('outsideClip');
@@ -203,6 +203,46 @@ describe('front-view scene geometry', () => {
       expect(point.y).toBeGreaterThanOrEqual(scene.clip.minY - 1e-12);
       expect(point.y).toBeLessThanOrEqual(scene.clip.maxY + 1e-12);
     }
+  });
+
+  it('hides the instant centre and its rays by default, and frames only the geometry', () => {
+    const input = referenceCorner();
+    const result = solveFrontView(input);
+    const off = buildFrontViewScene(input, result);
+    const on = buildFrontViewScene(input, result, { includeInstantCentre: true });
+
+    expect(off.instantCentre.kind).toBe('hidden');
+    expect(on.instantCentre.kind).toBe('visible');
+    expect(off.lowerArmRay).toEqual({ kind: 'omitted', reason: 'overlayOff' });
+    expect(off.upperLinkRay).toEqual({ kind: 'omitted', reason: 'overlayOff' });
+
+    expect(off.rollCentre.kind).toBe('defined');
+    if (off.rollCentre.kind !== 'defined') return;
+    expect(off.rollCentreRay.kind).toBe('drawn');
+    if (off.rollCentreRay.kind !== 'drawn') return;
+
+    const patch = hardpoint(off, 'contact_patch');
+    expect(off.rollCentreRay.segment.from.x).toBeCloseTo(patch.point.x, 12);
+    expect(off.rollCentreRay.segment.from.y).toBeCloseTo(patch.point.y, 12);
+    expect(off.rollCentreRay.segment.to.x).toBeCloseTo(off.rollCentre.x, 12);
+    expect(off.rollCentreRay.segment.to.y).toBeCloseTo(off.rollCentre.y, 12);
+
+    const offWidth = off.clip.maxX - off.clip.minX;
+    const onWidth = on.clip.maxX - on.clip.minX;
+    expect(offWidth).toBeLessThan(onWidth);
+  });
+
+  it('returns the instant-centre coordinates when the overlay is enabled', () => {
+    const input = referenceCorner();
+    const result = solveFrontView(input);
+    const scene = buildFrontViewScene(input, result, { includeInstantCentre: true });
+
+    expect(result.instantCentre.kind).toBe('defined');
+    expect(scene.instantCentre.kind).toBe('visible');
+    if (result.instantCentre.kind !== 'defined' || scene.instantCentre.kind !== 'visible') return;
+
+    expect(scene.instantCentre.x).toBeCloseTo(result.instantCentre.value.y, 12);
+    expect(scene.instantCentre.y).toBeCloseTo(result.instantCentre.value.z, 12);
   });
 });
 
