@@ -52,6 +52,7 @@ export type {
   SegmentRole,
 } from './scene/types.js';
 export { solveRates, solveRatesFromRatio } from './rates/rates.js';
+export { solveDampingRatio } from './damping/damping.js';
 export { solveAntiRollBar, solveRollStiffness } from './roll/roll.js';
 export {
   CG_BALANCE_BAND_FRACTION,
@@ -92,6 +93,11 @@ export type {
   RatesResult,
   RatesWorking,
 } from './rates/types.js';
+export type {
+  DampingRatioInput,
+  DampingRatioResult,
+  DampingRatioWorking,
+} from './damping/types.js';
 export type {
   CornerKey,
   FrontViewInput,
