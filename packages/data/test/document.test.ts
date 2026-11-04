@@ -63,18 +63,17 @@ describe('document model', () => {
     expect(input.value.sprungMass_kg?.ref).toBe('body.mass.sprung_front');
   });
 
-  it('refuses a rear rates input when the rear corner is only derived', () => {
-    // The reference asset carries a rear axle block (track, spring, bar) and a
-    // derived rear corner, but no measured rear hardpoints, so the geometry-based
-    // rates path is refused; the roll builder uses 05 §6.5's assumed rear
-    // installation ratio instead.
+  it('keeps rear rates out of this geometry slice', () => {
+    // The rear geometry is modelled now, but the rates path still reads the
+    // front spring and front sprung mass. Rear rates are the spring/damper
+    // slice; the roll builder derives the rear ARB ratio meanwhile.
     const parsed = parseCarModel(rawModel);
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
     const input = buildRatesInput(parsed.value, 'LR');
     expect(input.ok).toBe(false);
     if (input.ok) return;
-    expect(input.errors.some((error) => error.path === 'corners.LR.points.lca_in_a')).toBe(true);
+    expect(input.errors.some((error) => error.path === 'axles.rear')).toBe(true);
   });
 
   it('builds the mirrored right-hand corner with the correct side sign', () => {

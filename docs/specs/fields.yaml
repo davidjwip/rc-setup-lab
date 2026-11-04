@@ -388,7 +388,7 @@ fields:
       on_absence: REFUSE
       plausible: null
       consumed_by: [motion_ratio, wheel_rate, ride_frequency, roll_stiffness, load_transfer_split, roll_centre_height, camber_gain, bump_steer, damping_ratio]
-      notes: "Map source id → source record (spec §4.1 rule 4). Replaces physics/01 §5's per-point prose map: every `source` on a value must resolve here."
+      notes: "Map source id → source record (spec §4.1 rule 4). A record's `type` is one of measured | manufacturer | derived | modelled | estimated | assumed | library. Replaces physics/01 §5's per-point prose map: every `source` on a value must resolve here."
 
     - path: meta
       type: object

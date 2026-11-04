@@ -1,53 +1,72 @@
 import { describe, expect, it } from 'vitest';
-import { solveFrontView, solveLoadTransfer, solveRollStiffness } from '@setuplab/physics';
+import {
+  buildFrontViewScene,
+  solveFrontView,
+  solveLoadTransfer,
+  solveRollStiffness,
+} from '@setuplab/physics';
 import rawModel from '../../../assets/models/reference-touring-car.json';
 import {
   buildFrontViewInput,
   buildLoadTransferInput,
   buildRollStiffnessInput,
   parseCarModel,
+  type CarModelDocument,
 } from '../src/index.js';
 
 function clone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
 }
 
-describe('rear corner derived geometry', () => {
-  it('declares the rear corner as derived and says exactly what was done', () => {
-    const parsed = parseCarModel(rawModel);
-    expect(parsed.ok).toBe(true);
-    if (!parsed.ok) return;
+function parseReference(): CarModelDocument {
+  const parsed = parseCarModel(rawModel);
+  if (!parsed.ok) throw new Error(JSON.stringify(parsed.errors));
+  return parsed.value;
+}
 
-    expect(parsed.value.axles.rear?.derivedFrom).toBe('front');
+function rearInput() {
+  const input = buildFrontViewInput(parseReference(), 'LR');
+  if (!input.ok) throw new Error(JSON.stringify(input.errors));
+  return input.value;
+}
 
-    const rearSource = parsed.value.sources['s_rear_mirrored'];
-    expect(rearSource?.type).toBe('derived');
-    expect(rearSource?.method).toBe(
-      'mirrored from the LF/RF corner by symmetry about the vehicle centreline; rear hardpoints NOT measured',
-    );
+describe('rear corner modelled geometry', () => {
+  it('stores every rear hardpoint with s_modelled, not a measured source', () => {
+    const model = parseReference();
 
-    expect(parsed.value.corners.LR?.points.lca_out?.source).toBe('s_rear_mirrored');
-    expect(parsed.value.corners.RR?.points.lca_out?.source).toBe('s_rear_mirrored');
-    expect(parsed.value.corners.LR?.points.lca_out?.confidence).toBe('derived');
-    expect(parsed.value.corners.RR?.points.lca_out?.confidence).toBe('derived');
+    const source = model.sources['s_modelled'];
+    expect(source?.type).toBe('modelled');
+    expect(source?.method).toBe('modelled rear geometry — not measured');
+
+    expect(model.axles.rear?.derivedFrom).toBeNull();
+    expect(rawModel.axles.rear).not.toHaveProperty('derived_from');
+
+    for (const key of ['LR', 'RR'] as const) {
+      const corner = model.corners[key];
+      expect(corner).toBeDefined();
+      if (corner === undefined) continue;
+
+      const points = Object.values(corner.points);
+      expect(points.length).toBeGreaterThan(0);
+      for (const point of points) {
+        expect(point?.source).toBe('s_modelled');
+        expect(point?.confidence).toBe('modelled');
+      }
+
+      expect(corner.points.tie_in).toBeUndefined();
+      expect(corner.points.tie_out).toBeUndefined();
+    }
+
+    expect(model.corners.LR?.points.uca_in?.value).toEqual([-4, 44, 52]);
+    expect(model.corners.LR?.points.arb_drop?.value).toEqual([1, 57, 9.5]);
+    expect(model.corners.RR?.points.wc?.value).toEqual([0, -87, 32]);
+
+    expect(model.axles.rear?.bumpLimit?.value).toBeCloseTo(6.0, 12);
+    expect(model.axles.rear?.droopLimit?.value).toBeCloseTo(6.0, 12);
   });
 
-  it('solves the rear corner as inferred and flagged, with every output carrying the derivation', () => {
-    const parsed = parseCarModel(rawModel);
-    expect(parsed.ok).toBe(true);
-    if (!parsed.ok) return;
-
-    const input = buildFrontViewInput(parsed.value, 'LR');
-    expect(input.ok).toBe(true);
-    if (!input.ok) return;
-
-    expect(input.value.lcaIn_m.confidence).toBe('derived');
-    expect(input.value.lcaOut_m.confidence).toBe('derived');
-    expect(input.value.ucaIn_m.confidence).toBe('derived');
-    expect(input.value.ucaOut_m.confidence).toBe('derived');
-    expect(input.value.wheelCentre_m.confidence).toBe('derived');
-
-    const result = solveFrontView(input.value);
+  it('solves the modelled rear as inferred and flagged modelled, never derived', () => {
+    const result = solveFrontView(rearInput());
     const outputs = [
       result.instantCentre,
       result.rollCentreHeight,
@@ -61,17 +80,75 @@ describe('rear corner derived geometry', () => {
       expect(output.kind).toBe('defined');
       if (output.kind !== 'defined') continue;
       expect(output.tier).toBe('inferred');
-      expect(output.flags.has('derivedGeometry')).toBe(true);
-      expect(output.provenance.has('LR.points.lca_in_a')).toBe(true);
-      expect(output.provenance.has('LR.points.wc')).toBe(true);
-      expect(output.provenance.has('s_rear_mirrored')).toBe(true);
+      expect(output.flags.has('derivedGeometry')).toBe(false);
+      expect(output.flags.has('modelledGeometry')).toBe(true);
+      expect(output.provenance.has('LR.points.uca_in')).toBe(true);
+      expect(output.provenance.has('s_modelled')).toBe(true);
     }
   });
 
+  it('computes rear roll centre, instant centre and camber gain from the rear geometry', () => {
+    const frontInput = buildFrontViewInput(parseReference(), 'LF');
+    expect(frontInput.ok).toBe(true);
+    if (!frontInput.ok) return;
+
+    const front = solveFrontView(frontInput.value);
+    const rear = solveFrontView(rearInput());
+
+    expect(front.rollCentreHeight.kind).toBe('defined');
+    expect(rear.rollCentreHeight.kind).toBe('defined');
+    expect(front.instantCentre.kind).toBe('defined');
+    expect(rear.instantCentre.kind).toBe('defined');
+    expect(front.camberGain.kind).toBe('defined');
+    expect(rear.camberGain.kind).toBe('defined');
+    if (
+      front.rollCentreHeight.kind !== 'defined' ||
+      rear.rollCentreHeight.kind !== 'defined' ||
+      front.instantCentre.kind !== 'defined' ||
+      rear.instantCentre.kind !== 'defined' ||
+      front.camberGain.kind !== 'defined' ||
+      rear.camberGain.kind !== 'defined'
+    ) {
+      return;
+    }
+
+    expect(rear.rollCentreHeight.value).not.toBeCloseTo(front.rollCentreHeight.value, 6);
+    expect(rear.instantCentre.value.y).not.toBeCloseTo(front.instantCentre.value.y, 6);
+    expect(rear.camberGain.value).not.toBeCloseTo(front.camberGain.value, 6);
+
+    const scene = buildFrontViewScene(rearInput(), rear);
+    expect(scene.rollCentre.kind).toBe('defined');
+    if (scene.rollCentre.kind === 'defined') {
+      expect(scene.rollCentre.y).toBe(rear.rollCentreHeight.value);
+    }
+  });
+
+  it('draws the rear from rear hardpoints, not the mirrored front ones', () => {
+    const input = rearInput();
+    const scene = buildFrontViewScene(input, solveFrontView(input));
+
+    const upperInner = scene.hardpoints.find((point) => point.id === 'uca_in');
+    const lowerInner = scene.hardpoints.find((point) => point.id === 'lca_in');
+    expect(upperInner?.point.y).toBeCloseTo(0.052, 12);
+    expect(lowerInner?.point.y).toBeCloseTo(0.016, 12);
+    expect(upperInner?.point.y).not.toBeCloseTo(0.045, 12);
+  });
+
+  it('tolerates the missing rear tie rod without a phantom link', () => {
+    const input = rearInput();
+    expect(input.upperArmType).toBe('single_link');
+
+    const result = solveFrontView(input);
+    expect(result.staticState.kind).toBe('defined');
+
+    const scene = buildFrontViewScene(input, result);
+    expect(scene.hardpoints.some((point) => String(point.id).includes('tie'))).toBe(false);
+    expect(scene.lowerArm.id).not.toContain('tie');
+    expect(scene.upperLink.id).not.toContain('tie');
+  });
+
   it('does not silently mirror the front corner into a rear corner when one is absent', () => {
-    const withoutRear = clone(rawModel) as {
-      corners: Record<string, unknown>;
-    };
+    const withoutRear = clone(rawModel) as { corners: Record<string, unknown> };
     delete withoutRear.corners['LR'];
     delete withoutRear.corners['RR'];
     const parsed = parseCarModel(withoutRear);
@@ -84,39 +161,94 @@ describe('rear corner derived geometry', () => {
     expect(input.errors.some((error) => error.path === 'corners.LR')).toBe(true);
   });
 
-  it('leaves the front/rear balance unchanged when the rear corners are absent', () => {
-    const withRearCorners = parseCarModel(rawModel);
-    expect(withRearCorners.ok).toBe(true);
-    if (!withRearCorners.ok) return;
-
-    const withoutRear = clone(rawModel) as {
-      corners: Record<string, unknown>;
+  it('changes rear roll stiffness and front share when a rear hardpoint moves', () => {
+    const base = parseReference();
+    const movedRaw = clone(rawModel) as {
+      corners: { LR: { points: { arb_drop: { value: number[] } } } };
     };
+    movedRaw.corners.LR.points.arb_drop.value[1] = 62;
+    const moved = parseCarModel(movedRaw);
+    expect(moved.ok).toBe(true);
+    if (!moved.ok) return;
+
+    const baseInput = buildRollStiffnessInput(base);
+    const movedInput = buildRollStiffnessInput(moved.value);
+    expect(baseInput.ok).toBe(true);
+    expect(movedInput.ok).toBe(true);
+    if (!baseInput.ok || !movedInput.ok) return;
+
+    const baseRoll = solveRollStiffness(baseInput.value);
+    const movedRoll = solveRollStiffness(movedInput.value);
+
+    expect(baseRoll.front.rollStiffness.kind).toBe('defined');
+    expect(movedRoll.front.rollStiffness.kind).toBe('defined');
+    expect(baseRoll.rear.rollStiffness.kind).toBe('defined');
+    expect(movedRoll.rear.rollStiffness.kind).toBe('defined');
+    expect(baseRoll.frontShare.kind).toBe('defined');
+    expect(movedRoll.frontShare.kind).toBe('defined');
+    if (
+      baseRoll.front.rollStiffness.kind !== 'defined' ||
+      movedRoll.front.rollStiffness.kind !== 'defined' ||
+      baseRoll.rear.rollStiffness.kind !== 'defined' ||
+      movedRoll.rear.rollStiffness.kind !== 'defined' ||
+      baseRoll.frontShare.kind !== 'defined' ||
+      movedRoll.frontShare.kind !== 'defined'
+    ) {
+      return;
+    }
+
+    expect(movedRoll.front.rollStiffness.value).toBeCloseTo(
+      baseRoll.front.rollStiffness.value,
+      9,
+    );
+    expect(baseRoll.rear.working.antiRollBar.motionRatio).not.toBeCloseTo(
+      movedRoll.rear.working.antiRollBar.motionRatio ?? 0,
+      9,
+    );
+    expect(movedRoll.rear.rollStiffness.value).not.toBeCloseTo(
+      baseRoll.rear.rollStiffness.value,
+      6,
+    );
+    expect(movedRoll.frontShare.value).not.toBeCloseTo(baseRoll.frontShare.value, 6);
+
+    const baseTransfer = buildLoadTransferInput(base, 9.81);
+    const movedTransfer = buildLoadTransferInput(moved.value, 9.81);
+    expect(baseTransfer.ok).toBe(true);
+    expect(movedTransfer.ok).toBe(true);
+    if (!baseTransfer.ok || !movedTransfer.ok) return;
+
+    const baseBalance = solveLoadTransfer(baseTransfer.value).balance;
+    const movedBalance = solveLoadTransfer(movedTransfer.value).balance;
+    expect(baseBalance.kind).toBe('defined');
+    expect(movedBalance.kind).toBe('defined');
+    if (baseBalance.kind !== 'defined' || movedBalance.kind !== 'defined') return;
+    expect(movedBalance.value).not.toBeCloseTo(baseBalance.value, 6);
+  });
+
+  it('does not leave balance unchanged when the rear corners are absent', () => {
+    const withRearCorners = parseReference();
+
+    const withoutRear = clone(rawModel) as { corners: Record<string, unknown> };
     delete withoutRear.corners['LR'];
     delete withoutRear.corners['RR'];
     const withoutRearCorners = parseCarModel(withoutRear);
     expect(withoutRearCorners.ok).toBe(true);
     if (!withoutRearCorners.ok) return;
 
-    const rollWith = buildRollStiffnessInput(withRearCorners.value);
+    const rollWith = buildRollStiffnessInput(withRearCorners);
     const rollWithout = buildRollStiffnessInput(withoutRearCorners.value);
     expect(rollWith.ok).toBe(true);
     expect(rollWithout.ok).toBe(true);
     if (!rollWith.ok || !rollWithout.ok) return;
 
-    const rollResultWith = solveRollStiffness(rollWith.value);
-    const rollResultWithout = solveRollStiffness(rollWithout.value);
-    expect(rollResultWith.frontShare.kind).toBe('defined');
-    expect(rollResultWithout.frontShare.kind).toBe('defined');
-    if (
-      rollResultWith.frontShare.kind !== 'defined' ||
-      rollResultWithout.frontShare.kind !== 'defined'
-    ) {
-      return;
-    }
-    expect(rollResultWith.frontShare.value).toBeCloseTo(rollResultWithout.frontShare.value, 12);
+    const withShare = solveRollStiffness(rollWith.value).frontShare;
+    const withoutShare = solveRollStiffness(rollWithout.value).frontShare;
+    expect(withShare.kind).toBe('defined');
+    expect(withoutShare.kind).toBe('defined');
+    if (withShare.kind !== 'defined' || withoutShare.kind !== 'defined') return;
+    expect(withShare.value).not.toBeCloseTo(withoutShare.value, 6);
 
-    const transferWith = buildLoadTransferInput(withRearCorners.value, 9.81);
+    const transferWith = buildLoadTransferInput(withRearCorners, 9.81);
     const transferWithout = buildLoadTransferInput(withoutRearCorners.value, 9.81);
     expect(transferWith.ok).toBe(true);
     expect(transferWithout.ok).toBe(true);
@@ -127,6 +259,6 @@ describe('rear corner derived geometry', () => {
     expect(balanceWith.kind).toBe('defined');
     expect(balanceWithout.kind).toBe('defined');
     if (balanceWith.kind !== 'defined' || balanceWithout.kind !== 'defined') return;
-    expect(balanceWith.value).toBeCloseTo(balanceWithout.value, 12);
+    expect(balanceWith.value).not.toBeCloseTo(balanceWithout.value, 6);
   });
 });

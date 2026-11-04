@@ -109,6 +109,8 @@ export interface FrontViewScene {
   readonly side: SideSign;
   /** True when the corner's hardpoints are derived, not measured. */
   readonly derivedGeometry: boolean;
+  /** True when the corner's hardpoints are modelled, not measured. */
+  readonly modelledGeometry: boolean;
   readonly clip: SceneBounds;
   readonly hardpoints: readonly SceneHardpoint[];
   readonly lowerArm: SceneSegment;

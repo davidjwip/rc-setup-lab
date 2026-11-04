@@ -31,6 +31,9 @@ requirements/design work in progress. Nothing is shippable yet.
 | Plan | `docs/specs/plan.md` | not started |
 | Web app (React + TS, PWA) | `web/` | not started |
 
+The reference car's rear corner geometry is a **modelled reference, not a measurement**; issue #24
+tracks the measurement route.
+
 ## Principles
 
 1. **Free forever, no account, works offline.** A phone at the track is the target device.

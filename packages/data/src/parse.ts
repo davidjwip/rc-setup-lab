@@ -25,6 +25,7 @@ const SOURCE_TYPES: readonly SourceType[] = [
   'measured',
   'manufacturer',
   'derived',
+  'modelled',
   'estimated',
   'assumed',
   'library',

@@ -114,6 +114,7 @@ function outputFlags(input: FrontViewInput): Set<Flag> {
     flags.add('lowConfidence');
   }
   if (sources.some((source) => source.confidence === 'derived')) flags.add('derivedGeometry');
+  if (sources.some((source) => source.confidence === 'modelled')) flags.add('modelledGeometry');
   return flags;
 }
 

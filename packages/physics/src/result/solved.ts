@@ -17,6 +17,7 @@ export type Confidence =
   | 'measured'
   | 'manufacturer'
   | 'derived'
+  | 'modelled'
   | 'estimated'
   | 'assumed'
   | 'library';
@@ -45,7 +46,8 @@ export type Flag =
   | 'diagnosticOnly'
   | 'cgInferred'
   | 'rollCentreAboveCg'
-  | 'derivedGeometry';
+  | 'derivedGeometry'
+  | 'modelledGeometry';
 
 export interface Defined<T> {
   readonly kind: 'defined';

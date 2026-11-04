@@ -20,7 +20,8 @@ interface FrontViewSceneProps {
 const VIEW_WIDTH = 340;
 const VIEW_HEIGHT = 132;
 
-const DERIVED_NOTICE = 'rear geometry mirrored from the front — not measured';
+const DERIVED_NOTICE = 'rear geometry derived from the front — not measured';
+const MODELLED_NOTICE = 'rear geometry modelled — not measured';
 
 const HARDPOINT_LABELS: Record<HardpointId, string> = {
   lca_in: 'Lower arm inner',
@@ -62,9 +63,14 @@ export function FrontViewScene({ scene, labels }: FrontViewSceneProps) {
     scene.rollCentreRay,
   ];
 
-  const accessibleDescription = scene.derivedGeometry
-    ? `${labels.description} ${DERIVED_NOTICE}`
-    : labels.description;
+  const geometryNotice = scene.derivedGeometry
+    ? DERIVED_NOTICE
+    : scene.modelledGeometry
+      ? MODELLED_NOTICE
+      : null;
+
+  const accessibleDescription =
+    geometryNotice === null ? labels.description : `${labels.description} ${geometryNotice}`;
 
   const showInstantCentre = scene.instantCentre.kind === 'visible';
 
@@ -80,14 +86,17 @@ export function FrontViewScene({ scene, labels }: FrontViewSceneProps) {
         >
           <title>{accessibleDescription}</title>
 
-          {scene.derivedGeometry ? (
-            <g className="scene-derived-badge" data-field="derived_geometry">
+          {geometryNotice === null ? null : (
+            <g
+              className="scene-derived-badge"
+              data-field={scene.derivedGeometry ? 'derived_geometry' : 'modelled_geometry'}
+            >
               <rect x={6} y={6} width={VIEW_WIDTH - 12} height={18} rx={4} />
               <text x={VIEW_WIDTH / 2} y={18} textAnchor="middle">
-                {DERIVED_NOTICE}
+                {geometryNotice}
               </text>
             </g>
-          ) : null}
+          )}
 
           <line
             className="scene-ground"
@@ -248,7 +257,9 @@ export function FrontViewScene({ scene, labels }: FrontViewSceneProps) {
         </svg>
       </div>
       <figcaption className="scene-legend">
-        {scene.derivedGeometry ? <span className="scene-derived-note">{DERIVED_NOTICE}</span> : null}
+        {geometryNotice === null ? null : (
+          <span className="scene-derived-note">{geometryNotice}</span>
+        )}
         <span>Solid lines — lower arm and upper link.</span>
         <span>
           {showInstantCentre

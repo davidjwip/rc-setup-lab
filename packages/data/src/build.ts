@@ -40,11 +40,9 @@ import {
 const REAR_INSTALLATION_RATIO_ASSUMED = 0.7071;
 
 /**
- * 05 §3.2/§6.3: the ARB motion ratio used by the worked examples. The schema
- * has no field for it and the reference asset's `arb_drop` does not reproduce
- * 0.80, so this slice states the assumption rather than inventing a linkage.
- * TODO(spec §3.2): derive IR_arm from `points.arb_drop` once the schema can
- * carry the derived value.
+ * 05 §3.2: fallback ARB motion ratio when `points.arb_drop` cannot supply one.
+ * The front worked examples still use 0.80 so the front goldens stay fixed; the
+ * rear derives IR_arm from its own modelled hardpoints.
  */
 const ARB_MOTION_RATIO_ASSUMED = 0.8;
 
@@ -53,9 +51,9 @@ const STEEL_SHEAR_MODULUS_GPA = 79.3;
 const GIGAPASCALS_TO_PASCALS = 1e9;
 
 /**
- * 06 §6.1 / 01 §8.4: the reference car has no rear hardpoints, so its rear
- * roll-centre height is an assumed input. TODO(spec 01 §8.4): derive it once a
- * rear corner is measured; the schema has no field for the assumption yet.
+ * 06 §6.1 / 01 §8.4: fallback rear roll-centre height for a model with no rear
+ * corner. The reference car now carries a modelled rear corner, so this is only
+ * used when that geometry cannot produce a roll centre.
  */
 const REAR_ROLL_CENTRE_HEIGHT_ASSUMED_M = 0.006;
 
@@ -101,6 +99,41 @@ function point(
 ): Sourced<Vec2> | null {
   const measured = corner.points[pointKey];
   return measured === undefined ? null : sourcedPoint(cornerKey, pointKey, measured);
+}
+
+/**
+ * 05 §3.2: IR_arm ≈ r_d/a, where r_d is the drop-link attachment projected on
+ * the lower-arm line and a is the arm length. Null means the geometry cannot
+ * supply it and the caller must fall back to the stated default.
+ */
+function derivedArbMotionRatio(
+  model: CarModelDocument,
+  cornerKey: CornerKey,
+): Sourced<number> | null {
+  const corner = cornerFor(model, cornerKey);
+  if (!corner.ok) return null;
+
+  const inner = point(corner.value, cornerKey, 'lca_in_a');
+  const outer = point(corner.value, cornerKey, 'lca_out');
+  const drop = point(corner.value, cornerKey, 'arb_drop');
+  if (inner === null || outer === null || drop === null) return null;
+
+  const armY = outer.value.y - inner.value.y;
+  const armZ = outer.value.z - inner.value.z;
+  const armLengthSquared = armY * armY + armZ * armZ;
+  if (!(armLengthSquared > 0)) return null;
+
+  const dropY = drop.value.y - inner.value.y;
+  const dropZ = drop.value.z - inner.value.z;
+  const ratio = (dropY * armY + dropZ * armZ) / armLengthSquared;
+  if (!Number.isFinite(ratio) || ratio <= 0) return null;
+
+  return {
+    value: ratio,
+    ref: `${cornerKey}.points.arb_drop`,
+    confidence: drop.confidence,
+    ...(drop.sourceId === undefined ? {} : { sourceId: drop.sourceId }),
+  };
 }
 
 function mirrorCorner(corner: CornerDocument): CornerDocument {
@@ -237,11 +270,14 @@ export function buildRatesInput(
   cornerKey: CornerKey = 'LF',
 ): DataResult<RatesInput> {
   if (cornerKey === 'LR' || cornerKey === 'RR') {
+    // TODO(spec 05 §6.5): the rear geometry is modelled now, but this path still
+    // reads the front spring and front sprung mass. Wiring rear rates is the
+    // spring/damper slice; the roll builder derives the rear ARB ratio meanwhile.
     return fail([
       dataError(
         'missingField',
-        `corners.${cornerKey}.points.lca_in_a`,
-        'the rear axle has no measured corner geometry; use the roll builder for its assumed input',
+        'axles.rear',
+        'rear rates are not built in this slice; use the roll builder for the rear axle',
       ),
     ]);
   }
@@ -340,16 +376,21 @@ function effectiveBladeCount(arb: ArbDocument, prefix: string): Sourced<number> 
  * missing bar geometry is carried as null so the physics package can refuse
  * the roll stiffness as a value and name the field.
  */
-export function buildAntiRollBarInput(axle: AxleDocument, axleKey: 'front' | 'rear'): AntiRollBarInput {
+export function buildAntiRollBarInput(
+  axle: AxleDocument,
+  axleKey: 'front' | 'rear',
+  derivedMotionRatio: Sourced<number> | null = null,
+): AntiRollBarInput {
   const arb = axle.arb;
   if (arb === null || arb.type === 'none') return { type: 'none', axle: axleKey };
 
   const prefix = `axles.${axleKey}.arb`;
-  const motionRatio: Sourced<number> = {
-    value: ARB_MOTION_RATIO_ASSUMED,
-    ref: `${prefix}.motion_ratio`,
-    confidence: 'assumed',
-  };
+  const motionRatio: Sourced<number> =
+    derivedMotionRatio ?? {
+      value: ARB_MOTION_RATIO_ASSUMED,
+      ref: `${prefix}.motion_ratio`,
+      confidence: 'assumed',
+    };
 
   if (arb.type === 'torsion_bar') {
     return {
@@ -393,6 +434,11 @@ function frontSpringWheelRate(model: CarModelDocument): DataResult<Solved<number
   return ok(solveRates(ratesInput.value).wheelRate);
 }
 
+/**
+ * 05 §6.5: the rear spring path still uses its stated installation ratio. This
+ * slice derives only the rear ARB motion ratio from the new modelled geometry;
+ * TODO(spec 05 §6.5) moves the rear spring ratio onto its damper hardpoints.
+ */
 function rearSpringWheelRate(model: CarModelDocument): Solved<number> {
   const rear = model.axles.rear;
   if (rear === null) return notMeasured(['axles.rear']);
@@ -418,10 +464,10 @@ function rearSpringWheelRate(model: CarModelDocument): Solved<number> {
 
 /**
  * Build the SI roll-stiffness input for both axles. The front wheel rate comes
- * from the measured front-view geometry; the rear has no hardpoints in the
- * reference car, so it uses 05 §6.5's assumed rear installation ratio. A
- * missing rear axle is a data error, because the front share cannot exist
- * without it.
+ * from the measured front-view geometry and keeps 05's stated ARB ratio; the
+ * rear spring rate still uses 05 §6.5's stated installation ratio, while its
+ * ARB ratio is derived from the modelled rear `arb_drop`. A missing rear axle
+ * is a data error, because the front share cannot exist without it.
  */
 export function buildRollStiffnessInput(model: CarModelDocument): DataResult<RollStiffnessInput> {
   const rear = model.axles.rear;
@@ -440,6 +486,7 @@ export function buildRollStiffnessInput(model: CarModelDocument): DataResult<Rol
 
   const frontTrack = model.axles.front.track;
   const rearTrack = rear.track;
+  const rearMotionRatio = derivedArbMotionRatio(model, 'LR');
 
   return ok({
     front: {
@@ -455,7 +502,7 @@ export function buildRollStiffnessInput(model: CarModelDocument): DataResult<Rol
     rear: {
       axle: 'rear',
       springWheelRate_Npm: rearSpringWheelRate(model),
-      antiRollBar: buildAntiRollBarInput(rear, 'rear'),
+      antiRollBar: buildAntiRollBarInput(rear, 'rear', rearMotionRatio),
       track_m: {
         value: millimetresToMetres(rearTrack.value),
         ref: 'axles.rear.track',
@@ -515,6 +562,23 @@ export function buildLoadTransferInput(
         'load transfer needs the front roll-centre height from module 2',
       ),
     );
+  }
+
+  let rollCentreRear: Sourced<number> = {
+    value: REAR_ROLL_CENTRE_HEIGHT_ASSUMED_M,
+    ref: 'assumed.rear_roll_centre_height',
+    confidence: 'assumed',
+  };
+  const rearView = buildFrontViewInput(model, 'LR');
+  if (rearView.ok) {
+    const rearSolved = solveFrontView(rearView.value).rollCentreHeight;
+    if (rearSolved.kind === 'defined') {
+      rollCentreRear = {
+        value: rearSolved.value,
+        ref: 'rear.roll_centre_height',
+        confidence: rearSolved.tier === 'firm' ? 'derived' : 'modelled',
+      };
+    }
   }
 
   const rollInput = buildRollStiffnessInput(model);
@@ -647,11 +711,7 @@ export function buildLoadTransferInput(
       ref: 'front.roll_centre_height',
       confidence: rollCentreFront.tier === 'firm' ? 'derived' : 'estimated',
     },
-    rollCentreRear_m: {
-      value: REAR_ROLL_CENTRE_HEIGHT_ASSUMED_M,
-      ref: 'assumed.rear_roll_centre_height',
-      confidence: 'assumed',
-    },
+    rollCentreRear_m: rollCentreRear,
     rollStiffnessFront_NmPerRad: rollResult.front.rollStiffness,
     rollStiffnessRear_NmPerRad: rollResult.rear.rollStiffness,
     lateralAcceleration_mps2,

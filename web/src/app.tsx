@@ -271,8 +271,8 @@ function AnalysisView() {
         <h1>Front- and rear-view kinematics</h1>
         <p className="lede">
           {model.name}. Left-front and left-rear corners, ISO 8855: x forward, y left, z up. Move a
-          front hardpoint and the roll centre and camber gain recompute. The rear corner is derived
-          from the front and says so.
+          front hardpoint and the roll centre and camber gain recompute. The rear corner is modelled
+          from plausible rear geometry, not measured, and says so.
         </p>
       </header>
 
@@ -284,8 +284,8 @@ function AnalysisView() {
           </div>
           <p className="hint">
             Every value below is stored with its source. Editing one revalidates the document before
-            the solve. These are the measured front-left hardpoints; the rear corner is derived from
-            them and is not edited here.
+            the solve. These are the front-left hardpoints; the rear corner is modelled separately
+            and is not edited in this slice.
           </p>
           <table className="fields">
             <thead>
@@ -375,7 +375,9 @@ function AnalysisView() {
               <span className="pill">
                 {scene !== null && scene.derivedGeometry
                   ? 'derived · not measured'
-                  : 'left front · live'}
+                  : scene !== null && scene.modelledGeometry
+                    ? 'modelled · not measured'
+                    : 'left front · live'}
               </span>
             </div>
             {scene !== null && sceneLabels !== null ? (
