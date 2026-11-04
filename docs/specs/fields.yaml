@@ -420,7 +420,7 @@ fields:
       on_absence: REFUSE
       plausible: [1, 30]
       consumed_by: [roll_centre_height, camber_gain, bump_steer]
-      notes: "Ground clearance under the **bottom** of the plate. It is no longer the datum: with `body.chassis.thickness` it derives the ground plane at `z = -(thickness + ride_height)`. Replaces `measured_at_ride_height` (physics/01 §5). See also `body.chassis.ride_height_basis`."
+      notes: "Ground clearance under the **bottom** of the plate. It is no longer the datum: with `body.chassis.thickness` it derives the ground plane at `z = -(thickness + ride_height)`. Replaces `measured_at_ride_height` (physics/01 §5). Editable per vehicle in the Chassis panel, default 5.0 mm. The only other route to the ground plane is `body.chassis.thickness`; neither moves a stored hardpoint. The wheel diameter is **inferred** from the wheel centre and this ground plane (`2 × (wc.z − z_ground)`), never stored and never a user input. See also `body.chassis.ride_height_basis`."
 
     - path: body.wheelbase
       type: value
@@ -562,7 +562,7 @@ fields:
       on_absence: OMIT
       plausible: [0.5, 5.0]
       consumed_by: []
-      notes: "Plate thickness, caliper-measured. Required for the chassis-datum conversion: the derived ground plane is `z = -(thickness + reference_ride_height)`. Moves mass, CG height and ride height (see `ride_height_basis`), never the roll centre."
+      notes: "Plate thickness, caliper-measured. Required for the chassis-datum conversion: the derived ground plane is `z = -(thickness + reference_ride_height)`. Editable per vehicle in the Chassis panel, default 2.0 mm. It enters the ground plane only through that sum, beside `body.reference_ride_height`, and moves no stored hardpoint. The wheel diameter is **inferred** from the wheel centre and the derived ground plane, never stored and never an input. Moves mass, CG height and ride height (see `ride_height_basis`), never the roll centre."
 
     - path: body.chassis.span
       type: value

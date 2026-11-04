@@ -11,13 +11,14 @@ import {
   reportedRollCentreHeightM,
   resetAxleRates,
   resetCornerPointsMm,
-  rideHeightConsistency,
   updateAxleArbType,
   updateAxleArbValue,
   updateAxleDamperCoefficient,
   updateAxleSpringRate,
+  updateChassisValue,
   updateCornerPointMm,
   type CarModelDocument,
+  type ChassisValueField,
   type CornerKey,
   type CornerPointKey,
   type DataError,
@@ -31,6 +32,7 @@ import {
   solveRollStiffness,
 } from '@setuplab/physics';
 import rawModel from '../../assets/models/reference-touring-car.json';
+import { ChassisEditor } from './editor/ChassisEditor.js';
 import { HardpointEditor } from './editor/HardpointEditor.js';
 import { cornerKeyForAxle, type Axle } from './editor/hardpoints.js';
 import { RatesEditor } from './editor/RatesEditor.js';
@@ -132,6 +134,7 @@ export function AnalysisView({
   const [editedRateAxles, setEditedRateAxles] = useState<ReadonlySet<Axle>>(
     () => new Set<Axle>(),
   );
+  const [editedChassis, setEditedChassis] = useState(false);
   const [rateNote, setRateNote] = useState<string | null>(null);
   const [editorKey, setEditorKey] = useState(0);
   const editorModel = useRef<CarModelDocument | null>(model);
@@ -139,10 +142,6 @@ export function AnalysisView({
   const edited = editedCorners.has(cornerKey);
   const baseline = initialParse.ok ? initialParse.value : null;
   const datum = useMemo(() => (model === null ? null : chassisDatum(model)), [model]);
-  const datumCheck = useMemo(
-    () => (model === null ? null : rideHeightConsistency(model)),
-    [model],
-  );
 
   useEffect(() => {
     writeInstantCentrePreference(includeInstantCentre);
@@ -285,6 +284,19 @@ export function AnalysisView({
   }
   const selectedCorner = editorCorner;
 
+  const commitChassis = (field: ChassisValueField, valueMm: number): string | null => {
+    const current = editorModel.current;
+    if (current === null) return 'No model is loaded.';
+    const edited = updateChassisValue(current, field, valueMm);
+    if (!edited.ok) {
+      return edited.errors.map((item) => `${item.path}: ${item.message}`).join('; ');
+    }
+    editorModel.current = edited.value;
+    setModel(edited.value);
+    setEditedChassis(true);
+    return null;
+  };
+
   const commitHardpoint = (
     pointKey: CornerPointKey,
     axis: 1 | 2,
@@ -416,13 +428,15 @@ export function AnalysisView({
           the top surface of the chassis plate. The selected axle drives the drawing, the hardpoint
           editor and the rates editor. Moving a hardpoint recomputes that end's roll centre and
           camber gain; changing a spring, damper or bar recomputes rates, roll stiffness and balance.
-          The ground plane is derived from the plate thickness and ride height, never stored. The
+          The ground plane is derived from the plate thickness and ride height, never stored; the
+          Chassis panel edits both and infers each wheel's diameter from the wheel centre. The
           rear corner is modelled from plausible rear geometry, not measured, and says so.
         </p>
       </header>
 
       <section className="grid">
         <div className="inputs">
+          <ChassisEditor model={model} edited={editedChassis} onCommit={commitChassis} />
           <HardpointEditor
             key={`${cornerKey}:${editorKey}`}
             model={model}
@@ -434,11 +448,6 @@ export function AnalysisView({
             onCommit={commitHardpoint}
             onReset={resetCorner}
           />
-          {datumCheck?.message === null || datumCheck?.message === undefined ? null : (
-            <p className="editor-error" role="status">
-              {datumCheck.message}
-            </p>
-          )}
           <RatesEditor
             key={`rates:${cornerKey}:${editorKey}`}
             model={model}

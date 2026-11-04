@@ -78,6 +78,35 @@ frame, and a ride-height change is a rigid translation of the chassis-side point
 re-solve (§6.2). The derived ground plane is reported wherever a height above the road is shown, and
 the drawing labels it as derived.
 
+### 2.1 Chassis values and the wheel-diameter consistency check
+
+The Chassis panel exposes the two numbers the ground plane depends on, per vehicle rather than per
+axle:
+
+| Value | Field | Default | Meaning |
+|---|---|---|---|
+| Ride height | `body.reference_ride_height` | 5.0 mm | clearance under the **bottom** of the plate |
+| Plate thickness | `body.chassis.thickness` | 2.0 mm | the plate itself |
+| Wheel diameter | **derived, never stored** | 64 mm on the reference car | `2 × (wc.z − z_ground)` |
+
+`thickness + ride_height` is the only route into the ground plane. Neither value moves a stored
+hardpoint, changes camber gain, changes wheel rate, or changes ride frequency; both move the reported
+roll-centre height above ground by the same amount, per axle. The contact patch stays on the derived
+ground plane and the drawing's ground line moves with it.
+
+The wheel diameter is a **check, not an override**. The solver's stored wheel centre and the derived
+ground plane imply a radius:
+
+```text
+implied_tyre_radius = wc.z − z_ground
+```
+
+Compare it with the radius recorded at `axles.<axle>.tyre_radius`. At or below 0.5 mm they agree. Above
+0.5 mm the app states both numbers and both possible causes — the ride height is the mismatch higher
+or lower than measured, or the wheel centre is that far low or high — and never corrects either value.
+No hardpoint is rewritten and the ground plane is not moved to make the wheel fit. The drawing and the
+reported heights keep using the plate-derived ground.
+
 ---
 
 ## 3. Sign conventions

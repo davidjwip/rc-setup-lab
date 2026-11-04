@@ -327,6 +327,97 @@ export function updateAxleArbValue(
   return error === null ? parseCarModel(raw) : fail([error]);
 }
 
+function bodyRecord(raw: Record<string, unknown>): Record<string, unknown> | null {
+  const body = raw['body'];
+  if (body === undefined) {
+    const created: Record<string, unknown> = {};
+    raw['body'] = created;
+    return created;
+  }
+  return asRecord(body);
+}
+
+/**
+ * Write the ride height — clearance under the bottom of the plate. It and the
+ * plate thickness are the only route into the derived ground plane. The stored
+ * provenance is kept, so a typed value is not promoted to measured.
+ */
+export function updateChassisRideHeight(
+  model: CarModelDocument,
+  valueMm: number,
+): DataResult<CarModelDocument> {
+  if (!Number.isFinite(valueMm)) {
+    return fail([
+      dataError('invalidValue', 'body.reference_ride_height', 'value must be finite'),
+    ]);
+  }
+  const raw = cloneRaw(model);
+  const body = bodyRecord(raw);
+  if (body === null) {
+    return fail([dataError('invalidValue', 'body', 'body must be an object')]);
+  }
+  const error = setMeasuredNumber(
+    body,
+    'reference_ride_height',
+    valueMm,
+    raw,
+    'body.reference_ride_height',
+  );
+  return error === null ? parseCarModel(raw) : fail([error]);
+}
+
+/** Write the chassis plate thickness. It enters the ground plane through the same sum. */
+export function updateChassisThickness(
+  model: CarModelDocument,
+  valueMm: number,
+): DataResult<CarModelDocument> {
+  if (!Number.isFinite(valueMm)) {
+    return fail([
+      dataError('invalidValue', 'body.chassis.thickness', 'value must be finite'),
+    ]);
+  }
+  const raw = cloneRaw(model);
+  const body = bodyRecord(raw);
+  if (body === null) {
+    return fail([dataError('invalidValue', 'body', 'body must be an object')]);
+  }
+  const chassis = ensureRecord(body, 'chassis');
+  if (chassis === null) {
+    return fail([dataError('invalidValue', 'body.chassis', 'chassis must be an object')]);
+  }
+  const error = setMeasuredNumber(chassis, 'thickness', valueMm, raw, 'body.chassis.thickness');
+  return error === null ? parseCarModel(raw) : fail([error]);
+}
+
+export type ChassisValueField = 'ride_height' | 'thickness';
+
+/**
+ * Write one of the two values that locate the ground plane. `ride_height` is
+ * the clearance under the bottom of the plate; `thickness` is the plate. The
+ * wheel's diameter is inferred from the wheel centre and this ground plane, so
+ * it has no stored field and no edit of its own.
+ */
+export function updateChassisValue(
+  model: CarModelDocument,
+  field: ChassisValueField,
+  valueMm: number,
+): DataResult<CarModelDocument> {
+  switch (field) {
+    case 'ride_height':
+      return updateChassisRideHeight(model, valueMm);
+    case 'thickness':
+      return updateChassisThickness(model, valueMm);
+    default:
+      return fail([
+        dataError(
+          'invalidValue' as const,
+          'body',
+          `unknown chassis value "${String(field)}"`,
+        ),
+      ]);
+  }
+}
+
 /**
  * Restore one axle's rate edits from a baseline: spring rate, the whole ARB
  * block and the left corner's damper coefficient. Hardpoints, the other axle
