@@ -108,6 +108,8 @@ import {
   formatWheelRateFromNpm,
 } from './format/format.js';
 import { GlossaryView } from './glossary/GlossaryView.js';
+import { InterpreterPanel } from './interpreter/InterpreterPanel.js';
+import { interpret } from './interpreter/interpreter.js';
 import { currentHash, routeFromHash, type Route } from './route.js';
 import { buildEndPanel, buildSceneLabels, stateLabel } from './view/endSummary.js';
 import { BothEndPanel, InstantCentreToggle } from './view/EndPanels.js';
@@ -167,6 +169,10 @@ export function AnalysisView({
   const edited = editedCorners.has(cornerKey);
   const baseline = initialParse.ok ? initialParse.value : null;
   const datum = useMemo(() => (model === null ? null : chassisDatum(model)), [model]);
+  const interpretation = useMemo(
+    () => (baseline === null || model === null ? null : interpret(baseline, model)),
+    [baseline, model],
+  );
 
   useEffect(() => {
     writeInstantCentrePreference(includeInstantCentre);
@@ -577,6 +583,10 @@ export function AnalysisView({
         </div>
 
         <div className="outputs">
+          {interpretation === null ? null : (
+            <InterpreterPanel interpretation={interpretation} />
+          )}
+
           {mode === 'both' && bothEnds !== null ? (
             <>
               <div className="both-toolbar">
