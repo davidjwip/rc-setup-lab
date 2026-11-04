@@ -14,11 +14,13 @@ describe('R0 screen', () => {
     expect(html).toContain('Show the maths');
   });
 
-  it('offers a front/rear toggle and starts on the measured front view', () => {
+  it('offers a page-level view radio group and starts on the measured front view', () => {
     const html = renderToStaticMarkup(createElement(App));
-    expect(html).toContain('aria-label="Axle"');
-    expect(html).toContain('aria-pressed="true">Front</button>');
-    expect(html).toContain('aria-pressed="false">Rear</button>');
+    expect(html).toContain('role="radiogroup"');
+    expect(html).not.toContain('aria-label="Axle"');
+    expect(html).toMatch(/role="radio"[^>]*aria-checked="true"[^>]*>Front<\/button>/);
+    expect(html).toMatch(/role="radio"[^>]*aria-checked="false"[^>]*>Rear<\/button>/);
+    expect(html).toMatch(/role="radio"[^>]*aria-checked="false"[^>]*>Both<\/button>/);
     expect(html).toContain('Front-view drawing');
     expect(html).not.toContain('rear geometry mirrored from the front');
     expect(html).not.toContain('rear geometry modelled');
