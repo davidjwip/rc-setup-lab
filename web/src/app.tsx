@@ -24,6 +24,11 @@ import {
 import rawModel from '../../assets/models/reference-touring-car.json';
 import { CamberGainChart } from './scene/CamberGainChart.js';
 import { FrontViewScene } from './scene/FrontViewScene.js';
+import {
+  readInstantCentrePreference,
+  toggleInstantCentre,
+  writeInstantCentrePreference,
+} from './scene/instantCentrePreference.js';
 import { buildCamberChart } from './scene/presenter.js';
 import {
   ANGLE_UNIT,
@@ -118,7 +123,14 @@ function AnalysisView() {
   );
   const [lateralG, setLateralG] = useState(1.0);
   const [axle, setAxle] = useState<'front' | 'rear'>('front');
+  const [includeInstantCentre, setIncludeInstantCentre] = useState<boolean>(() =>
+    readInstantCentrePreference(),
+  );
   const cornerKey: CornerKey = axle === 'front' ? 'LF' : 'LR';
+
+  useEffect(() => {
+    writeInstantCentrePreference(includeInstantCentre);
+  }, [includeInstantCentre]);
 
   const inputResult = useMemo(
     () => (model === null ? null : buildFrontViewInput(model, cornerKey)),
@@ -168,9 +180,9 @@ function AnalysisView() {
   const scene = useMemo(
     () =>
       inputResult !== null && inputResult.ok && result !== null
-        ? buildFrontViewScene(inputResult.value, result)
+        ? buildFrontViewScene(inputResult.value, result, { includeInstantCentre })
         : null,
-    [inputResult, result],
+    [inputResult, result, includeInstantCentre],
   );
   const camberSeries = useMemo(
     () => (inputResult !== null && inputResult.ok ? buildCamberSeries(inputResult.value) : null),
@@ -202,13 +214,18 @@ function AnalysisView() {
         : null;
     const side = scene.side === 1 ? 'left' : 'right';
     const axleName = axle === 'front' ? 'front' : 'rear';
-    const description = [
+    const descriptionParts = [
       `${axle === 'front' ? 'Front' : 'Rear'}-view elevation of the ${side}-${axleName} corner.`,
       `Roll centre ${rollCentreValue} with band ${rollCentreBand}.`,
-      instantCentreText === null
-        ? 'Instant centre not drawn.'
-        : `Instant centre at ${instantCentreText}.`,
-    ].join(' ');
+    ];
+    if (scene.instantCentre.kind !== 'hidden') {
+      descriptionParts.push(
+        instantCentreText === null
+          ? 'Instant centre not drawn.'
+          : `Instant centre at ${instantCentreText}.`,
+      );
+    }
+    const description = descriptionParts.join(' ');
 
     return { rollCentreValue, rollCentreBand, instantCentre: instantCentreText, description };
   }, [scene, result, axle]);
@@ -326,21 +343,33 @@ function AnalysisView() {
             <div className="card-heading">
               <div>
                 <h2>{axle === 'front' ? 'Front' : 'Rear'}-view drawing</h2>
-                <div className="axle-toggle" role="group" aria-label="Axle">
-                  <button
-                    type="button"
-                    aria-pressed={axle === 'front'}
-                    onClick={() => setAxle('front')}
-                  >
-                    Front
-                  </button>
-                  <button
-                    type="button"
-                    aria-pressed={axle === 'rear'}
-                    onClick={() => setAxle('rear')}
-                  >
-                    Rear
-                  </button>
+                <div className="scene-controls">
+                  <div className="axle-toggle" role="group" aria-label="Axle">
+                    <button
+                      type="button"
+                      aria-pressed={axle === 'front'}
+                      onClick={() => setAxle('front')}
+                    >
+                      Front
+                    </button>
+                    <button
+                      type="button"
+                      aria-pressed={axle === 'rear'}
+                      onClick={() => setAxle('rear')}
+                    >
+                      Rear
+                    </button>
+                  </div>
+                  <div className="axle-toggle" role="group" aria-label="Instant centre overlay">
+                    <button
+                      type="button"
+                      aria-pressed={includeInstantCentre}
+                      onClick={() => setIncludeInstantCentre(toggleInstantCentre)}
+                    >
+                      Instant centre{' '}
+                      <span className="toggle-state">{includeInstantCentre ? 'on' : 'off'}</span>
+                    </button>
+                  </div>
                 </div>
               </div>
               <span className="pill">

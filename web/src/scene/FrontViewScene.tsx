@@ -66,6 +66,8 @@ export function FrontViewScene({ scene, labels }: FrontViewSceneProps) {
     ? `${labels.description} ${DERIVED_NOTICE}`
     : labels.description;
 
+  const showInstantCentre = scene.instantCentre.kind === 'visible';
+
   return (
     <figure className="scene-figure">
       <div className="scene-well">
@@ -248,9 +250,17 @@ export function FrontViewScene({ scene, labels }: FrontViewSceneProps) {
       <figcaption className="scene-legend">
         {scene.derivedGeometry ? <span className="scene-derived-note">{DERIVED_NOTICE}</span> : null}
         <span>Solid lines — lower arm and upper link.</span>
-        <span>Dashed lines — construction lines to the instant centre and roll centre.</span>
+        <span>
+          {showInstantCentre
+            ? 'Dashed lines — construction lines to the instant centre and roll centre.'
+            : 'Dashed line — construction line to the roll centre.'}
+        </span>
         <span>Filled dot — roll centre, value and band beside it.</span>
-        <span>Hollow dot — instant centre. Cross — contact patch.</span>
+        <span>
+          {showInstantCentre
+            ? 'Hollow dot — instant centre. Cross — contact patch.'
+            : 'Cross — contact patch.'}
+        </span>
         <span>Circle — wheel at the contact-patch radius.</span>
       </figcaption>
     </figure>

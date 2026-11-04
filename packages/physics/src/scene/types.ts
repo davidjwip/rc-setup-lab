@@ -19,7 +19,7 @@ export interface SceneBounds {
   readonly maxY: number;
 }
 
-export type SceneReason = UndefinedReason | 'notMeasured';
+export type SceneReason = UndefinedReason | 'notMeasured' | 'overlayOff';
 
 export type HardpointId =
   | 'lca_in'
@@ -66,6 +66,10 @@ export type SceneInstantCentre =
   | {
       readonly kind: 'undefined';
       readonly reason: SceneReason;
+      readonly source: string;
+    }
+  | {
+      readonly kind: 'hidden';
       readonly source: string;
     };
 

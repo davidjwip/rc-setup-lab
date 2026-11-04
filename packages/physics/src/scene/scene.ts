@@ -181,10 +181,21 @@ function sourceReason(value: Solved<unknown>): SceneReason {
  * from, so the component can be tested against the solver instead of a
  * screenshot.
  */
+export interface FrontViewSceneOptions {
+  /**
+   * Draw the instant centre, its label and the arm-extension rays, and let the
+   * point take part in the clip. Off by default: the overlay is available on
+   * request, but the framing belongs to the measured geometry.
+   */
+  readonly includeInstantCentre?: boolean;
+}
+
 export function buildFrontViewScene(
   input: FrontViewInput,
   result: FrontViewResult,
+  options: FrontViewSceneOptions = {},
 ): FrontViewScene {
+  const includeInstantCentre = options.includeInstantCentre ?? false;
   const working = result.working;
   const contactPatch: ScenePoint = {
     x: working.contactPatchY_m,
@@ -239,7 +250,9 @@ export function buildFrontViewScene(
         };
 
   const instantCentrePoint =
-    result.instantCentre.kind === 'defined' ? toScene(result.instantCentre.value) : null;
+    includeInstantCentre && result.instantCentre.kind === 'defined'
+      ? toScene(result.instantCentre.value)
+      : null;
 
   const instantCentreInReach =
     instantCentrePoint !== null &&
@@ -253,7 +266,9 @@ export function buildFrontViewScene(
   });
 
   const clipPoints: ScenePoint[] = hardpoints.map((hardpoint) => hardpoint.point);
-  if (instantCentreInReach && instantCentrePoint !== null) clipPoints.push(instantCentrePoint);
+  if (includeInstantCentre && instantCentreInReach && instantCentrePoint !== null) {
+    clipPoints.push(instantCentrePoint);
+  }
   if (rollCentre.kind === 'defined') {
     clipPoints.push({ x: rollCentre.x, y: rollCentre.y });
   }
@@ -263,8 +278,9 @@ export function buildFrontViewScene(
   );
   const clip = computeClip(clipPoints);
 
-  const instantCentre: SceneInstantCentre =
-    instantCentrePoint === null
+  const instantCentre: SceneInstantCentre = !includeInstantCentre
+    ? { kind: 'hidden', source: 'frontView.instantCentre' }
+    : instantCentrePoint === null
       ? {
           kind: 'undefined',
           reason: sourceReason(result.instantCentre),
@@ -295,8 +311,11 @@ export function buildFrontViewScene(
     reason: instantCentre.kind === 'undefined' ? instantCentre.reason : 'degenerateGeometry',
   };
 
-  const lowerArmRay: SceneRay =
-    instantCentrePoint === null
+  const overlayOmitted: SceneRay = { kind: 'omitted', reason: 'overlayOff' };
+
+  const lowerArmRay: SceneRay = !includeInstantCentre
+    ? overlayOmitted
+    : instantCentrePoint === null
       ? omitted
       : rayOrOmitted(
           'lower-arm-ray',
@@ -305,8 +324,9 @@ export function buildFrontViewScene(
           clip,
           'frontView.instantCentre',
         );
-  const upperLinkRay: SceneRay =
-    instantCentrePoint === null
+  const upperLinkRay: SceneRay = !includeInstantCentre
+    ? overlayOmitted
+    : instantCentrePoint === null
       ? omitted
       : rayOrOmitted(
           'upper-link-ray',
@@ -315,8 +335,20 @@ export function buildFrontViewScene(
           clip,
           'frontView.instantCentre',
         );
-  const rollCentreRay: SceneRay =
-    instantCentrePoint === null
+  const rollCentreRay: SceneRay = !includeInstantCentre
+    ? rollCentre.kind === 'defined'
+      ? {
+          kind: 'drawn',
+          segment: segment(
+            'roll-centre-ray',
+            'construction',
+            contactPatch,
+            { x: rollCentre.x, y: rollCentre.y },
+            'frontView.rollCentreHeight',
+          ),
+        }
+      : { kind: 'omitted', reason: rollCentre.reason }
+    : instantCentrePoint === null
       ? omitted
       : rayOrOmitted(
           'roll-centre-ray',
