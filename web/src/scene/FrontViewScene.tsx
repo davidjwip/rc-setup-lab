@@ -15,6 +15,8 @@ export interface SceneLabels {
 interface FrontViewSceneProps {
   readonly scene: FrontViewSceneData;
   readonly labels: SceneLabels;
+  /** Ground is below the chassis-plate datum: the line is derived, not stored. */
+  readonly groundLabel?: string;
 }
 
 const VIEW_WIDTH = 340;
@@ -44,7 +46,7 @@ function reasonText(reason: SceneReason): string {
   return REASON_TEXT[reason] ?? reason;
 }
 
-export function FrontViewScene({ scene, labels }: FrontViewSceneProps) {
+export function FrontViewScene({ scene, labels, groundLabel = 'ground' }: FrontViewSceneProps) {
   const { clip } = scene;
   const xOf = (x: number): number => ((x - clip.minX) / (clip.maxX - clip.minX)) * VIEW_WIDTH;
   const yOf = (y: number): number => ((clip.maxY - y) / (clip.maxY - clip.minY)) * VIEW_HEIGHT;
@@ -113,7 +115,7 @@ export function FrontViewScene({ scene, labels }: FrontViewSceneProps) {
             y2={VIEW_HEIGHT}
           />
           <text className="scene-axis-label" x={4} y={yOf(0) - 3}>
-            ground
+            {groundLabel}
           </text>
           <text className="scene-axis-label" x={xOf(0) + 3} y={10}>
             CL
@@ -273,6 +275,9 @@ export function FrontViewScene({ scene, labels }: FrontViewSceneProps) {
             : 'Cross — contact patch.'}
         </span>
         <span>Circle — wheel at the contact-patch radius.</span>
+        <span>
+          z is measured from the top of the chassis plate; the ground line is derived, not stored.
+        </span>
       </figcaption>
     </figure>
   );

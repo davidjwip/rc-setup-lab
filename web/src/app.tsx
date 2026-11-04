@@ -4,10 +4,13 @@ import {
   buildFrontViewInput,
   buildLoadTransferInput,
   buildRollStiffnessInput,
+  chassisDatum,
   gravitiesToMetresPerSecondSquared,
   parseCarModel,
+  reportedRollCentreHeightM,
   resetAxleRates,
   resetCornerPointsMm,
+  rideHeightConsistency,
   updateAxleArbType,
   updateAxleArbValue,
   updateAxleDamperCoefficient,
@@ -133,6 +136,11 @@ export function AnalysisView({
   const cornerKey: CornerKey = cornerKeyForAxle(axle);
   const edited = editedCorners.has(cornerKey);
   const baseline = initialParse.ok ? initialParse.value : null;
+  const datum = useMemo(() => (model === null ? null : chassisDatum(model)), [model]);
+  const datumCheck = useMemo(
+    () => (model === null ? null : rideHeightConsistency(model)),
+    [model],
+  );
 
   useEffect(() => {
     writeInstantCentrePreference(includeInstantCentre);
@@ -212,8 +220,12 @@ export function AnalysisView({
 
     const rollCentre = result.rollCentreHeight;
     const instantCentre = result.instantCentre;
+    const reportedRollCentre =
+      model === null ? null : reportedRollCentreHeightM(model, result);
     const rollCentreValue =
-      rollCentre.kind === 'defined' ? formatRollCentreHeight(rollCentre.value) : 'not defined';
+      rollCentre.kind === 'defined' && reportedRollCentre !== null
+        ? formatRollCentreHeight(reportedRollCentre)
+        : 'not defined';
     const rollCentreBand =
       rollCentre.kind === 'defined' && rollCentre.band !== null
         ? formatBandFromMetres(rollCentre.band)
@@ -243,7 +255,10 @@ export function AnalysisView({
     const description = descriptionParts.join(' ');
 
     return { rollCentreValue, rollCentreBand, instantCentre: instantCentreText, description };
-  }, [scene, result, axle, edited]);
+  }, [scene, result, axle, edited, model]);
+
+  const reportedRollCentre =
+    model === null || result === null ? null : reportedRollCentreHeightM(model, result);
 
   if (!initialParse.ok) return <ParseErrors errors={initialParse.errors} />;
   if (model === null || inputResult === null || result === null) {
@@ -378,18 +393,19 @@ export function AnalysisView({
     <main className="shell">
       <header className="masthead">
         <div className="masthead-row">
-          <p className="eyebrow">Setup Lab · Slice 12</p>
+          <p className="eyebrow">Setup Lab · Slice 13</p>
           <a className="text-link" href="#glossary">
             Glossary
           </a>
         </div>
         <h1>Front- and rear-view kinematics</h1>
         <p className="lede">
-          {model.name}. Left-front and left-rear corners, ISO 8855: x forward, y left, z up. The
-          selected axle drives the drawing, the hardpoint editor and the rates editor. Moving a
-          hardpoint recomputes that end's roll centre and camber gain; changing a spring, damper or
-          bar recomputes rates, roll stiffness and balance. The rear corner is modelled from
-          plausible rear geometry, not measured, and says so.
+          {model.name}. Left-front and left-rear corners, ISO 8855: x forward, y left, z up from
+          the top surface of the chassis plate. The selected axle drives the drawing, the hardpoint
+          editor and the rates editor. Moving a hardpoint recomputes that end's roll centre and
+          camber gain; changing a spring, damper or bar recomputes rates, roll stiffness and balance.
+          The ground plane is derived from the plate thickness and ride height, never stored. The
+          rear corner is modelled from plausible rear geometry, not measured, and says so.
         </p>
       </header>
 
@@ -405,6 +421,11 @@ export function AnalysisView({
             onCommit={commitHardpoint}
             onReset={resetCorner}
           />
+          {datumCheck?.message === null || datumCheck?.message === undefined ? null : (
+            <p className="editor-error" role="status">
+              {datumCheck.message}
+            </p>
+          )}
           <RatesEditor
             key={`rates:${cornerKey}:${editorKey}`}
             model={model}
@@ -461,7 +482,15 @@ export function AnalysisView({
               </span>
             </div>
             {scene !== null && sceneLabels !== null ? (
-              <FrontViewScene scene={scene} labels={sceneLabels} />
+              <FrontViewScene
+                scene={scene}
+                labels={sceneLabels}
+                groundLabel={
+                  datum === null
+                    ? 'ground (derived)'
+                    : `ground (derived, z ${formatLengthMm(datum.groundPlaneMm, 1)})`
+                }
+              />
             ) : (
               <p className="no-answer">The drawing needs a solved corner.</p>
             )}
@@ -482,9 +511,9 @@ export function AnalysisView({
               <h2>Roll-centre height</h2>
               <span className="pill">{stateLabel(result.rollCentreHeight)}</span>
             </div>
-            {result.rollCentreHeight.kind === 'defined' ? (
+            {result.rollCentreHeight.kind === 'defined' && reportedRollCentre !== null ? (
               <div className="value-row">
-                <span className="value">{formatRollCentreHeight(result.rollCentreHeight.value)}</span>
+                <span className="value">{formatRollCentreHeight(reportedRollCentre)}</span>
                 <span className="band">
                   {result.rollCentreHeight.band === null
                     ? 'no band'

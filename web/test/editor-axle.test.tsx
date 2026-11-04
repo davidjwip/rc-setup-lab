@@ -26,11 +26,11 @@ describe('hardpoint editor follows the selected axle', () => {
   it('shows the rear corner values and never the front values when Rear is selected', () => {
     const html = renderToStaticMarkup(createElement(AnalysisView, { initialAxle: 'rear' }));
 
-    expect(inputTag(html, 'Upper link inner z in mm')).toContain('value="52"');
-    expect(inputTag(html, 'Upper link inner z in mm')).not.toContain('value="45"');
-    expect(inputTag(html, 'Lower arm inner (hinge point) z in mm')).toContain('value="16"');
+    expect(inputTag(html, 'Upper link inner z in mm')).toContain('value="45"');
+    expect(inputTag(html, 'Upper link inner z in mm')).not.toContain('value="38"');
+    expect(inputTag(html, 'Lower arm inner (hinge point) z in mm')).toContain('value="9"');
     expect(inputTag(html, 'Lower ball joint y in mm')).toContain('value="80"');
-    expect(inputTag(html, 'Upper ball stud z in mm')).toContain('value="53"');
+    expect(inputTag(html, 'Upper ball stud z in mm')).toContain('value="46"');
     expect(html).toContain('Rear-view drawing');
     expect(html).toContain('Hardpoints · rear-left');
   });

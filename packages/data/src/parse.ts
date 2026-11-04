@@ -19,6 +19,15 @@ import type {
   SourceType,
 } from './model.js';
 
+/** The datum this build writes. `1.0.x` is the ground-plane origin and migrates. */
+export const CURRENT_SCHEMA_VERSION = '1.1.0';
+
+const DATUM_MIGRATION_SOURCE = 's_datum_migration';
+const FRAME_ORIGIN =
+  'top surface of the chassis plate, rear axle centre, vehicle centreline';
+/** A v1 model without a plate thickness cannot have measured the datum; use the reference plate. */
+const LEGACY_PLATE_THICKNESS_MM = 2.0;
+
 const CORNER_KEYS: readonly CornerKey[] = ['LF', 'RF', 'LR', 'RR'];
 const ARB_TYPES: readonly ArbTypeDocument[] = ['torsion_bar', 'blade', 'fixed', 'none'];
 const SOURCE_TYPES: readonly SourceType[] = [
@@ -471,13 +480,121 @@ function mirrorCorner(corner: CornerDocument): CornerDocument {
   return { armType: corner.armType, points, damper: corner.damper };
 }
 
+function cloneRecord(value: Record<string, unknown>): Record<string, unknown> {
+  return JSON.parse(JSON.stringify(value)) as Record<string, unknown>;
+}
+
+function shiftPointZ(node: unknown, offsetMm: number): void {
+  const record = asRecord(node);
+  const value = record?.['value'];
+  if (!Array.isArray(value) || value.length !== 3) return;
+  const z = value[2];
+  if (typeof z === 'number' && Number.isFinite(z)) value[2] = z - offsetMm;
+}
+
+function shiftValueZ(node: unknown, offsetMm: number): void {
+  const record = asRecord(node);
+  if (record === null) return;
+  const value = record['value'];
+  if (typeof value === 'number' && Number.isFinite(value)) record['value'] = value - offsetMm;
+}
+
+function ensureRecord(parent: Record<string, unknown>, key: string): Record<string, unknown> {
+  const existing = asRecord(parent[key]);
+  if (existing !== null) return existing;
+  const created: Record<string, unknown> = {};
+  parent[key] = created;
+  return created;
+}
+
+/**
+ * v1.0.x stored every z from the ground plane. v1.1.0 rebases the document on
+ * the top surface of the chassis plate. The migration is one rigid translation:
+ *
+ * ```text
+ * z' = z - (chassis_thickness + reference_ride_height)
+ * ```
+ *
+ * It is recorded in `sources`, and the frame origin and schema version are
+ * rewritten, so a migrated document exported and reloaded is not migrated
+ * twice. The caller's input is never mutated.
+ */
+function migrateToChassisDatum(rawInput: Record<string, unknown>): Record<string, unknown> {
+  const version = asString(rawInput['schema_version']);
+  if (version === null) return rawInput;
+  const parts = version.split('.');
+  const major = Number.parseInt(parts[0] ?? '', 10);
+  const minor = Number.parseInt(parts[1] ?? '', 10);
+  if (major !== 1 || minor !== 0) return rawInput;
+
+  const body = asRecord(rawInput['body']);
+  const rideHeight = body === null ? null : asNumber(asRecord(body['reference_ride_height'])?.['value']);
+  if (rideHeight === null) return rawInput;
+
+  const raw = cloneRecord(rawInput);
+  const migratedBody = asRecord(raw['body']) ?? ensureRecord(raw, 'body');
+
+  let thickness = asNumber(asRecord(asRecord(migratedBody['chassis'])?.['thickness'])?.['value']);
+  const sources =
+    asRecord(raw['sources']) ??
+    (asRecord(rawInput['sources']) !== null ? ensureRecord(raw, 'sources') : null);
+  if (thickness === null) {
+    thickness = LEGACY_PLATE_THICKNESS_MM;
+    const chassis = ensureRecord(migratedBody, 'chassis');
+    chassis['thickness'] = { value: thickness, source: DATUM_MIGRATION_SOURCE };
+  }
+
+  const offsetMm = thickness + rideHeight;
+
+  // Every stored z coordinate is relative to the old ground plane.
+  const corners = asRecord(raw['corners']);
+  if (corners !== null) {
+    for (const corner of Object.values(corners)) {
+      const points = asRecord(asRecord(corner)?.['points']);
+      if (points === null) continue;
+      for (const point of Object.values(points)) shiftPointZ(point, offsetMm);
+    }
+  }
+
+  const cg = asRecord(migratedBody['cg']);
+  if (cg !== null) {
+    shiftValueZ(cg['height'], offsetMm);
+    shiftValueZ(cg['unsprung_height'], offsetMm);
+    const components = cg['components'];
+    if (Array.isArray(components)) {
+      for (const component of components) shiftValueZ(asRecord(component)?.['z'], offsetMm);
+    }
+  }
+
+  const axles = asRecord(raw['axles']);
+  const front = asRecord(axles?.['front']);
+  const rack = asRecord(asRecord(front?.['steering'])?.['rack']);
+  if (rack !== null) shiftValueZ(rack['z'], offsetMm);
+
+  raw['schema_version'] = CURRENT_SCHEMA_VERSION;
+  const frame = ensureRecord(raw, 'frame');
+  frame['origin'] = FRAME_ORIGIN;
+
+  if (sources !== null) {
+    sources[DATUM_MIGRATION_SOURCE] = {
+      type: 'derived',
+      method: 'schema migration 1.0.0 → 1.1.0: chassis-datum rebase',
+      note: `every z moved by -${offsetMm} mm (plate thickness ${thickness} + ride height ${rideHeight}); the ground plane is now derived`,
+      from: ['body.chassis.thickness', 'body.reference_ride_height'],
+    };
+  }
+
+  return raw;
+}
+
 export function parseCarModel(rawInput: unknown): DataResult<CarModelDocument> {
-  const raw = asRecord(rawInput);
-  if (raw === null) {
+  const inputRecord = asRecord(rawInput);
+  if (inputRecord === null) {
     return fail([dataError('invalidDocument', '', 'the document root must be an object')]);
   }
 
   const errors: DataError[] = [];
+  const raw = migrateToChassisDatum(inputRecord);
   const schemaVersion = asString(raw['schema_version']);
   if (schemaVersion === null) {
     errors.push(dataError('missingField', 'schema_version', 'schema_version is required'));
@@ -515,12 +632,16 @@ export function parseCarModel(rawInput: unknown): DataResult<CarModelDocument> {
       ),
     );
   }
-  if (origin === null || !origin.includes('rear axle')) {
+  if (
+    origin === null ||
+    !origin.includes('rear axle') ||
+    !origin.includes('top surface')
+  ) {
     errors.push(
       dataError(
         'frameMismatch',
         'frame.origin',
-        'the frame origin must be the rear axle centre on the ground plane',
+        'the frame origin must be the top surface of the chassis plate at the rear axle centre, on the vehicle centreline',
       ),
     );
   }
@@ -592,6 +713,27 @@ export function parseCarModel(rawInput: unknown): DataResult<CarModelDocument> {
     rawBody === null
       ? null
       : readOptionalMeasuredNumber(rawBody, 'body', 'wheelbase', errors, sourceMap);
+  const referenceRideHeight =
+    rawBody === null
+      ? null
+      : readOptionalMeasuredNumber(
+          rawBody,
+          'body',
+          'reference_ride_height',
+          errors,
+          sourceMap,
+        );
+  const rawChassis = rawBody === null ? null : asRecord(rawBody['chassis']);
+  const chassisThickness =
+    rawChassis === null
+      ? null
+      : readOptionalMeasuredNumber(
+          rawChassis,
+          'body.chassis',
+          'thickness',
+          errors,
+          sourceMap,
+        );
 
   if (errors.length > 0 || id === null || name === null || sources === null || front === null) {
     return fail(errors);
@@ -611,11 +753,13 @@ export function parseCarModel(rawInput: unknown): DataResult<CarModelDocument> {
     symmetry,
     sources,
     wheelbase,
+    referenceRideHeight,
+    chassisThickness,
     corners,
     axles: { front, rear },
     mass,
     cg,
-    raw: rawInput,
+    raw,
   });
 }
 

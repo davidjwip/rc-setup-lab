@@ -23,8 +23,8 @@ describe('document model', () => {
     if (!result.ok) return;
     expect(result.value.id).toBe('mdl_reference_tc_front');
     expect(result.value.symmetry).toBe(true);
-    expect(result.value.corners.LF?.points.lca_out?.value).toEqual([259, 78, 7]);
-    expect(result.value.corners.RF?.points.lca_out?.value).toEqual([259, -78, 7]);
+    expect(result.value.corners.LF?.points.lca_out?.value).toEqual([259, 78, 0]);
+    expect(result.value.corners.RF?.points.lca_out?.value).toEqual([259, -78, 0]);
     expect(result.value.sources['s_worked']?.type).toBe('measured');
   });
 
@@ -118,7 +118,7 @@ describe('document model', () => {
     const parsed = parseCarModel(rawModel);
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
-    const edited = updateCornerPointMm(parsed.value, 'LF', 'lca_out', 2, 7.5);
+    const edited = updateCornerPointMm(parsed.value, 'LF', 'lca_out', 2, 0.5);
     expect(edited.ok).toBe(true);
     if (!edited.ok) return;
     const input = buildFrontViewInput(edited.value, 'LF');

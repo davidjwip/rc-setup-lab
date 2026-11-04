@@ -18,12 +18,12 @@ describe('load-transfer data', () => {
     if (!parsed.ok) return;
 
     expect(parsed.value.wheelbase?.value).toBeCloseTo(257, 12);
-    expect(parsed.value.cg.height?.value).toBeCloseTo(28, 12);
+    expect(parsed.value.cg.height?.value).toBeCloseTo(21, 12);
     expect(parsed.value.cg.height?.source).toBe('s_default');
     expect(parsed.value.cg.height?.confidence).toBe('estimated');
     expect(parsed.value.cg.frontMassShare?.value).toBeCloseTo(45, 12);
     expect(parsed.value.cg.frontMassShare?.source).toBe('s_derived');
-    expect(parsed.value.cg.unsprungHeight?.value).toBeCloseTo(20, 12);
+    expect(parsed.value.cg.unsprungHeight?.value).toBeCloseTo(13, 12);
     expect(parsed.value.mass.total?.value).toBeCloseTo(1350, 12);
     expect(parsed.value.mass.total?.source).toBe('s_worked');
     expect(parsed.value.mass.unsprungFront?.value).toBeCloseTo(120, 12);
@@ -81,13 +81,13 @@ describe('load-transfer data', () => {
       by: 'Setup Lab',
     };
     const rows: readonly [string, number, number][] = [
-      ['chassis plate', 84, 8],
-      ['motor + rotor + mount', 190, 22],
-      ['battery (2S shorty)', 210, 18],
-      ['ESC + receiver + wiring', 45, 24],
-      ['servo + saver + linkage', 60, 26],
-      ['body shell + wing', 85, 36],
-      ['hardware, arms, hubs, bumpers', 436, 14],
+      ['chassis plate', 84, 1],
+      ['motor + rotor + mount', 190, 15],
+      ['battery (2S shorty)', 210, 11],
+      ['ESC + receiver + wiring', 45, 17],
+      ['servo + saver + linkage', 60, 19],
+      ['body shell + wing', 85, 29],
+      ['hardware, arms, hubs, bumpers', 436, 7],
     ];
     withComponents.body.cg['components'] = rows.map(([component, mass, z]) => ({
       component,

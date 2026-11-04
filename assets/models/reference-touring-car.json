@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.0.0",
+  "schema_version": "1.1.0",
   "kind": "car_model",
   "id": "mdl_reference_tc_front",
   "name": "Reference touring car — front corner",
@@ -7,7 +7,7 @@
   "frame": {
     "standard": "ISO 8855",
     "axes": "x forward, y left, z up",
-    "origin": "ground plane, rear axle centre, vehicle centreline"
+    "origin": "top surface of the chassis plate, rear axle centre, vehicle centreline"
   },
   "units": {
     "length": "mm",
@@ -65,7 +65,7 @@
     },
     "cg": {
       "height": {
-        "value": 28.0,
+        "value": 21.0,
         "source": "s_default"
       },
       "front_mass_share": {
@@ -73,7 +73,7 @@
         "source": "s_derived"
       },
       "unsprung_height": {
-        "value": 20.0,
+        "value": 13.0,
         "source": "s_estimated"
       }
     },
@@ -97,6 +97,13 @@
       "unsprung_rear": {
         "value": 120.0,
         "source": "s_estimated"
+      }
+    },
+    "chassis": {
+      "material": "cfrp",
+      "thickness": {
+        "value": 2.0,
+        "source": "s_worked"
       }
     }
   },
@@ -196,47 +203,47 @@
       },
       "points": {
         "lca_in_a": {
-          "value": [238.0, 30.0, 12.0],
+          "value": [238.0, 30.0, 5.0],
           "source": "s_worked"
         },
         "lca_in_b": {
-          "value": [272.0, 30.0, 12.0],
+          "value": [272.0, 30.0, 5.0],
           "source": "s_worked"
         },
         "lca_out": {
-          "value": [259.0, 78.0, 7.0],
+          "value": [259.0, 78.0, 0.0],
           "source": "s_worked"
         },
         "uca_in": {
-          "value": [250.0, 42.0, 45.0],
+          "value": [250.0, 42.0, 38.0],
           "source": "s_worked"
         },
         "uca_out": {
-          "value": [254.0, 72.8, 44.0],
+          "value": [254.0, 72.8, 37.0],
           "source": "s_worked"
         },
         "tie_in": {
-          "value": [225.0, 26.0, 30.0],
+          "value": [225.0, 26.0, 23.0],
           "source": "s_worked"
         },
         "tie_out": {
-          "value": [243.68, 74.04, 32.0],
+          "value": [243.68, 74.04, 25.0],
           "source": "s_worked"
         },
         "wc": {
-          "value": [257.0, 86.0, 32.0],
+          "value": [257.0, 86.0, 25.0],
           "source": "s_worked"
         },
         "damper_lo": {
-          "value": [257.0, 60.0, 8.875],
+          "value": [257.0, 60.0, 1.875],
           "source": "s_worked"
         },
         "damper_up": {
-          "value": [257.0, 44.0, 58.0],
+          "value": [257.0, 44.0, 51.0],
           "source": "s_worked"
         },
         "arb_drop": {
-          "value": [250.0, 55.0, 9.4],
+          "value": [250.0, 55.0, 2.4],
           "source": "s_worked"
         }
       }
@@ -248,39 +255,39 @@
       },
       "points": {
         "lca_in_a": {
-          "value": [-20.0, 30.0, 16.0],
+          "value": [-20.0, 30.0, 9.0],
           "source": "s_modelled"
         },
         "lca_in_b": {
-          "value": [14.0, 30.0, 16.0],
+          "value": [14.0, 30.0, 9.0],
           "source": "s_modelled"
         },
         "lca_out": {
-          "value": [1.0, 80.0, 7.0],
+          "value": [1.0, 80.0, 0.0],
           "source": "s_modelled"
         },
         "uca_in": {
-          "value": [-4.0, 44.0, 52.0],
+          "value": [-4.0, 44.0, 45.0],
           "source": "s_modelled"
         },
         "uca_out": {
-          "value": [0.0, 73.5, 53.0],
+          "value": [0.0, 73.5, 46.0],
           "source": "s_modelled"
         },
         "wc": {
-          "value": [0.0, 87.0, 32.0],
+          "value": [0.0, 87.0, 25.0],
           "source": "s_modelled"
         },
         "damper_lo": {
-          "value": [0.0, 59.0, 9.0],
+          "value": [0.0, 59.0, 2.0],
           "source": "s_modelled"
         },
         "damper_up": {
-          "value": [-2.0, 47.0, 56.0],
+          "value": [-2.0, 47.0, 49.0],
           "source": "s_modelled"
         },
         "arb_drop": {
-          "value": [1.0, 57.0, 9.5],
+          "value": [1.0, 57.0, 2.5],
           "source": "s_modelled"
         }
       }
@@ -300,7 +307,7 @@
           "source": "s_modelled"
         },
         "lca_out": {
-          "value": [1.0, -80.0, 7.0],
+          "value": [1.0, -80.0, 0.0],
           "source": "s_modelled"
         },
         "uca_in": {
@@ -308,23 +315,23 @@
           "source": "s_modelled"
         },
         "uca_out": {
-          "value": [0.0, -73.5, 53.0],
+          "value": [0.0, -73.5, 46.0],
           "source": "s_modelled"
         },
         "wc": {
-          "value": [0.0, -87.0, 32.0],
+          "value": [0.0, -87.0, 25.0],
           "source": "s_modelled"
         },
         "damper_lo": {
-          "value": [0.0, -59.0, 9.0],
+          "value": [0.0, -59.0, 2.0],
           "source": "s_modelled"
         },
         "damper_up": {
-          "value": [-2.0, -47.0, 56.0],
+          "value": [-2.0, -47.0, 49.0],
           "source": "s_modelled"
         },
         "arb_drop": {
-          "value": [1.0, -57.0, 9.5],
+          "value": [1.0, -57.0, 2.5],
           "source": "s_modelled"
         }
       }

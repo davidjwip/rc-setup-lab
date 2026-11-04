@@ -57,9 +57,9 @@ describe('rear corner modelled geometry', () => {
       expect(corner.points.tie_out).toBeUndefined();
     }
 
-    expect(model.corners.LR?.points.uca_in?.value).toEqual([-4, 44, 52]);
-    expect(model.corners.LR?.points.arb_drop?.value).toEqual([1, 57, 9.5]);
-    expect(model.corners.RR?.points.wc?.value).toEqual([0, -87, 32]);
+    expect(model.corners.LR?.points.uca_in?.value).toEqual([-4, 44, 45]);
+    expect(model.corners.LR?.points.arb_drop?.value).toEqual([1, 57, 2.5]);
+    expect(model.corners.RR?.points.wc?.value).toEqual([0, -87, 25]);
 
     expect(model.axles.rear?.bumpLimit?.value).toBeCloseTo(6.0, 12);
     expect(model.axles.rear?.droopLimit?.value).toBeCloseTo(6.0, 12);

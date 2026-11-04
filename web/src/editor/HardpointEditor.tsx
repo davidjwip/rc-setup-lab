@@ -88,6 +88,11 @@ export function HardpointEditor({
             One selection drives the drawing and this editor. Values are stored with their source;
             editing one revalidates the document before the solve.
           </p>
+          <p className="edit-note">
+            z is measured from the <strong>top surface of the chassis plate</strong> at the rear axle
+            centre-line. The ground plane is derived below it, at z = −(plate thickness + ride
+            height); it is not the datum.
+          </p>
         </div>
         <span className="pill">{edited ? 'edited this session' : 'millimetres'}</span>
       </div>
@@ -104,7 +109,7 @@ export function HardpointEditor({
           <tr>
             <th scope="col">Point</th>
             <th scope="col">y ({LENGTH_UNIT})</th>
-            <th scope="col">z ({LENGTH_UNIT})</th>
+            <th scope="col">z ({LENGTH_UNIT}, plate top)</th>
           </tr>
         </thead>
         <tbody>
