@@ -80,10 +80,18 @@ export {
   CG_TLLT_BAND_RELATIVE,
   GRAVITY_MPS2,
   PER_WHEEL_BAND_RELATIVE,
+  STATED_CG_HEIGHT_BAND_M,
   STATED_CG_HEIGHT_M,
   inferCgHeight,
   solveLoadTransfer,
 } from './transfer/transfer.js';
+export { solveRaiseAndWeigh } from './cg/cg.js';
+export type {
+  RaiseAndWeighInput,
+  RaiseAndWeighResult,
+  RaiseAndWeighWorking,
+  RaisedEnd,
+} from './cg/types.js';
 export type {
   AxleTransfer,
   CgComponentInput,

@@ -54,7 +54,9 @@ import {
   FRONT_SHARE_UNIT,
   LATERAL_G_UNIT,
   LENGTH_UNIT,
+  MOMENT_UNIT,
   RIDE_FREQUENCY_UNIT,
+  ROLL_SENSITIVITY_UNIT,
   ROLL_STIFFNESS_UNIT,
   WHEEL_RATE_UNIT,
   formatAngleDegrees,
@@ -70,11 +72,15 @@ import {
   formatLateralG,
   formatLengthFromMetres,
   formatLengthMm,
+  formatMoment,
+  formatMomentBand,
   formatNumber,
   formatPercent,
   formatPercentagePointBand,
   formatRideFrequency,
   formatRollCentreHeight,
+  formatRollSensitivity,
+  formatRollSensitivityBand,
   formatRollStiffness,
   formatRollStiffnessSi,
   formatSlope,
@@ -833,6 +839,90 @@ export function AnalysisView({
             </p>
           </article>
 
+          <article className="card result-card roll-moment-card">
+            <div className="card-heading">
+              <h2>Chassis roll sensitivity</h2>
+              <span className="pill">
+                {transferResult === null
+                  ? 'not computable'
+                  : stateLabel(transferResult.rollSensitivity_degPerG)}
+              </span>
+            </div>
+            {transferResult !== null &&
+            transferResult.rollSensitivity_degPerG.kind === 'defined' ? (
+              <>
+                <div className="value-row">
+                  <span className="value">
+                    {formatRollSensitivity(transferResult.rollSensitivity_degPerG.value)}
+                  </span>
+                  <span className="band">
+                    {transferResult.rollSensitivity_degPerG.band === null
+                      ? 'no band'
+                      : formatRollSensitivityBand(
+                          transferResult.rollSensitivity_degPerG.band,
+                        )}
+                  </span>
+                </div>
+                <p className="hint">
+                  Roll moment arm{' '}
+                  {transferResult.rollMomentArm.kind === 'defined'
+                    ? formatLengthFromMetres(transferResult.rollMomentArm.value, 2)
+                    : stateLabel(transferResult.rollMomentArm)}{' '}
+                  {transferResult.rollMomentArm.kind === 'defined' &&
+                  transferResult.rollMomentArm.band !== null
+                    ? `(${formatBandFromMetres(transferResult.rollMomentArm.band)})`
+                    : ''}
+                  {' '}· {stateLabel(transferResult.rollMomentArm)}
+                  {transferResult.rollMomentArm.kind === 'defined' &&
+                  transferResult.rollMomentArm.provenance.size > 0
+                    ? ` · from ${[...transferResult.rollMomentArm.provenance].join(', ')}`
+                    : ''}
+                  .
+                </p>
+                <p className="hint">
+                  At {formatLateralG(lateralG)}, roll moment{' '}
+                  {transferResult.rollMoment.kind === 'defined'
+                    ? formatMoment(transferResult.rollMoment.value)
+                    : stateLabel(transferResult.rollMoment)}
+                  {transferResult.rollMoment.kind === 'defined' &&
+                  transferResult.rollMoment.band !== null
+                    ? ` (${formatMomentBand(transferResult.rollMoment.band)})`
+                    : ''}
+                  {' '}· {stateLabel(transferResult.rollMoment)}.
+                </p>
+                <p className="hint">
+                  CG above ground{' '}
+                  {transferResult.working.cgHeight_m === null
+                    ? 'not established'
+                    : `${formatLengthFromMetres(transferResult.working.cgHeight_m, 1)} via ${formatCgRoute(transferResult.cgRoute)}`}
+                  ; roll axis{' '}
+                  {transferResult.rollAxisHeight.kind === 'defined'
+                    ? formatLengthFromMetres(transferResult.rollAxisHeight.value, 2)
+                    : stateLabel(transferResult.rollAxisHeight)}
+                  . The arm is the <strong>sprung</strong> CG above the roll axis, not the
+                  whole-car CG above the ground.
+                  {transferResult.rollSensitivity_degPerG.kind === 'defined' &&
+                  transferResult.rollSensitivity_degPerG.provenance.size > 0
+                    ? ` Sensitivity from ${[...transferResult.rollSensitivity_degPerG.provenance].join(', ')}.`
+                    : ''}
+                </p>
+              </>
+            ) : (
+              <p className="no-answer">
+                {transferResult === null
+                  ? transferInputResult !== null && !transferInputResult.ok
+                    ? transferInputResult.errors.map((error) => error.path).join(', ')
+                    : 'no model'
+                  : stateLabel(transferResult.rollSensitivity_degPerG)}
+              </p>
+            )}
+            <p className="footnote">
+              Roll moment = sprung mass × lateral g × arm; roll sensitivity = roll moment ÷ total
+              roll stiffness, in degrees per g. This is Bob Wright&apos;s chassis roll sensitivity:
+              what the springs and bars must resist, levered from the CG above the roll axis.
+            </p>
+          </article>
+
           <article className="card maths-card">
             <details>
               <summary>Show the maths</summary>
@@ -1075,8 +1165,8 @@ export function AnalysisView({
       <footer className="footer">
         <span>
           Units: {LENGTH_UNIT}, {CAMBER_GAIN_UNIT}, {WHEEL_RATE_UNIT}, {RIDE_FREQUENCY_UNIT},{' '}
-          {ROLL_STIFFNESS_UNIT}, {FRONT_SHARE_UNIT}, {FORCE_UNIT}, {LATERAL_G_UNIT},{' '}
-          {ANGLE_UNIT}.
+          {ROLL_STIFFNESS_UNIT}, {FRONT_SHARE_UNIT}, {FORCE_UNIT}, {MOMENT_UNIT},{' '}
+          {LATERAL_G_UNIT}, {ROLL_SENSITIVITY_UNIT}, {ANGLE_UNIT}.
         </span>
         <span>Pure TypeScript physics · no DOM in the solver · one conversion site.</span>
       </footer>

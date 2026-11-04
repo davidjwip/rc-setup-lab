@@ -27,7 +27,14 @@ visible, because load transfer only becomes *handling* through the tyre, and v1 
 **What changed in round 2.** (6.3) was framed as a per-axle equation while being a whole-car total
 (M2), the inner-wheel fraction was printed as 68 % when the arithmetic gives 80 % (M1), `h_u` broke
 its own default rule (M3), and the consistency identity in `99-validation.md` was unsatisfiable (M4).
-CG height is now **inferred, never measured** (01 §4.5), and §6.7 states which outputs that affects.
+CG height was then **inferred, never measured** (01 §4.5), and §6.7 states which outputs that affects.
+
+**What changed in the measured-CG slice (D-26).** The raised-axle, two-scale procedure is now a real
+route: `body.cg.raise_and_weigh` produces the whole-car CG height, badges it `measured`, and carries
+the weighing tolerance as a band. The component table stays the `estimated` fallback and the stated
+28.0 mm stays the last resort. The roll moment now explicitly uses the **sprung** CG above the roll
+axis, and the new `rollMomentArm` / `rollSensitivity_degPerG` results expose the lever arm and Bob
+Wright's chassis roll sensitivity. None of the existing default-route goldens move.
 
 **What changed in round 3 — `x_cg` was the 55 %-front value (D-1).** Round 2 printed
 `x_cg = 257 × (1 − 0.45) = 141.35 mm`, which is the **55 %**-front CG, 25.7 mm forward of where a
@@ -49,7 +56,7 @@ re-derived below from the corrected value.
 |---|---|---|---|---|
 | total mass | m | kg | 1.0 – 1.6 | measured |
 | unsprung mass (all four corners) | m_u | kg | 0.16 – 0.32 | measured or estimated |
-| CG height | h | mm | 15 – 45 | **inferred** (01 §4.5) — never `measured` |
+| CG height | h | mm | 15 – 45 | **measured** by raised-axle weighing where available (D-26), otherwise inferred (01 §4.5) |
 | unsprung CG height | h_u | mm | 0.55 – 0.75 × tyre radius | assumed, default 0.625 R |
 | CG x | x_cg | mm | from the weight split | measured or derived |
 | front/rear static weight split | w_f | — | 0.40 – 0.55 | measured |
@@ -65,6 +72,19 @@ Derived:
 ```
 h_s = (m·h − m_u·h_u)/m_s          sprung CG height                              (6.1)
 ```
+
+Measured route (D-26), the axle opposite the raised end:
+
+```
+θ    = asin(h_raise / L)
+h    = (W_raised − W_level)/W_total × (L / tan θ) + r_wheel                      (6.1a)
+band = ±tol × √2 × (L / tan θ)/W_total                                            (6.1b)
+```
+
+`h` from (6.1a) is the **whole-car** CG above the ground. It includes the wheels and uprights, so
+(6.1) is still required before the roll moment: the arm uses `h_s`, not `h`. Where unsprung masses
+are absent, the 120 g/axle estimate is stated and the band widened; the whole-car CG is never used
+as a stand-in for the sprung CG.
 
 `h_s` must be derived this way, not assumed independently: an inconsistent triple (m, h, h_s) breaks
 the consistency check in §3.7.
@@ -117,12 +137,17 @@ the axles have equal tracks and get equal shares.)
 
 ```
 h_ra = z_rc,r + (z_rc,f − z_rc,r)·(x_cg − x_cp,r)/l                             (6.4)
-M_el = m_s·a_y·(h_s − h_ra)                                                     (6.5)
+arm  = h_s − h_ra                                                               (6.5a)
+M_el = m_s·a_y·arm                                                              (6.5)
 φ    = M_el / (k_φ,f + k_φ,r)                                                   (6.6)
+roll sensitivity = M_el / (k_φ,f + k_φ,r) at 1 g, in deg/g                      (6.6a)
 ```
 
 `h_ra` is the roll-axis height at the sprung CG's longitudinal position; the linear interpolation is
-exact for a straight roll axis, the standard assumption.
+exact for a straight roll axis, the standard assumption. The arm is the **sprung** CG above the roll
+axis, not the whole-car CG above the ground; the card shows `arm`, `M_el` at the lateral-g slider and
+`roll sensitivity` together. The CG's stored value is its chassis-frame `z`; the height above ground
+is `cg.z − z_ground` (D-26), so lowering ride height moves the CG down with the chassis.
 
 (6.6) is where a low roll centre does its work: it increases `h_s − h_ra`, so it *increases* roll. A
 low roll centre does not reduce body roll; it increases the moment arm the springs must resist. That
@@ -227,11 +252,13 @@ if the geometry supported the computation.
    forces are horizontal at the roll centre (Milliken ch. 18). It is wrong when the geometry is
    strongly asymmetric or the roll centre is far off centre — the normal case once the car rolls
    (module 2 §6.6).
-5. **`h` is inferred, `h_u` is assumed.** Every load number scales linearly with `h`; §6.7 quantifies
-   it and says which outputs are immune.
+5. **`h` may be measured; `h_u` is assumed unless weighed.** Every load number scales linearly with
+   `h`; §6.7 quantifies it and says which outputs are immune. A measured CG narrows the band but does
+   not remove the unsprung-height assumption.
 6. **No aero or gyroscopic terms.** Irrelevant at this scale.
-7. **Ride height changes are not propagated to `h`.** v1 takes `h` from the model. Module 10 §3.4 does
-   propagate a plate-thickness change, because that one is explicit.
+7. **Ride height moves the CG with the chassis.** `h` is stored as the CG's chassis-frame `z`; the
+   height above ground is derived as `cg.z − z_ground` (D-26), so a ride-height change propagates.
+   A plate-thickness change enters through the same derived ground plane.
 
 ---
 
@@ -420,8 +447,11 @@ and the reason module 10 is worth having even though it does not move the roll c
 | **G06.10** | reference car with `k_ch = 21.60 N·m/rad` (2.0 mm CFRP) | φ_f = 0.18836°, φ_r = 0.23506°, balance = 52.61 % | hand calc §6.8 |
 | **G06.11** | **balance invariant to `a_y`**: 0.1 g and 2.5 g | balance identical to 1e-9; loads scale | identity — round 1 verified this numerically but never asserted it |
 | **G06.12** | **`x_cg` must equal `w_f · l`**: reference car, 45 % front | `x_cg` = 115.65 mm, and `x_cg = (1 − w_f) · l` fails the case (141.35 mm → h_ra 8.186, balance 56.14, residual −1.223 %) | D-1; catches the round-2 slip in one assertion |
+| **G06.13** | raised-axle measurement: L 280 mm, W 1600 g, h 102 mm, level front 840 g, raised front 855 g, r = 32 mm | `h` = 38.711 mm; ±5 g per weighing gives ±3.163 mm; a 5 g error on the raised reading alone moves `h` by 2.237 mm | hand calc §2 (D-26) |
+| **G06.14** | reference car, ride height 5.0 → 0.0 mm at both ends | front RC 9.9749 → 2.0195 mm; rear RC 17.8985 → 10.1803 mm; CG above ground 28.0 → 23.0 mm; arm 15.3968 → 18.2218 mm; roll sensitivity 0.16007 → 0.19169 °/g | D-26; both roll centres fall faster than the CG, so the arm and sensitivity rise — Bob's direction |
 
-Tolerances: 1e-4 N, 1e-3 %, 1e-5 ° on the roll angle.
+Tolerances: 1e-4 N, 1e-3 %, 1e-5 ° on the roll angle; 1e-3 mm on the measured CG and the ride-height
+experiment, 1e-5 °/g on the sensitivity.
 
 ---
 

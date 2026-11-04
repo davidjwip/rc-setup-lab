@@ -38,6 +38,8 @@ export type {
   MeasuredPoint,
   MeasuredValue,
   Point3Mm,
+  RaiseAndWeighDocument,
+  RaisedEndDocument,
   SourceRecord,
   SourceType,
   SpringLocation,

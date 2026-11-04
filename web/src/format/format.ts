@@ -8,8 +8,10 @@ export const RIDE_FREQUENCY_UNIT = 'Hz';
 export const ROLL_STIFFNESS_UNIT = 'N·m/deg';
 export const FRONT_SHARE_UNIT = '%';
 export const FORCE_UNIT = 'N';
+export const MOMENT_UNIT = 'N·m';
 export const LATERAL_G_UNIT = 'g';
 export const ANGLE_UNIT = '°';
+export const ROLL_SENSITIVITY_UNIT = '°/g';
 
 const RADIANS_PER_DEGREE = Math.PI / 180;
 
@@ -114,6 +116,24 @@ export function formatForceBand(band: Band, digits = 2): string {
   return `±${halfWidth.toFixed(digits)} ${FORCE_UNIT}`;
 }
 
+export function formatMoment(newtonMetres: number, digits = 3): string {
+  return `${newtonMetres.toFixed(digits)} ${MOMENT_UNIT}`;
+}
+
+export function formatMomentBand(band: Band, digits = 3): string {
+  const halfWidth = (band.high - band.low) / 2;
+  return `±${halfWidth.toFixed(digits)} ${MOMENT_UNIT}`;
+}
+
+export function formatRollSensitivity(degreesPerG: number, digits = 2): string {
+  return `${degreesPerG.toFixed(digits)} ${ROLL_SENSITIVITY_UNIT}`;
+}
+
+export function formatRollSensitivityBand(band: Band, digits = 2): string {
+  const halfWidth = (band.high - band.low) / 2;
+  return `±${halfWidth.toFixed(digits)} ${ROLL_SENSITIVITY_UNIT}`;
+}
+
 export function formatPercent(fraction: number, digits = 1): string {
   return `${(fraction * 100).toFixed(digits)} ${FRONT_SHARE_UNIT}`;
 }
@@ -132,8 +152,15 @@ export function formatLateralG(value: number, digits = 1): string {
   return `${value.toFixed(digits)} ${LATERAL_G_UNIT}`;
 }
 
-export function formatCgRoute(route: 'component_mass_moment' | 'stated_default'): string {
-  return route === 'component_mass_moment'
-    ? 'component-mass estimate'
-    : 'stated default (D-18)';
+export function formatCgRoute(
+  route: 'raise_and_weigh' | 'component_mass_moment' | 'stated_default',
+): string {
+  switch (route) {
+    case 'raise_and_weigh':
+      return 'measured · raise-and-weigh';
+    case 'component_mass_moment':
+      return 'estimated · component-mass';
+    case 'stated_default':
+      return 'stated default (D-18)';
+  }
 }
