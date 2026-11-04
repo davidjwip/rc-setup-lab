@@ -276,6 +276,25 @@ Forecloses the blanket claim that a CG can never be measured (D-14's "never `mea
 superseded for this route; the component and default routes stay `inferred`), and forecloses using a
 whole-car CG directly in the roll moment.
 
+**D-27 — Anti-dive and anti-squat split the two inner pivot screws, and the axle share is the traction-limit load.** Ruled 2026-11-04 (issue #34 and the owner's correction). The touring-car lower arm's inner pivot is **two screws, fore and aft**, so `lca_in_a.z` and `lca_in_b.z` are independent on both axles; `x` is unchanged. The two views use the pair differently and deliberately:
+
+- **Front view** — roll centre, camber gain and motion ratio — uses the **midpoint** `z_mid = (z_a + z_b)/2`. Raising both screws by 1 mm therefore moves the front view exactly as the old single-height model did, raising one moves it by half, and a level pair leaves every existing golden bit-identical.
+- **Side view** — anti-dive and anti-squat — uses the **difference**. The lower arm's side-view line passes through `lca_out` with slope `Δz/Δx` of the hinge axis; the upper line is `uca_in → uca_out`; their intersection is the side-view instant centre (SVIC). A level pair is the exact **zero-anti-dive limit**: the ball joint's side-view motion is vertical, the SVIC runs to infinity, and the result is a defined **0.0 %**, not an error. An exact zero-slope parallel pair is the same defined zero; any other parallel pair (no finite SVIC) is `Undefined(parallelLinks)`.
+
+**The axle share is derived, not asked for.** There is no brake bias, torque split, drive split or centre diff: one motor drives and brakes all four wheels. At the traction limit the force each axle can generate is proportional to its dynamic axle load:
+
+```text
+T_long      = m · |a_x| · h / L
+Fz_front(a) = static_front + T_long      (braking, a_x < 0)
+Fz_rear(a)  = static_rear  + T_long      (acceleration, a_x > 0)
+anti-dive %  = tan θ_f · (L/h) · (Fz_front(a)/m) · 100
+anti-squat % = tan θ_r · (L/h) · (Fz_rear(a)/m)  · 100
+```
+
+`h` is the **derived** whole-car CG height above ground (`cg.z − z_ground`, D-26), so ride height moves it. The percentages are signed (negative is pro-dive / pro-squat) and are plotted as a curve against signed `a_x`, labelled **evaluated at the traction limit**. The sign is set by which side of the contact patch the instant centre lies on, not by the raw quotient, so a wrong-side IC below the ground plane still reads negative rather than flipping through a double negative. A missing CG height refuses the output with `incompleteModel` naming `body.cg.height`; no default is substituted inside this module. Caster is **not modelled yet**, so the figure reads conservative and every value carries `modelledGeometry` and `diagnosticOnly`.
+
+Forecloses: asking the user for a bias or split that the car does not have; reintroducing a single shared inner-pivot height; treating a level hinge axis as a refusal; and any handling verdict derived from the anti percentages.
+
 ## Proposals awaiting a decision
 
 - **Setup-sheet library with a change interpreter.** Compare not only two setups but a *sequence*

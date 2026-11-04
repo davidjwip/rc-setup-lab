@@ -235,8 +235,9 @@ with a residual that was an artefact of the arithmetic slip.
 ΔW_long = m·a_x·h/l                                                            (6.11)
 ```
 
-Shown as a diagnostic; no handling claim is made from it. It is what module 3's anti-dive would act on
-if the geometry supported the computation.
+Shown as a diagnostic; no handling claim is made from it. The same transfer term is what module 3's
+anti-dive and anti-squat act on: the two inner pivot screws tilt the hinge axis, and the axle share
+is evaluated at the traction limit from the dynamic axle load (D-27).
 
 ---
 

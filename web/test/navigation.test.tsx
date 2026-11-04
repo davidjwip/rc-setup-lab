@@ -70,7 +70,7 @@ describe('view mode navigation', () => {
     const html = renderWithHash('#both');
 
     expect(html.match(/data-scene="front-view"/g)).toHaveLength(2);
-    expect(html.match(/role="img"/g)).toHaveLength(2);
+    expect(html.match(/class="scene-svg"[^>]*role="img"/g)).toHaveLength(2);
     expect(html).toContain('aria-label="Front-view elevation of the left-front corner.');
     expect(html).toContain('aria-label="Rear-view elevation of the left-rear corner.');
     expect(html).toContain('Hardpoints · front-left');
