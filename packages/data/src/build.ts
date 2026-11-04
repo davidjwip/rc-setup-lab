@@ -351,8 +351,9 @@ export function buildFrontViewInput(
 }
 
 /**
- * Build the 3-D toe-link input for one corner. Both ends use the same standard
- * rigid-upright solve; the rear is not special-cased, it simply has no rack.
+ * Build the 3-D toe-link input for one corner. The front uses the rack end as
+ * its inner ball; the rear uses a fixed chassis-side toe-link ball. Both feed
+ * the same plan-view construction.
  */
 export function buildToeInput(
   model: CarModelDocument,
