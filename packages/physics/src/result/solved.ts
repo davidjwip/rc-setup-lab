@@ -36,7 +36,8 @@ export type UndefinedReason =
   | 'noRollStiffness'
   | 'ambiguousBranch'
   | 'zeroLateral'
-  | 'outOfDomain';
+  | 'outOfDomain'
+  | 'noBumpSteerSolution';
 
 export type Flag =
   | 'parallelLinks'
@@ -47,7 +48,8 @@ export type Flag =
   | 'cgInferred'
   | 'rollCentreAboveCg'
   | 'derivedGeometry'
-  | 'modelledGeometry';
+  | 'modelledGeometry'
+  | 'lowAngle';
 
 export interface Defined<T> {
   readonly kind: 'defined';

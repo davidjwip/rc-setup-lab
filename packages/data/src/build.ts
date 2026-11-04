@@ -14,7 +14,9 @@ import {
   type RollStiffnessInput,
   type Solved,
   type Sourced,
+  type ToeInput,
   type Vec2,
+  type Vec3,
 } from '@setuplab/physics';
 import { dataError, fail, ok, type DataError, type DataResult } from './errors.js';
 import type {
@@ -28,6 +30,7 @@ import type {
   MeasuredValue,
 } from './model.js';
 import {
+  degreesToRadians,
   gramsToKilograms,
   millimetresToMetres,
   newtonsPerMillimetreToNewtonsPerMetre,
@@ -136,6 +139,34 @@ function sourcedPoint(
   };
 }
 
+function sourcedPoint3(
+  key: CornerKey,
+  pointKey: CornerPointKey,
+  point: MeasuredPoint,
+  offsetMm: number,
+): Sourced<Vec3> {
+  return {
+    value: {
+      x: millimetresToMetres(point.value[0]),
+      y: millimetresToMetres(point.value[1]),
+      z: millimetresToMetres(point.value[2] + offsetMm),
+    },
+    ref: `${key}.points.${pointKey}`,
+    confidence: point.confidence,
+    sourceId: point.source,
+  };
+}
+
+function point3(
+  corner: CornerDocument,
+  cornerKey: CornerKey,
+  pointKey: CornerPointKey,
+  offsetMm: number,
+): Sourced<Vec3> | null {
+  const measured = corner.points[pointKey];
+  return measured === undefined ? null : sourcedPoint3(cornerKey, pointKey, measured, offsetMm);
+}
+
 function point(
   corner: CornerDocument,
   cornerKey: CornerKey,
@@ -194,7 +225,12 @@ function mirrorCorner(corner: CornerDocument): CornerDocument {
       confidence: measured.confidence,
     };
   }
-  return { armType: corner.armType, points, damper: corner.damper };
+  return {
+    armType: corner.armType,
+    toe: corner.toe === null ? null : { ...corner.toe },
+    points,
+    damper: corner.damper,
+  };
 }
 
 export function cornerFor(
@@ -242,6 +278,8 @@ export function buildFrontViewInput(
   const ucaIn = point(corner.value, cornerKey, upperInnerKey, offsetMm);
   const ucaOut = point(corner.value, cornerKey, 'uca_out', offsetMm);
   const wheelCentre = point(corner.value, cornerKey, 'wc', offsetMm);
+  const tieIn = point(corner.value, cornerKey, 'tie_in', offsetMm);
+  const tieOut = point(corner.value, cornerKey, 'tie_out', offsetMm);
 
   if (lcaIn === null) {
     errors.push(dataError('missingField', `corners.${cornerKey}.points.lca_in_a`, 'required'));
@@ -305,6 +343,130 @@ export function buildFrontViewInput(
     ucaIn_m: ucaIn,
     ucaOut_m: ucaOut,
     wheelCentre_m: wheelCentre,
+    ...(tieIn === null ? {} : { tieIn_m: tieIn }),
+    ...(tieOut === null ? {} : { tieOut_m: tieOut }),
+    bumpLimit_m: millimetresToMetres(bumpLimit.value),
+    droopLimit_m: millimetresToMetres(droopLimit.value),
+  });
+}
+
+/**
+ * Build the 3-D toe-link input for one corner. The front uses the rack end as
+ * its inner ball; the rear uses a fixed chassis-side toe-link ball. Both feed
+ * the same plan-view construction.
+ */
+export function buildToeInput(
+  model: CarModelDocument,
+  cornerKey: CornerKey,
+): DataResult<ToeInput> {
+  const corner = cornerFor(model, cornerKey);
+  if (!corner.ok) return corner;
+
+  const offsetMm = datumOffsetMm(model);
+  if (offsetMm === null) return fail(missingDatumErrors());
+
+  const axleKey: 'front' | 'rear' = cornerKey === 'LF' || cornerKey === 'RF' ? 'front' : 'rear';
+  const axle = model.axles[axleKey];
+  const errors: DataError[] = [];
+  if (axle === null) {
+    errors.push(dataError('missingField', `axles.${axleKey}`, 'the toe solve needs an axle block'));
+  }
+
+  const upperInnerKey: CornerPointKey =
+    corner.value.armType.upper === 'single_link' ? 'uca_in' : 'uca_in_a';
+  const keys: readonly CornerPointKey[] = [
+    'lca_in_a',
+    'lca_in_b',
+    'lca_out',
+    upperInnerKey,
+    'uca_out',
+    'wc',
+    'tie_in',
+    'tie_out',
+  ];
+  const points: Partial<Record<CornerPointKey, Sourced<Vec3>>> = {};
+  for (const key of keys) {
+    const value = point3(corner.value, cornerKey, key, offsetMm);
+    if (value === null) {
+      errors.push(dataError('missingField', `corners.${cornerKey}.points.${key}`, 'required for bump steer'));
+    } else {
+      points[key] = value;
+    }
+  }
+
+  const toe = corner.value.toe;
+  if (toe === null) {
+    errors.push(
+      dataError('missingField', `corners.${cornerKey}.toe`, 'bump steer needs the stored static toe'),
+    );
+  }
+
+  const bumpLimit = axle?.bumpLimit ?? null;
+  const droopLimit = axle?.droopLimit ?? null;
+  if (bumpLimit === null) {
+    errors.push(
+      dataError(
+        'missingField',
+        `axles.${axleKey}.bump_limit_wheel`,
+        'the toe solve needs a bump limit',
+      ),
+    );
+  }
+  if (droopLimit === null) {
+    errors.push(
+      dataError(
+        'missingField',
+        `axles.${axleKey}.droop_limit_wheel`,
+        'the toe solve needs a droop limit',
+      ),
+    );
+  }
+
+  const lcaInA = points.lca_in_a;
+  const lcaInB = points.lca_in_b;
+  const lcaOut = points.lca_out;
+  const ucaIn = points[upperInnerKey];
+  const ucaOut = points.uca_out;
+  const wheelCentre = points.wc;
+  const tieIn = points.tie_in;
+  const tieOut = points.tie_out;
+
+  if (
+    errors.length > 0 ||
+    lcaInA === undefined ||
+    lcaInB === undefined ||
+    lcaOut === undefined ||
+    ucaIn === undefined ||
+    ucaOut === undefined ||
+    wheelCentre === undefined ||
+    tieIn === undefined ||
+    tieOut === undefined ||
+    toe === null ||
+    bumpLimit === null ||
+    droopLimit === null
+  ) {
+    return fail(errors);
+  }
+
+  return ok({
+    corner: cornerKey,
+    side: SIDE_SIGN[cornerKey],
+    lowerArmType: corner.value.armType.lower,
+    upperArmType: corner.value.armType.upper,
+    lcaInA_m: lcaInA,
+    lcaInB_m: lcaInB,
+    lcaOut_m: lcaOut,
+    ucaIn_m: ucaIn,
+    ucaOut_m: ucaOut,
+    wheelCentre_m: wheelCentre,
+    tieIn_m: tieIn,
+    tieOut_m: tieOut,
+    staticToe_rad: {
+      value: degreesToRadians(toe.value),
+      ref: `${cornerKey}.toe`,
+      confidence: toe.confidence,
+      sourceId: toe.source,
+    },
     bumpLimit_m: millimetresToMetres(bumpLimit.value),
     droopLimit_m: millimetresToMetres(droopLimit.value),
   });

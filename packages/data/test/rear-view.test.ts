@@ -10,6 +10,7 @@ import {
   buildFrontViewInput,
   buildLoadTransferInput,
   buildRollStiffnessInput,
+  buildToeInput,
   parseCarModel,
   type CarModelDocument,
 } from '../src/index.js';
@@ -53,10 +54,16 @@ describe('rear corner modelled geometry', () => {
         expect(point?.confidence).toBe('modelled');
       }
 
-      expect(corner.points.tie_in).toBeUndefined();
-      expect(corner.points.tie_out).toBeUndefined();
+      expect(corner.points.tie_in?.source).toBe('s_modelled');
+      expect(corner.points.tie_out?.source).toBe('s_modelled');
+      expect(corner.toe?.value).toBeCloseTo(0.5, 12);
+      expect(corner.toe?.source).toBe('s_modelled');
     }
 
+    expect(model.corners.LR?.points.tie_in?.value).toEqual([-22, 32, 22]);
+    expect(model.corners.LR?.points.tie_out?.value).toEqual([25, 73, 23]);
+    expect(model.corners.RR?.points.tie_in?.value).toEqual([-22, -32, 22]);
+    expect(model.corners.RR?.points.tie_out?.value).toEqual([25, -73, 23]);
     expect(model.corners.LR?.points.uca_in?.value).toEqual([-4, 44, 45]);
     expect(model.corners.LR?.points.arb_drop?.value).toEqual([1, 57, 2.5]);
     expect(model.corners.RR?.points.wc?.value).toEqual([0, -87, 25]);
@@ -134,7 +141,7 @@ describe('rear corner modelled geometry', () => {
     expect(upperInner?.point.y).not.toBeCloseTo(0.045, 12);
   });
 
-  it('tolerates the missing rear tie rod without a phantom link', () => {
+  it('draws the rear toe link from its modelled points', () => {
     const input = rearInput();
     expect(input.upperArmType).toBe('single_link');
 
@@ -142,9 +149,36 @@ describe('rear corner modelled geometry', () => {
     expect(result.staticState.kind).toBe('defined');
 
     const scene = buildFrontViewScene(input, result);
-    expect(scene.hardpoints.some((point) => String(point.id).includes('tie'))).toBe(false);
+    expect(scene.hardpoints.some((point) => point.id === 'tie_in')).toBe(true);
+    expect(scene.hardpoints.some((point) => point.id === 'tie_out')).toBe(true);
+    expect(scene.tieRod).not.toBeNull();
+    expect(scene.tieRod?.role).toBe('tie');
     expect(scene.lowerArm.id).not.toContain('tie');
     expect(scene.upperLink.id).not.toContain('tie');
+  });
+
+  it('builds the rear toe input with its modelled points and stored toe', () => {
+    const model = parseReference();
+    const rear = buildToeInput(model, 'LR');
+    const front = buildToeInput(model, 'LF');
+    expect(rear.ok).toBe(true);
+    expect(front.ok).toBe(true);
+    if (!rear.ok || !front.ok) return;
+
+    expect(rear.value.tieIn_m.value).toEqual({
+      x: -22 / 1000,
+      y: 32 / 1000,
+      z: 29 / 1000,
+    });
+    expect(rear.value.tieOut_m.value).toEqual({
+      x: 25 / 1000,
+      y: 73 / 1000,
+      z: 30 / 1000,
+    });
+    expect(rear.value.staticToe_rad.value).toBeCloseTo((0.5 * Math.PI) / 180, 12);
+    expect(rear.value.staticToe_rad.ref).toBe('LR.toe');
+    expect(front.value.staticToe_rad.value).toBeCloseTo((0.5 * Math.PI) / 180, 12);
+    expect(front.value.staticToe_rad.ref).toBe('LF.toe');
   });
 
   it('does not silently mirror the front corner into a rear corner when one is absent', () => {

@@ -433,7 +433,12 @@ function readCorner(
       );
     }
   }
-  return { armType, points, damper: readDamper(corner, path, errors, sources) };
+  return {
+    armType,
+    toe: readOptionalMeasuredNumber(corner, path, 'toe', errors, sources),
+    points,
+    damper: readDamper(corner, path, errors, sources),
+  };
 }
 
 function validateMeasuredObjects(
@@ -477,7 +482,12 @@ function mirrorCorner(corner: CornerDocument): CornerDocument {
       confidence: point.confidence,
     };
   }
-  return { armType: corner.armType, points, damper: corner.damper };
+  return {
+    armType: corner.armType,
+    toe: corner.toe === null ? null : { ...corner.toe },
+    points,
+    damper: corner.damper,
+  };
 }
 
 function cloneRecord(value: Record<string, unknown>): Record<string, unknown> {

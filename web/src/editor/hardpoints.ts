@@ -20,9 +20,9 @@ const STEERING_ROWS: readonly HardpointRow[] = [
   { key: 'tie_out', label: 'Tie rod outer' },
 ];
 
-/** The rear does not steer, so its tie-rod rows are absent rather than disabled. */
+/** Both ends have a tie link: the front rack and the rear toe link. */
 export const FRONT_HARDPOINT_ROWS: readonly HardpointRow[] = [...BASE_ROWS, ...STEERING_ROWS];
-export const REAR_HARDPOINT_ROWS: readonly HardpointRow[] = BASE_ROWS;
+export const REAR_HARDPOINT_ROWS: readonly HardpointRow[] = [...BASE_ROWS, ...STEERING_ROWS];
 
 /**
  * fields.yaml `meta.units_guard.coordinate_abs_max_mm`: every hardpoint

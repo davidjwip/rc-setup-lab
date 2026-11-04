@@ -1,18 +1,21 @@
 import {
   buildAxleRates,
   buildFrontViewInput,
+  buildToeInput,
   reportedRollCentreHeightM,
   type CarModelDocument,
   type CornerKey,
 } from '@setuplab/data';
 import {
   buildFrontViewScene,
+  buildToeSeries,
   solveFrontView,
   type Band,
   type FrontViewResult,
   type FrontViewScene,
   type RatesResult,
   type Solved,
+  type ToeSeriesResult,
 } from '@setuplab/physics';
 import { cornerKeyForAxle, type Axle } from '../editor/hardpoints.js';
 import {
@@ -22,12 +25,13 @@ import {
   formatLengthFromMetres,
   formatRideFrequency,
   formatRollCentreHeight,
+  formatToeGain,
   formatWheelRateFromNpm,
 } from '../format/format.js';
 import type { SceneLabels } from '../scene/FrontViewScene.js';
 
 export interface EndStripEntry {
-  readonly id: 'roll-centre' | 'camber-gain' | 'wheel-rate' | 'ride-frequency';
+  readonly id: 'roll-centre' | 'camber-gain' | 'toe-gain' | 'wheel-rate' | 'ride-frequency';
   readonly label: string;
   readonly value: string;
   readonly band: string;
@@ -121,11 +125,13 @@ export function buildEndStrip(
   result: FrontViewResult,
   ratesResult: RatesResult | null,
   reportedRollCentre: number | null,
+  toeSeries: ToeSeriesResult | null = null,
 ): readonly EndStripEntry[] {
   const rollCentre = result.rollCentreHeight;
   const camberGain = result.camberGain;
   const wheelRate = ratesResult?.wheelRate;
   const rideFrequency = ratesResult?.rideFrequency;
+  const toeGain = toeSeries?.kind === 'series' ? toeSeries.gain_radPerM : null;
 
   return [
     {
@@ -144,6 +150,18 @@ export function buildEndStrip(
       value: camberGain.kind === 'defined' ? formatCamberGain(camberGain.value) : '—',
       band: bandFor(camberGain, camberBand),
       state: stateLabel(camberGain),
+    },
+    {
+      id: 'toe-gain',
+      label: 'Toe gain',
+      value: toeGain !== null && toeGain.kind === 'defined' ? formatToeGain(toeGain.value) : '—',
+      band: 'no band',
+      state:
+        toeGain === null
+          ? toeSeries?.kind === 'unavailable'
+            ? `undefined · ${toeSeries.reason}`
+            : 'not computable · no toe link'
+          : stateLabel(toeGain),
     },
     {
       id: 'wheel-rate',
@@ -187,13 +205,20 @@ export function buildEndPanel(
   const scene = buildFrontViewScene(inputResult.value, result, { includeInstantCentre });
   const ratesResult = buildAxleRates(model, axle);
   const rates = ratesResult.ok ? ratesResult.value : null;
+  const toeInput = buildToeInput(model, cornerKey);
+  const toeSeries = toeInput.ok ? buildToeSeries(toeInput.value) : null;
 
   return {
     axle,
     cornerKey,
     scene,
     labels: buildSceneLabels(model, axle, scene, result, edited),
-    strip: buildEndStrip(result, rates, reportedRollCentreHeightM(model, result)),
+    strip: buildEndStrip(
+      result,
+      rates,
+      reportedRollCentreHeightM(model, result),
+      toeSeries,
+    ),
     error: null,
   };
 }

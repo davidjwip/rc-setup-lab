@@ -171,6 +171,16 @@ Round 1's worked example printed the intermediate values as ±0.0325 (symmetric 
 model gives **+0.03403 / −0.03096** — asymmetric, because τ is not an odd function of bump. The slope
 is right; the printed arithmetic now shows what the equations produce.
 
+#### 3.4.1 Rear toe link
+
+The rear has no rack. The same plan construction applies with `Tᵢ` fixed: the inner ball does not
+translate, and the knuckle rotates about its own steering axis until the tie rod's plan projection
+matches (4.10)–(4.12). The modelled rear's outer ball sits within ~1.5 mm of the axis, so the
+ground-point circle is tangent across the travel window and has no solution; the rear therefore
+evaluates the same axis at the **upper ball joint**, which keeps the construction conditioned. The
+front remains pinned to the ground point (§5.1) and none of G04.1–G04.10 moves. τ is still per wheel,
+toe-in positive, and the axle total is `τ_L + τ_R`; the stored `toe` is the zero-travel value.
+
 ### 3.5 The toe curve
 
 The reported toe at a bump is `τ₀ + τ(bump)`. The app plots that over the suspension's travel, reports

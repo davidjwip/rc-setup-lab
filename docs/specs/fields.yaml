@@ -265,6 +265,7 @@ outputs:
     unit: angle
     unit_si: rad/m
     display: "mm of toe per 10 mm bump (detail: °/mm)"
+    note: "Per-wheel toe change versus wheel travel, positive = toe-in. Solved at both axles: the front from the rack tie rod, the rear from the fixed-inner toe link. The axle total is τ_L + τ_R."
     ac: E3.5
   - id: damping_ratio
     unit: ratio
@@ -920,20 +921,20 @@ fields:
     - path: corners.<corner>.points.tie_in
       type: point
       unit: length
-      req: "yes on front corners"
+      req: "yes on front (rack) and rear (toe link)"
       on_absence: REFUSE
       plausible: null
       consumed_by: [bump_steer, ackermann_toe]
-      notes: "Inner tie-rod ball (rack end)."
+      notes: "Inner tie-rod ball: the rack end at the front, the chassis-side toe-link ball at the rear (fixed in bump)."
 
     - path: corners.<corner>.points.tie_out
       type: point
       unit: length
-      req: "yes on front corners"
+      req: "yes on front (rack) and rear (toe link)"
       on_absence: REFUSE
       plausible: null
       consumed_by: [bump_steer, ackermann_toe]
-      notes: "Outer tie-rod ball on the steering arm."
+      notes: "Outer tie-rod ball on the steering arm (front) or rear toe link on the carrier (rear)."
 
     - path: corners.<corner>.points.wc
       type: point
@@ -1293,8 +1294,8 @@ fields:
       req: "no"
       on_absence: REFUSE
       plausible: [-5, 5]
-      consumed_by: [ackermann_toe]
-      notes: "Per wheel, signed, positive = toe-in. Identical on left and right for a symmetric car; never negated on mirror (D-17); axle total toe = sum of the two per-wheel values."
+      consumed_by: [bump_steer, ackermann_toe]
+      notes: "Per wheel, signed, positive = toe-in. Identical on left and right for a symmetric car; never negated on mirror (D-17); axle total toe = sum of the two per-wheel values. The zero-travel toe curve reports this stored value."
 
     - path: corners.<corner>.caster
       type: value
