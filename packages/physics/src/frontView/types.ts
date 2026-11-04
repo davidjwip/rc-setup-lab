@@ -27,6 +27,10 @@ export interface FrontViewInput {
   readonly tieIn_m?: Sourced<Vec2>;
   /** Tie-rod outer ball in the front view (y, z), when the corner has a tie link. */
   readonly tieOut_m?: Sourced<Vec2>;
+  /** Lower damper eye on the lower arm, when the corner carries one. */
+  readonly damperLo_m?: Sourced<Vec2>;
+  /** Upper damper eye on the chassis, when the corner carries one. */
+  readonly damperUp_m?: Sourced<Vec2>;
   readonly bumpLimit_m: number;
   readonly droopLimit_m: number;
 }

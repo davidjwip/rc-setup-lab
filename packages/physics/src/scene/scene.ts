@@ -237,6 +237,26 @@ export function buildFrontViewScene(
             source: input.tieOut_m.ref,
           },
         ]),
+    ...(input.damperLo_m === undefined
+      ? []
+      : [
+          {
+            kind: 'hardpoint' as const,
+            id: 'damper_lo' as const,
+            point: toScene(input.damperLo_m.value),
+            source: input.damperLo_m.ref,
+          },
+        ]),
+    ...(input.damperUp_m === undefined
+      ? []
+      : [
+          {
+            kind: 'hardpoint' as const,
+            id: 'damper_up' as const,
+            point: toScene(input.damperUp_m.value),
+            source: input.damperUp_m.ref,
+          },
+        ]),
     {
       kind: 'hardpoint',
       id: 'wheel_centre',
@@ -378,6 +398,17 @@ export function buildFrontViewScene(
           'frontView.rollCentreHeight',
         );
 
+  const damper: SceneSegment | null =
+    input.damperLo_m === undefined || input.damperUp_m === undefined
+      ? null
+      : segment(
+          'damper',
+          'damper',
+          toScene(input.damperLo_m.value),
+          toScene(input.damperUp_m.value),
+          input.damperUp_m.ref,
+        );
+
   const wheel: SceneWheel = {
     kind: 'circle',
     centre: wheelCentre,
@@ -426,6 +457,7 @@ export function buildFrontViewScene(
             toScene(input.tieOut_m.value),
             input.tieIn_m.ref,
           ),
+    damper,
     carrier,
     wheel,
     instantCentre,
