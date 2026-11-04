@@ -334,6 +334,29 @@ Forecloses: a stored caster input driving the derived numbers; a `caster · sin 
 approximation; a strut-style steering-axis anti-dive term on this linkage; and drawing the rear
 corner a steering axis it does not have.
 
+**D-29 — Four pages, no view toggle, one setup per axle, diagrams above settings.** Ruled
+2026-11-04 (slice 15, branch `feat/pages-shell`). The single-page Front/Rear/Both analysis is
+replaced by a hash-routed shell: **Home** (`#home`, model selection plus the baseline vehicle
+settings), **Geometry** (`#geometry`), **Shock** (`#shock`) and **Transfer** (`#transfer`), with
+**Glossary** (`#glossary`, `#glossary/<id>`) reachable from the top navigation. Home is the
+default route. There is no Front/Rear/Both radiogroup and no `viewMode`; a page is the view.
+
+The model document, its baseline snapshot and every edit action live in one shared store above the
+pages. A page may read the document and call an action; it may not own setup state. The document
+persists across route changes and a reload, the shell marks `edited this session` when it differs
+from the loaded baseline, and **Revert to baseline** clears both the edit and the stored copy.
+Glossary **Back** returns to the exact page that opened it.
+
+Each axle is one setup. The page shows **front and rear as the page's left and right parts**;
+there is no left/right-side split, so the front-left corner is simply "front". Diagrams sit at the
+top of a page with the settings beneath them. This slice ships the shell, Home and the three page
+placeholders; the diagrams and settings for Geometry, Shock and Transfer land in the following
+slices.
+
+Forecloses: a front/rear mode toggle; a left/right setup split; page-local setup state that a route
+change can unmount; a summary page that duplicates the pages rather than selecting the model and
+baseline; and a diagram that sits below the settings it explains.
+
 ## Proposals awaiting a decision
 
 - **Setup-sheet library with a change interpreter.** Compare not only two setups but a *sequence*

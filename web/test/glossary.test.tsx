@@ -96,11 +96,11 @@ describe('glossary', () => {
       view: 'glossary',
       entryId: 'instant-centre',
     });
-    expect(routeFromHash('')).toEqual({ view: 'analysis' });
+    expect(routeFromHash('')).toEqual({ view: 'page', page: 'home' });
 
     const html = renderWithHash('#glossary');
     expect(html).toContain('<h1>Glossary</h1>');
-    expect(html).toContain('href="#analysis"');
+    expect(html).toContain('href="#home"');
     expect(html).not.toContain('Hardpoints');
   });
 

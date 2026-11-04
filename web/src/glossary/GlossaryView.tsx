@@ -4,9 +4,14 @@ import { filterEntries, glossaryEntries } from './entries.js';
 export interface GlossaryViewProps {
   readonly entryId?: string | undefined;
   readonly initialQuery?: string | undefined;
+  readonly backHref?: string | undefined;
 }
 
-export function GlossaryView({ entryId, initialQuery = '' }: GlossaryViewProps) {
+export function GlossaryView({
+  entryId,
+  initialQuery = '',
+  backHref = '#home',
+}: GlossaryViewProps) {
   const [query, setQuery] = useState(initialQuery);
   const filtered = useMemo(() => filterEntries(glossaryEntries, query), [query]);
 
@@ -20,8 +25,8 @@ export function GlossaryView({ entryId, initialQuery = '' }: GlossaryViewProps) 
       <header className="masthead">
         <div className="masthead-row">
           <p className="eyebrow">Setup Lab · Glossary</p>
-          <a className="text-link" href="#analysis">
-            Back to the drawing
+          <a className="text-link" href={backHref}>
+            Back
           </a>
         </div>
         <h1>Glossary</h1>
