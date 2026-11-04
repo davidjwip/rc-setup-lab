@@ -48,4 +48,4 @@ export {
   buildRollStiffnessInput,
   cornerFor,
 } from './build.js';
-export { updateCornerPointMm } from './edit.js';
+export { resetCornerPointsMm, updateCornerPointMm } from './edit.js';

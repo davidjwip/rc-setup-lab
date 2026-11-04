@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import {
   buildFrontViewInput,
   buildLoadTransferInput,
@@ -6,6 +6,7 @@ import {
   buildRollStiffnessInput,
   gravitiesToMetresPerSecondSquared,
   parseCarModel,
+  resetCornerPointsMm,
   updateCornerPointMm,
   type CarModelDocument,
   type CornerKey,
@@ -22,6 +23,8 @@ import {
   type Solved,
 } from '@setuplab/physics';
 import rawModel from '../../assets/models/reference-touring-car.json';
+import { HardpointEditor } from './editor/HardpointEditor.js';
+import { cornerKeyForAxle, type Axle } from './editor/hardpoints.js';
 import { CamberGainChart } from './scene/CamberGainChart.js';
 import { FrontViewScene } from './scene/FrontViewScene.js';
 import {
@@ -68,19 +71,6 @@ import {
 import { GlossaryView } from './glossary/GlossaryView.js';
 import { currentHash, routeFromHash, type Route } from './route.js';
 
-interface FieldRow {
-  readonly key: CornerPointKey;
-  readonly label: string;
-}
-
-const FIELD_ROWS: readonly FieldRow[] = [
-  { key: 'lca_in_a', label: 'Lower arm inner (hinge point)' },
-  { key: 'lca_out', label: 'Lower ball joint' },
-  { key: 'uca_in', label: 'Upper link inner' },
-  { key: 'uca_out', label: 'Upper ball stud' },
-  { key: 'wc', label: 'Wheel centre' },
-];
-
 const initialParse = parseCarModel(rawModel);
 
 function stateLabel(value: Solved<unknown>): string {
@@ -92,11 +82,6 @@ function stateLabel(value: Solved<unknown>): string {
     case 'undefined':
       return `undefined · ${value.reason}`;
   }
-}
-
-function numberFromInput(text: string): number | null {
-  const value = Number.parseFloat(text);
-  return Number.isFinite(value) ? value : null;
 }
 
 function ParseErrors({ errors }: { readonly errors: readonly DataError[] }) {
@@ -117,20 +102,36 @@ function ParseErrors({ errors }: { readonly errors: readonly DataError[] }) {
   );
 }
 
-function AnalysisView() {
+export function AnalysisView({
+  initialAxle = 'front',
+}: {
+  readonly initialAxle?: Axle;
+}) {
   const [model, setModel] = useState<CarModelDocument | null>(
     initialParse.ok ? initialParse.value : null,
   );
   const [lateralG, setLateralG] = useState(1.0);
-  const [axle, setAxle] = useState<'front' | 'rear'>('front');
+  const [axle, setAxle] = useState<Axle>(initialAxle);
   const [includeInstantCentre, setIncludeInstantCentre] = useState<boolean>(() =>
     readInstantCentrePreference(),
   );
-  const cornerKey: CornerKey = axle === 'front' ? 'LF' : 'LR';
+  const [editedCorners, setEditedCorners] = useState<ReadonlySet<CornerKey>>(
+    () => new Set<CornerKey>(),
+  );
+  const [editorKey, setEditorKey] = useState(0);
+  const editorModel = useRef<CarModelDocument | null>(model);
+  const cornerKey: CornerKey = cornerKeyForAxle(axle);
+  const edited = editedCorners.has(cornerKey);
+  const baseline = initialParse.ok ? initialParse.value : null;
 
   useEffect(() => {
     writeInstantCentrePreference(includeInstantCentre);
   }, [includeInstantCentre]);
+
+  const selectAxle = (next: Axle) => {
+    setAxle(next);
+    setEditorKey((value) => value + 1);
+  };
 
   const inputResult = useMemo(
     () => (model === null ? null : buildFrontViewInput(model, cornerKey)),
@@ -225,10 +226,13 @@ function AnalysisView() {
           : `Instant centre at ${instantCentreText}.`,
       );
     }
+    if (edited) {
+      descriptionParts.push('The hardpoint values are user-edited this session.');
+    }
     const description = descriptionParts.join(' ');
 
     return { rollCentreValue, rollCentreBand, instantCentre: instantCentreText, description };
-  }, [scene, result, axle]);
+  }, [scene, result, axle, edited]);
 
   if (!initialParse.ok) return <ParseErrors errors={initialParse.errors} />;
   if (model === null || inputResult === null || result === null) {
@@ -236,18 +240,56 @@ function AnalysisView() {
   }
   if (!inputResult.ok) return <ParseErrors errors={inputResult.errors} />;
 
-  const editorCorner = model.corners.LF;
+  const editorCorner = model.corners[cornerKey];
   if (editorCorner === undefined) {
-    return <ParseErrors errors={[{ code: 'missingField', path: 'corners.LF', message: 'missing' }]} />;
+    return (
+      <ParseErrors
+        errors={[{ code: 'missingField', path: `corners.${cornerKey}`, message: 'missing' }]}
+      />
+    );
   }
-  const selectedCorner = model.corners[cornerKey];
+  const selectedCorner = editorCorner;
 
-  const update = (pointKey: CornerPointKey, axis: 1 | 2, text: string) => {
-    const value = numberFromInput(text);
-    if (value === null) return;
-    const edited = updateCornerPointMm(model, 'LF', pointKey, axis, value);
-    if (edited.ok) setModel(edited.value);
+  const commitHardpoint = (
+    pointKey: CornerPointKey,
+    axis: 1 | 2,
+    valueMm: number,
+  ): string | null => {
+    const current = editorModel.current;
+    if (current === null) return 'No model is loaded.';
+    const edited = updateCornerPointMm(current, cornerKey, pointKey, axis, valueMm);
+    if (!edited.ok) {
+      return edited.errors.map((item) => `${item.path}: ${item.message}`).join('; ');
+    }
+    editorModel.current = edited.value;
+    setModel(edited.value);
+    setEditedCorners((previous) => {
+      if (previous.has(cornerKey)) return previous;
+      const next = new Set(previous);
+      next.add(cornerKey);
+      return next;
+    });
+    return null;
   };
+
+  const resetCorner = () => {
+    const current = editorModel.current;
+    if (current === null || baseline === null) return;
+    const reset = resetCornerPointsMm(current, baseline, cornerKey);
+    if (!reset.ok) return;
+    editorModel.current = reset.value;
+    setModel(reset.value);
+    setEditedCorners((previous) => {
+      if (!previous.has(cornerKey)) return previous;
+      const next = new Set(previous);
+      next.delete(cornerKey);
+      return next;
+    });
+    setEditorKey((value) => value + 1);
+  };
+
+  const solverRefusal =
+    result.rollCentreHeight.kind === 'defined' ? null : stateLabel(result.rollCentreHeight);
 
   const lowerInner = selectedCorner?.points.lca_in_a?.value;
   const lowerOuter = selectedCorner?.points.lca_out?.value;
@@ -270,73 +312,24 @@ function AnalysisView() {
         </div>
         <h1>Front- and rear-view kinematics</h1>
         <p className="lede">
-          {model.name}. Left-front and left-rear corners, ISO 8855: x forward, y left, z up. Move a
-          front hardpoint and the roll centre and camber gain recompute. The rear corner is modelled
-          from plausible rear geometry, not measured, and says so.
+          {model.name}. Left-front and left-rear corners, ISO 8855: x forward, y left, z up. The
+          selected axle drives both the drawing and the hardpoint editor; moving a hardpoint
+          recomputes that end's roll centre and camber gain. The rear corner is modelled from
+          plausible rear geometry, not measured, and says so.
         </p>
       </header>
 
       <section className="grid">
-        <div className="card input-card">
-          <div className="card-heading">
-            <h2>Hardpoints</h2>
-            <span className="pill">millimetres</span>
-          </div>
-          <p className="hint">
-            Every value below is stored with its source. Editing one revalidates the document before
-            the solve. These are the front-left hardpoints; the rear corner is modelled separately
-            and is not edited in this slice.
-          </p>
-          <table className="fields">
-            <thead>
-              <tr>
-                <th scope="col">Point</th>
-                <th scope="col">y ({LENGTH_UNIT})</th>
-                <th scope="col">z ({LENGTH_UNIT})</th>
-              </tr>
-            </thead>
-            <tbody>
-              {FIELD_ROWS.map((row) => {
-                const point = editorCorner.points[row.key];
-                if (point === undefined) {
-                  return (
-                    <tr key={row.key}>
-                      <th scope="row">{row.label}</th>
-                      <td colSpan={2}>not measured</td>
-                    </tr>
-                  );
-                }
-                return (
-                  <tr key={row.key}>
-                    <th scope="row">{row.label}</th>
-                    <td>
-                      <input
-                        aria-label={`${row.label} y in ${LENGTH_UNIT}`}
-                        type="number"
-                        step="0.1"
-                        value={point.value[1]}
-                        onChange={(event) => update(row.key, 1, event.target.value)}
-                      />
-                    </td>
-                    <td>
-                      <input
-                        aria-label={`${row.label} z in ${LENGTH_UNIT}`}
-                        type="number"
-                        step="0.1"
-                        value={point.value[2]}
-                        onChange={(event) => update(row.key, 2, event.target.value)}
-                      />
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-          <p className="footnote">
-            Arm type: {editorCorner.armType.lower} / {editorCorner.armType.upper}. Track is derived
-            from the wheel centre, so moving it moves the contact patch too.
-          </p>
-        </div>
+        <HardpointEditor
+          key={`${cornerKey}:${editorKey}`}
+          model={model}
+          axle={axle}
+          cornerKey={cornerKey}
+          edited={edited}
+          solverRefusal={solverRefusal}
+          onCommit={commitHardpoint}
+          onReset={resetCorner}
+        />
 
         <div className="outputs">
           <article className="card scene-card">
@@ -348,14 +341,14 @@ function AnalysisView() {
                     <button
                       type="button"
                       aria-pressed={axle === 'front'}
-                      onClick={() => setAxle('front')}
+                      onClick={() => selectAxle('front')}
                     >
                       Front
                     </button>
                     <button
                       type="button"
                       aria-pressed={axle === 'rear'}
-                      onClick={() => setAxle('rear')}
+                      onClick={() => selectAxle('rear')}
                     >
                       Rear
                     </button>
