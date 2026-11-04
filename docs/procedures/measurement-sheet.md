@@ -10,14 +10,15 @@ Plate used: ____________________  Anything not at race spec: ___________________
 
 ## Stage 2 — wheelbase, track, tyre
 
-| | x (from rear axle line) | y (from centreline) | z (above plate) |
-|---|---|---|---|
-| `wc` front-left | | | |
-| `wc` front-right | | | |
-| `wc` rear-left | | | |
-| `wc` rear-right | | | |
+| | Measured | Sanity check |
+|---|---|---|
+| Wheelbase (rear axle line to front axle line) | ______ mm | 240–270 mm |
+| Front track (hub face to hub face) | ______ mm | 160–180 mm |
+| Rear track (hub face to hub face) | ______ mm | 160–180 mm |
+| Tyre radius front / rear | ______ / ______ mm | 30–33 mm |
 
-Wheelbase = ________  Track = ________  Do `wc.z` and tyre radius agree within 0.5 mm?  ☐ yes ☐ no → cause:
+The wheel centre is **derived** from the tyre radius, track, wheelbase, plate thickness and ride height
+(D-25); do not record a `wc` point.
 
 ---
 
@@ -37,7 +38,6 @@ moving on. Mark a point `?` if you are unsure what it is — `?` is data, a gues
 | `uca_out` | | | | |
 | `tie_in` | | | | |
 | `tie_out` | | | | |
-| `wc` | | | | |
 | `damper_lo` | | | | |
 | `damper_up` | | | | |
 | `arb_drop` | | | | |
@@ -53,7 +53,6 @@ moving on. Mark a point `?` if you are unsure what it is — `?` is data, a gues
 | `uca_out` | | | | |
 | `tie_in` | | | | |
 | `tie_out` | | | | |
-| `wc` | | | | |
 | `damper_lo` | | | | |
 | `damper_up` | | | | |
 | `arb_drop` | | | | |
@@ -69,7 +68,6 @@ moving on. Mark a point `?` if you are unsure what it is — `?` is data, a gues
 | `uca_out` | | | | |
 | `tie_in` | | | | |
 | `tie_out` | | | | |
-| `wc` | | | | |
 | `damper_lo` | | | | |
 | `damper_up` | | | | |
 | `arb_drop` | | | | |
@@ -85,7 +83,6 @@ moving on. Mark a point `?` if you are unsure what it is — `?` is data, a gues
 | `uca_out` | | | | |
 | `tie_in` | | | | |
 | `tie_out` | | | | |
-| `wc` | | | | |
 | `damper_lo` | | | | |
 | `damper_up` | | | | |
 | `arb_drop` | | | | |

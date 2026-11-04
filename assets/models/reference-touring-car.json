@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.1.0",
+  "schema_version": "1.2.0",
   "kind": "car_model",
   "id": "mdl_reference_tc_front",
   "name": "Reference touring car — front corner",
@@ -218,7 +218,7 @@
           "source": "s_worked"
         },
         "lca_out": {
-          "value": [259.0, 78.0, 0.0],
+          "value": [2.0, -8.0, -25.0],
           "source": "s_worked"
         },
         "uca_in": {
@@ -226,7 +226,7 @@
           "source": "s_worked"
         },
         "uca_out": {
-          "value": [254.0, 72.8, 37.0],
+          "value": [-3.0, -13.2, 12.0],
           "source": "s_worked"
         },
         "tie_in": {
@@ -234,11 +234,7 @@
           "source": "s_worked"
         },
         "tie_out": {
-          "value": [243.68, 74.04, 25.0],
-          "source": "s_worked"
-        },
-        "wc": {
-          "value": [257.0, 86.0, 25.0],
+          "value": [-13.32, -11.96, 0.0],
           "source": "s_worked"
         },
         "damper_lo": {
@@ -274,7 +270,7 @@
           "source": "s_modelled"
         },
         "lca_out": {
-          "value": [1.0, 80.0, 0.0],
+          "value": [1.0, -7.0, -25.0],
           "source": "s_modelled"
         },
         "uca_in": {
@@ -282,7 +278,7 @@
           "source": "s_modelled"
         },
         "uca_out": {
-          "value": [0.0, 73.5, 46.0],
+          "value": [0.0, -13.5, 21.0],
           "source": "s_modelled"
         },
         "tie_in": {
@@ -290,11 +286,7 @@
           "source": "s_modelled"
         },
         "tie_out": {
-          "value": [25.0, 73.0, 23.0],
-          "source": "s_modelled"
-        },
-        "wc": {
-          "value": [0.0, 87.0, 25.0],
+          "value": [25.0, -14.0, -2.0],
           "source": "s_modelled"
         },
         "damper_lo": {
@@ -330,7 +322,7 @@
           "source": "s_modelled"
         },
         "lca_out": {
-          "value": [1.0, -80.0, 0.0],
+          "value": [1.0, 7.0, -25.0],
           "source": "s_modelled"
         },
         "uca_in": {
@@ -338,7 +330,7 @@
           "source": "s_modelled"
         },
         "uca_out": {
-          "value": [0.0, -73.5, 46.0],
+          "value": [0.0, 13.5, 21.0],
           "source": "s_modelled"
         },
         "tie_in": {
@@ -346,11 +338,7 @@
           "source": "s_modelled"
         },
         "tie_out": {
-          "value": [25.0, -73.0, 23.0],
-          "source": "s_modelled"
-        },
-        "wc": {
-          "value": [0.0, -87.0, 25.0],
+          "value": [25.0, 14.0, -2.0],
           "source": "s_modelled"
         },
         "damper_lo": {

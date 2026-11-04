@@ -406,14 +406,14 @@ is a consistency bug. *Revisit:* E8.5's ≤300 ms to open a stored model missed 
 ### 4.1 The on-disk shape
 
 ```json
-{ "schema_version": "1.1.0", "kind": "car_model", "id": "mdl_8f2c41",
+{ "schema_version": "1.2.0", "kind": "car_model", "id": "mdl_8f2c41",
   "frame": { "standard": "ISO 8855", "axes": "x forward, y left, z up",
              "origin": "top surface of the chassis plate, rear axle centre, vehicle centreline" },
   "units": { "length": "mm" },
   "sources": { "s1": { "type": "measured", "method": "digital caliper", "by": "DW" } },
   "axles": { "front": { "track": { "value": 172.0, "source": "s1" } } },
   "corners": { "LF": { "points": {
-      "lca_out": { "value": [259.0, 78.0, 0.0], "source": "s1" } } } }
+      "lca_out": { "value": [2.0, -8.0, -25.0], "source": "s1" } } } }
 ```
 
 The full shape is `docs/specs/fields.yaml`, and spec §4.2 prints the complete reference model; this

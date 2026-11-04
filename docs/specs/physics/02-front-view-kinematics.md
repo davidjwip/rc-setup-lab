@@ -40,7 +40,7 @@ Round 1 reported all of these in one frame and got the right-hand corner's signs
 | upper link inner | Uᵢ | mm (y, z) | — | — | module 1 |
 | upper ball stud | Uₒ | mm (y, z) | — | — | module 1 |
 | wheel centre | W | mm (y, z) | 80–90 | 100–115 | module 1 |
-| contact-patch half-track | t/2 | mm | 86 | 110 | **derived** from `wc` (module 1 §6) |
+| contact-patch half-track | t/2 | mm | 86 | 110 | **derived** from the hub (module 1 §6) |
 | x of Lₒ, Uₒ, W | — | mm | — | — | module 1 (for caster/trail) |
 | static camber | γ₀ | ° | −4 … +1 | −4 … +1 | setup |
 | **modelled travel window** | — | mm | −6 … +6 | −30 … +30 | **derived** from the axle's droop/bump limits |

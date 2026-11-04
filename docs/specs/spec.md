@@ -1349,11 +1349,16 @@ golden value is unchanged. In the chassis frame:
 - rear contact patches are at `x = 0, z = z_ground`, front contact patches at
   `x = +wheelbase, z = z_ground`;
 - a left-hand corner has **positive y**, a right-hand corner **negative y**;
-- every hardpoint is `[x, y, z]` in mm from the top-of-plate origin;
+- chassis-fixed points are `[x, y, z]` in mm from the top-of-plate origin;
+- `lca_out`, `uca_out` and `tie_out` are **hub-fixed** and stored as offsets from
+  the derived wheel centre (D-25); `outboard = hub + offset` is composed in
+  `packages/data`, so physics still consumes absolute coordinates;
+- the wheel centre is **derived, never stored**:
+  `hub = (axle x, ±track/2, wheel_radius − (thickness + ride_height))`;
 - contact-patch positions are **derived, never stored**, and the loader asserts
   the stored `wheelbase` against the front wheel centres to ±3 mm;
-- a `tyre_radius` change moves the wheel-derived ground and the reported
-  roll-centre height, and never rewrites a stored hardpoint `z`.
+- a `tyre_radius` change raises the hub and every outboard point and lets the
+  arms rotate the roll centre; it never rewrites a chassis-fixed point.
 
 **Per-wheel quantities are per-wheel signed, and mirroring does NOT negate them
 (D-17).** Camber positive = **top outboard**; toe positive = **toe-in**. Those
@@ -1384,7 +1389,7 @@ split — are frame-free and are **never** signed per side.
 
 ```json
 {
-  "schema_version": "1.1.0",
+  "schema_version": "1.2.0",
   "kind": "car_model",
   "id": "mdl_ref_1tc",
   "name": "Reference 1/10 TC — measured 2026-10-30",
@@ -1476,12 +1481,11 @@ split — are frame-free and are **never** signed per side.
       "points": {
         "lca_in_a":  { "value": [238.00, 30.00,  5.00],  "source": "s1" },
         "lca_in_b":  { "value": [272.00, 30.00,  5.00],  "source": "s1" },
-        "lca_out":   { "value": [259.00, 78.00,  0.00],  "source": "s1" },
+        "lca_out":   { "value": [2.00, -8.00, -25.00],   "source": "s1" },
         "uca_in":    { "value": [250.00, 42.00, 38.00],  "source": "s1" },
-        "uca_out":   { "value": [254.00, 72.80, 37.00],  "source": "s1" },
+        "uca_out":   { "value": [-3.00, -13.20, 12.00],  "source": "s1" },
         "tie_in":    { "value": [225.00, 26.00, 23.00],  "source": "s1" },
-        "tie_out":   { "value": [243.68, 74.04, 25.00],  "source": "s1" },
-        "wc":        { "value": [257.00, 86.00, 25.00],  "source": "s1" },
+        "tie_out":   { "value": [-13.32, -11.96, 0.00],  "source": "s1" },
         "damper_lo": { "value": [257.00, 60.00,  1.875], "source": "s1" },
         "damper_up": { "value": [257.00, 44.00, 51.00],  "source": "s1" },
         "arb_drop":  { "value": [250.00, 55.00,  2.40],  "source": "s1" }
@@ -1530,10 +1534,13 @@ Notes on the example:
 - **`body.cg.front_mass_share` is 45.0 %**, which is what the masses in this file
   give (607.49 g of 1350 g on the front axle); `x_cg = 257 · (1 − 0.45) =
   141.35 mm` is derived from it and never stored.
-- **`schema_version` 1.1.0** is the version this app writes (§4.7). `1.0.x`
+- **`schema_version` 1.2.0** is the version this app writes (§4.7). `1.0.x`
   documents are migrated on load by the rigid datum translation
-  `z' = z − (thickness + ride_height)`; the migration is recorded in `sources`,
-  and an exported migrated document reloads without a second shift.
+  `z' = z − (thickness + ride_height)`; `1.1.x` documents then migrate to the
+  hub-relative form, `offset = outboard − wc` for `lca_out`, `uca_out` and
+  `tie_out`, with the stored `wc` dropped and `axles.<axle>.tyre_radius` stored
+  explicitly (D-25). Each migration is recorded in `sources`, and an exported
+  migrated document reloads without a second shift.
 
 #### 4.2.1 Field table — car model
 
@@ -1552,7 +1559,7 @@ by` lists §4.4's output ids, so a field that feeds nothing says so.
 
 | Field | Type | Unit | Req | `on_absence` | Consumed by | Notes |
 |---|---|---|---|---|---|---|
-| `schema_version` | string | — | yes | `REFUSE` | `all` | `MAJOR.MINOR.PATCH`; this file defines 1.1.0. `1.0.x` is migrated from the ground-plane datum. A greater major is refused with the version named (spec E6.6). |
+| `schema_version` | string | — | yes | `REFUSE` | `all` | `MAJOR.MINOR.PATCH`; this file defines 1.2.0. `1.0.x` is migrated from the ground-plane datum, then `1.1.x` to hub-relative corner points (D-25). A greater major is refused with the version named (spec E6.6). |
 | `kind` | enum: `car_model` | — | yes | `REFUSE` | — | Tells the loader which field list to validate against. |
 | `id` | string | — | yes | `REFUSE` | — | Opaque, stable, never reused. `mdl_` prefix by convention. |
 | `name` | string | — | yes | `REFUSE` | — | Free text, shown in the library. |
@@ -1566,7 +1573,7 @@ by` lists §4.4's output ids, so a field that feeds nothing says so.
 | `sources` | object | — | yes | `REFUSE` | `motion_ratio`, `wheel_rate`, `ride_frequency`, `roll_stiffness`, `load_transfer_split`, `roll_centre_height`, `camber_gain`, `bump_steer`, `damping_ratio` | Map source id → source record (spec §4.1 rule 4). Replaces physics/01 §5's per-point prose map: every `source` on a value must resolve here. |
 | `meta` | object | — | no | `OMIT` | — | `{created, app_version, revises, mapped_at}`. Excluded from `content_hash` (spec §4.5.1). |
 | `representation_note` | string | — | no | `OMIT` | — | Free text ≤ 500 chars; shown in the share summary (E1.11). |
-| `body.reference_ride_height` | value | mm | yes | `REFUSE` | `roll_centre_height`, `camber_gain`, `bump_steer` | Ground clearance under the **bottom** of the plate; not the datum. With `body.chassis.thickness` it derives `z_ground = -(thickness + ride_height)` in the chassis frame. Replaces `measured_at_ride_height` (physics/01 §5). See also `body.chassis.ride_height_basis`. |
+| `body.reference_ride_height` | value | mm | yes | `REFUSE` | `roll_centre_height`, `camber_gain`, `bump_steer` | Ground clearance under the **bottom** of the plate. It is no longer the datum: with `body.chassis.thickness` it derives the ground plane at `z = -(thickness + ride_height)`. Replaces `measured_at_ride_height` (physics/01 §5). Editable per vehicle in the Chassis panel, default 5.0 mm. With the wheel radius it places the **derived hub** (`hub.z = wheel_radius - (thickness + ride_height)`); every hub-fixed outboard point rides with the hub, while chassis-fixed points stay byte-identical. See D-25 and `body.chassis.ride_height_basis`. |
 | `body.wheelbase` | value | mm | yes | `REFUSE` | `roll_centre_migration`, `load_transfer_split`, `camber_gain` | Stored and cross-checked against the front wheel centres to ±3 mm (spec §4.2); it is not derived, because a model with no front corner yet still needs the number. |
 | `body.cg.height` | value | mm | no | `ESTIMATE(two_hang_plumb_line)` | `load_transfer_split`, `roll_centre_height` | **Never asked as a measurement** — corner scales cannot locate a CG (D-14). `ASSUME` on this field is a schema error (spec §4.1 rule iii). Tier `inferred` on every consuming output; the band comes from the procedure (hang: ±1.5 mm) or from the component table's own ranges. 28.0 mm is the reference default, not a measurement: the component route on the reference car gives 18.7 mm (physics/01 §4.5). |
 | `body.cg.front_mass_share` | value | % | no | `REFUSE` | `load_transfer_split` | Front share of total mass, normally `derived` from corner weights. `x_cg = wheelbase · front_mass_share`, measured from the rear axle line — derived, never stored. Replaces `cg.longitudinal_front`. |
@@ -1580,13 +1587,13 @@ by` lists §4.4's output ids, so a field that feeds nothing says so.
 | `body.mass.unsprung_front` | value | g | no | `ESTIMATE(unsprung_corner_weighing)` | `load_transfer_split`, `ride_frequency` | Grams per **axle** (both front corners). Default 120 g = 60 g per corner = the reference car's 240 g total. Range 80–160 g per axle (160–320 g per car). `ASSUME(0)` is retired: 0 is outside the range and drops the reference front ride frequency from 10.782 to 9.156 Hz. |
 | `body.mass.unsprung_rear` | value | g | no | `ESTIMATE(unsprung_corner_weighing)` | `load_transfer_split`, `ride_frequency` | Grams per **axle**. Same procedure and band as the front. |
 | `body.chassis.material` | enum: `cfrp`, `aluminium`, `steel` | — | no | `OMIT` | — | Mass, CG height and (R2) torsional stiffness. Absent → the chassis is a rigid plate of the class default and the assumption is stated. Selects the default `shear_modulus` when the bar's material is the same. |
-| `body.chassis.thickness` | value | mm | no | `OMIT` | — | Plate thickness, caliper-measured. Required for the chassis-datum conversion: `z_ground = -(thickness + reference_ride_height)`. Moves mass, CG height and ride height (see `ride_height_basis`), never the roll centre. |
+| `body.chassis.thickness` | value | mm | no | `OMIT` | — | Plate thickness, caliper-measured. Required for the chassis-datum conversion: the derived ground plane is `z = -(thickness + reference_ride_height)`. Editable per vehicle in the Chassis panel, default 2.0 mm. It enters the ground plane only through that sum, beside `body.reference_ride_height`, and moves no stored chassis-fixed hardpoint; the hub and its outboard points move relative to the plate. Moves mass, CG height and ride height (see `ride_height_basis`), never the roll centre directly. |
 | `body.chassis.span` | value | mm | no | `OMIT` | — | Plate width across the rails (`w` in physics/10 §4; 90 mm on the reference car). |
 | `body.chassis.rail_factor` | value | 1 | no | `ASSUME(1.0)` | — | κ_rail, the effective-torsion factor for a plate with rails and cut-outs (physics/10 §4). 1.0 = the thin-plate estimate taken at face value; the estimator's own range is ±1–3×, which is why no v1 output claims precision from it. |
 | `body.chassis.torsion_measured` | value | N·m/deg | no | `OMIT` | — | N·m/deg on disk (the racer's unit), converted to N·m/rad at the adapter. Absent → the thin-plate estimate is used and labelled as one. |
 | `body.chassis.ride_height_basis` | enum: `underside_clearance`, `axle_height` | — | no | `ASSUME(underside_clearance)` | — | Decides whether a thickness change moves the car (physics/10 §3.4). On screen with the chassis card. |
 | `axles.<axle>.track` | value | mm | yes | `REFUSE` | `roll_stiffness`, `roll_centre_height`, `roll_centre_migration`, `camber_gain` | Contact patch to contact patch at static ride height (hub-face-to-hub-face minus the cambered offset; physics/01 §6 note). |
-| `axles.<axle>.tyre_radius` | value | mm | yes | `REFUSE` | `roll_centre_height`, `load_transfer_split`, `camber_gain`, `bump_steer` | Contact-patch height and the bump/droop conversion. A setup's `conditions.tyre.diameter` overrides it for one run. |
+| `axles.<axle>.tyre_radius` | value | mm | yes | `REFUSE` | `roll_centre_height`, `load_transfer_split`, `camber_gain`, `bump_steer` | Stored wheel radius. It is the **input that places the derived hub** (`hub.z = wheel_radius - (thickness + ride_height)`), so the wheel centre is exactly one radius above the derived ground at every ride height. The Chassis panel edits the diameter (`2 × radius`) but this remains the single stored value (D-25). A setup's `conditions.tyre.diameter` overrides it for one run. |
 | `axles.<axle>.roll_centre_validity` | value | mm | no | `OMIT` | `roll_centre_height` | The bound above which the roll-centre number is `OUT_OF_DOMAIN` (E3.9). Absent → no domain flag and the health line says the bound is not recorded. |
 | `axles.<axle>.droop_limit_wheel` | value | mm | no | `OMIT` | `camber_gain`, `bump_steer` | Wheel travel, not shaft travel; the static limits check only. |
 | `axles.<axle>.bump_limit_wheel` | value | mm | no | `OMIT` | `camber_gain`, `bump_steer` | Wheel travel, not shaft travel. |
@@ -1613,14 +1620,13 @@ by` lists §4.4's output ids, so a field that feeds nothing says so.
 | `corners.<corner>.arm_type.upper` | enum: `single_link`, `wishbone` | — | yes | `REFUSE` | `motion_ratio`, `roll_centre_height`, `camber_gain` | `aal` is accepted on import as an alias for `wishbone` and rewritten on save (D13). |
 | `corners.<corner>.points.lca_in_a` | point | mm | yes | `REFUSE` | `motion_ratio`, `roll_centre_height`, `camber_gain`, `load_transfer_split` | Front pivot on the lower hinge axis. `[x, y, z]` mm; every coordinate \|c\| ≤ 3000. |
 | `corners.<corner>.points.lca_in_b` | point | mm | yes | `REFUSE` | `motion_ratio`, `roll_centre_height`, `camber_gain` | Rear pivot on the lower hinge axis; `lca_in_a ≠ lca_in_b` or the axis is undefined. |
-| `corners.<corner>.points.lca_out` | point | mm | yes | `REFUSE` | `motion_ratio`, `roll_centre_height`, `camber_gain`, `bump_steer` | Lower ball joint. Also the carrier's lower reference point — there is no second key for it. |
+| `corners.<corner>.points.lca_out` | point | mm | yes | `REFUSE` | `motion_ratio`, `roll_centre_height`, `camber_gain`, `bump_steer` | Lower ball joint on the upright, stored as an **offset from the derived hub centre** (`outboard = hub + offset`), not as a chassis-frame point. Shims edit this offset; the composed absolute point is what the solver consumes. Also the carrier's lower reference point — there is no second key for it. |
 | `corners.<corner>.points.uca_in` | point | mm | yes if arm_type.upper is single_link | `REFUSE` | `motion_ratio`, `roll_centre_height`, `camber_gain` | The single camber-link inner ball stud — one point, not two coincident ones. |
 | `corners.<corner>.points.uca_in_a` | point | mm | yes if arm_type.upper is wishbone | `REFUSE` | `motion_ratio`, `roll_centre_height`, `camber_gain` | Front upper pivot (buggy). Mutually exclusive with `uca_in`. |
 | `corners.<corner>.points.uca_in_b` | point | mm | yes if arm_type.upper is wishbone | `REFUSE` | `motion_ratio`, `roll_centre_height`, `camber_gain` | Rear upper pivot (buggy). |
-| `corners.<corner>.points.uca_out` | point | mm | yes | `REFUSE` | `motion_ratio`, `roll_centre_height`, `camber_gain`, `bump_steer` | Upper ball stud on the carrier; with `lca_out` it defines the carrier span and, with `wc`, the carrier frame. |
+| `corners.<corner>.points.uca_out` | point | mm | yes | `REFUSE` | `motion_ratio`, `roll_centre_height`, `camber_gain`, `bump_steer` | Upper ball stud on the carrier, stored as an **offset from the derived hub centre**; with `lca_out` it defines the carrier span and, with the hub, the carrier frame. Shims edit the offset (D-25). |
 | `corners.<corner>.points.tie_in` | point | mm | yes on front corners | `REFUSE` | `bump_steer`, `ackermann_toe` | Inner tie-rod ball (rack end). |
-| `corners.<corner>.points.tie_out` | point | mm | yes on front corners | `REFUSE` | `bump_steer`, `ackermann_toe` | Outer tie-rod ball on the steering arm. |
-| `corners.<corner>.points.wc` | point | mm | yes | `REFUSE` | `motion_ratio`, `roll_centre_height`, `camber_gain`, `bump_steer`, `load_transfer_split` | Wheel centre at the reference ride height. Fixes track and scrub radius; the contact patch is derived from it. |
+| `corners.<corner>.points.tie_out` | point | mm | yes on front corners | `REFUSE` | `bump_steer`, `ackermann_toe` | Outer tie-rod ball on the steering arm (front) or rear toe link on the carrier (rear), stored as an **offset from the derived hub centre**. Shims edit the offset; the composed absolute point is what the solver consumes (D-25). |
 | `corners.<corner>.points.damper_lo` | point | mm | yes | `REFUSE` | `motion_ratio`, `wheel_rate`, `ride_frequency`, `damping_ratio` | Lower damper eye (or spring seat). On the lower arm, not on the carrier. |
 | `corners.<corner>.points.damper_up` | point | mm | yes | `REFUSE` | `motion_ratio`, `wheel_rate`, `ride_frequency`, `damping_ratio` | Upper damper eye on the chassis. |
 | `corners.<corner>.points.arb_drop` | point | mm | no | `OMIT` | `roll_stiffness` | Drop-link attachment on the lower arm. Without it the bar's link motion ratio is not derived; the bar is excluded from roll stiffness and the output says so. |
@@ -1825,7 +1831,7 @@ can say "no shim recorded" rather than "0 mm shim".
 | `corners.<corner>.damper.c_post` | value | N·s/m | no | `OMIT` | `damping_ratio` | N·s/m. Dyno-only, same treatment as `f_blowoff`, and it must be in §4.8's band inputs (§4.8 said a fixed ±30 % label is not acceptable — this field is how the band gets its dominant term). |
 | `corners.<corner>.upper_link_inner_shims` | adjustment | mm | no | `OMIT` | `camber_gain`, `roll_centre_height` | Stored inside `geometry.adjustments[]`, never as a key at this path. Positive = outboard: `y += sgn(y_corner) · shim`. |
 | `corners.<corner>.upper_link_outer_shims` | adjustment | mm | no | `OMIT` | `camber_gain`, `camber_at_roll` | Positive = outboard. |
-| `corners.<corner>.wheel_offset` | adjustment | mm | no | `OMIT` | `camber_gain`, `roll_centre_height` | Positive = track increase per side; moves `points.wc` and the contact patch, not the ball joints. |
+| `corners.<corner>.wheel_offset` | adjustment | mm | no | `OMIT` | `camber_gain`, `roll_centre_height` | Positive = track increase per side; moves the derived hub (`hub.y = ±track/2`) and the contact patch, not the stored outboard offsets. |
 | `corners.<corner>.tyre_pressure` | value | kPa | no | `OMIT` | — | Reference only. |
 | `axles.<axle>.arb_setting` | value | 1 | no | `OMIT` | `roll_stiffness` | A **linear fraction of the link rate**: 0 = no bar contribution, 1 = `arb.rate_at_link`. Never a fraction of blade travel (§4.3.3). |
 | `transmission.diff_front_oil_viscosity` | value | cSt | no | `OMIT` | — | Reference only in v1. |
@@ -1860,8 +1866,8 @@ is what all outputs are computed from.
 | Adjustment | Base points moved | Axis | Direction | Unit | Effect |
 |---|---|---|---|---|---|
 | `upper_link_inner_shims` | `points.uca_in` (single_link) or `points.uca_in_a` **and** `points.uca_in_b` (wishbone), on that corner | vehicle **y** | **positive = outboard** (away from the centreline): `y += sgn(y_corner) · shim` | mm | Changes upper-link length and inboard pivot line → camber gain, roll-centre height |
-| `upper_link_outer_shims` | `points.uca_out` | vehicle **y** | positive = outboard: `y += sgn(y_corner) · shim` | mm | Moves the upper ball joint outboard → camber, camber gain |
-| `wheel_offset` | `points.wc` (the contact patch follows) | vehicle **y** | positive = track **increase** per side: `y += sgn(y_corner) · offset` | mm | Track, scrub radius; ball joints do not move |
+| `upper_link_outer_shims` | the stored `uca_out` offset (composed `uca_out = hub + offset`) | vehicle **y** | positive = outboard: `y += sgn(y_corner) · shim` | mm | Moves the upper ball joint outboard → camber, camber gain |
+| `wheel_offset` | the derived hub (`hub.y = ±track/2`; the contact patch follows) | vehicle **y** | positive = track **increase** per side: `y += sgn(y_corner) · offset` | mm | Track, scrub radius; stored outboard offsets do not change |
 
 `sgn(y_corner)` is `+1` for a corner with `y > 0` and `−1` for `y < 0`, computed
 from the base model rather than assumed from the corner's name, so a mirrored
@@ -1914,14 +1920,14 @@ they are labelled as derived and carry the state from §4.4.1.
 
 | id | Output | Solver unit | Displayed as | Depends on (field paths, §4.2.1/§4.3.1) | AC | Release |
 |---|---|---|---|---|---|---|
-| `motion_ratio` | Motion ratio | – | – | `points.lca_in_*`, `lca_out`, `uca_*`, `wc`, `damper_lo`, `damper_up`; `axles.<axle>.spring.location` | E3.1 | R0 |
+| `motion_ratio` | Motion ratio | – | – | `points.lca_in_*`, `lca_out`, `uca_*`, the derived hub, `damper_lo`, `damper_up`; `axles.<axle>.spring.location` | E3.1 | R0 |
 | `wheel_rate` | Wheel rate ("ride stiffness") | N/m | N/mm | motion ratio, `spring.rate` (setup override), `spring_preload`, ARB contribution | E3.1 | R0 |
 | `ride_frequency` | Ride frequency | Hz | Hz | wheel rate, `body.mass.sprung_front` / `.sprung_rear` | E3.2 | R1 |
 | `roll_stiffness` | Roll stiffness | **N·m/rad** | N·m/deg (÷ 57.29578) | wheel rates, `axles.<axle>.track`, `arb.*`, `arb_setting`, `points.arb_drop` | E3.2 | R1 |
 | `load_transfer_split` | Lateral load-transfer split | – | % front | roll stiffness front/rear, `body.cg.height`, roll-centre heights, `body.mass.total`, `body.mass.unsprung_front`/`_rear`, `analysis_inputs.lateral_g` | E3.2 | R1 |
-| `roll_centre_height` | Roll-centre height (static) | m | mm | both arms' inboard and outboard points, `points.wc`, `body.reference_ride_height` | E3.3 | R0 |
+| `roll_centre_height` | Roll-centre height (static) | m | mm | both arms' inboard and outboard points, the derived hub, `body.reference_ride_height` | E3.3 | R0 |
 | `roll_centre_migration` | Roll-centre **displacement** at φ = ±`analysis_inputs.roll_sweep` | m | mm | as above, re-solved at ±φ | E3.3 | R0 |
-| `camber_gain` | Camber gain κ = dγ/dz_wheel | **rad/m** | ° per 10 mm bump (detail: °/mm) | upper and lower link geometry, `points.wc`, `arm_type.*`, `geometry.adjustments[]` | E3.4 | R0 |
+| `camber_gain` | Camber gain κ = dγ/dz_wheel | **rad/m** | ° per 10 mm bump (detail: °/mm) | upper and lower link geometry, the derived hub, `arm_type.*`, `geometry.adjustments[]` | E3.4 | R0 |
 | `camber_per_roll` | Camber change per degree of roll | rad/rad | °/° | `camber_gain` × wheel travel per degree of roll | E3.4 | R0 |
 | `camber_at_roll` | Camber at roll | rad | ° | `camber_per_roll` (or `camber_gain`), `corners.<corner>.camber`, `analysis_inputs.roll_sweep` | E3.4 | R0 |
 | `bump_steer` | Bump steer | rad/m | mm of toe per 10 mm bump (detail: °/mm) | `points.tie_in`/`tie_out`, lower arm, `axles.front.steering.rack` | E3.5 | R1 |
@@ -2122,10 +2128,9 @@ path is E6.9.
 
 - `schema_version` is `MAJOR.MINOR.PATCH` semantic versioning, as a **string**.
   There is no integer form anywhere; `docs/specs/physics/01`'s former integer is
-  withdrawn (§4 preamble). This build writes **1.0.0** only. `1.1.0`, declared by
-  `physics/01` §5 for the same document kind in a different shape, is withdrawn:
-  two versions with no migration between them is the defect this section exists
-  to prevent, and nothing has shipped, so there is nothing to migrate.
+  withdrawn (§4 preamble). This build writes **1.2.0** only. `1.0.x` documents
+  migrate from the ground-plane datum and `1.1.x` documents migrate to the
+  hub-relative corner points (D-25); every migration is recorded in `sources`.
 - A reader **refuses** a document whose major is greater than it supports, naming
   both versions and writing nothing (E6.6).
 - A reader **accepts** a greater minor within the same major, preserves unknown

@@ -72,40 +72,55 @@ not a sign table here: negating a stored toe on the mirrored corner puts 1.0° o
 straight car, which is the same class of silent sign error round 1 was convened to find. A model file
 written by the app must satisfy this section.
 
-Because z is measured from the **top of the plate**, a ride-height or plate-thickness change moves
-the derived ground plane, not the stored hardpoints. The model stores hardpoints in the chassis
-frame, and a ride-height change is a rigid translation of the chassis-side points followed by a
-re-solve (§6.2). The derived ground plane is reported wherever a height above the road is shown, and
-the drawing labels it as derived.
+Because z is measured from the **top of the plate**, a ride-height or plate-thickness change moves the
+derived ground plane relative to the chassis. The corner is split by what each point is attached to
+(§2.1): chassis-fixed points stay byte-identical in the chassis frame, while the hub and every
+hub-fixed outboard point move with the wheel. The derived ground plane is reported wherever a height
+above the road is shown, and the drawing labels it as derived.
 
-### 2.1 Chassis values and the wheel-diameter consistency check
+### 2.1 Chassis-fixed and hub-fixed points, and the derived wheel centre
 
-The Chassis panel exposes the two numbers the ground plane depends on, per vehicle rather than per
-axle:
+The real corner has two rigid bodies. The inner pivots, the damper's upper eye and the ARB drop link
+belong to the chassis. The lower ball joint, upper ball stud and outer tie-rod ball are screwed to the
+upright, so a shim changes their **offset from the hub centre**, not a point in chassis space.
 
-| Value | Field | Default | Meaning |
-|---|---|---|---|
-| Ride height | `body.reference_ride_height` | 5.0 mm | clearance under the **bottom** of the plate |
-| Plate thickness | `body.chassis.thickness` | 2.0 mm | the plate itself |
-| Wheel diameter | **derived, never stored** | 64 mm on the reference car | `2 × (wc.z − z_ground)` |
+| chassis-fixed (stored absolute in the chassis frame) | hub-fixed (stored as an offset from the wheel centre) |
+|---|---|
+| `lca_in_a`, `lca_in_b`, `uca_in`, `uca_in_a`, `uca_in_b`, `tie_in` | `lca_out`, `uca_out`, `tie_out` |
+| `damper_lo` (on the arm), `damper_up` (tower), `arb_drop` (on the arm) | — |
 
-`thickness + ride_height` is the only route into the ground plane. Neither value moves a stored
-hardpoint, changes camber gain, changes wheel rate, or changes ride frequency; both move the reported
-roll-centre height above ground by the same amount, per axle. The contact patch stays on the derived
-ground plane and the drawing's ground line moves with it.
-
-The wheel diameter is a **check, not an override**. The solver's stored wheel centre and the derived
-ground plane imply a radius:
+The **hub centre is derived, never stored free**:
 
 ```text
-implied_tyre_radius = wc.z − z_ground
+z_ground = −(chassis_thickness + ride_height)
+hub.z    = z_ground + wheel_radius
+hub.y    = ±track/2
+hub.x    = axle x   (0 at the rear axle, wheelbase at the front)
 ```
 
-Compare it with the radius recorded at `axles.<axle>.tyre_radius`. At or below 0.5 mm they agree. Above
-0.5 mm the app states both numbers and both possible causes — the ride height is the mismatch higher
-or lower than measured, or the wheel centre is that far low or high — and never corrects either value.
-No hardpoint is rewritten and the ground plane is not moved to make the wheel fit. The drawing and the
-reported heights keep using the plate-derived ground.
+`wheel_radius` — `axles.<axle>.tyre_radius`, displayed and edited as diameter `2r` — is an **input**:
+it is what places the hub, and therefore the entire outboard geometry, relative to the plate. The
+Chassis panel exposes ride height, plate thickness and each axle's wheel diameter. There is no second
+diameter to compare against, so the wheel-diameter consistency note from the chassis-pinned slice is
+retired: the wheel centre is exactly one radius above the derived ground at every ride height.
+
+Absolute outboard points are composed at the boundary in `packages/data`:
+
+```text
+outboard = hub + offset
+```
+
+with `y` negated on mirroring per D-17, exactly as every other stored point. **Physics keeps consuming
+absolute coordinates**; no solver equation changes. A ride-height rise of 1 mm moves `hub.z` and every
+outboard point down 1 mm in the chassis frame and leaves every chassis-fixed point byte-identical. The
+arms therefore rotate and the front-view outputs change — that is geometry, not a bug. Growing the
+wheel diameter by 2 mm raises the hub and the outboard points by 1 mm, leaves the chassis-fixed points
+and the ride height alone, and again lets the arms decide the roll-centre change.
+
+v1.1 documents are migrated on load: `offset = outboard − wc` for each hub-fixed point, the stored `wc`
+is removed, and `axles.<axle>.tyre_radius` is stored explicitly (from the old wheel centre where the
+two disagreed). The migration is recorded in `sources`; a v1.1 document round-trips to the same
+absolute geometry.
 
 ---
 
@@ -215,7 +230,7 @@ same; only `arm_type` differs: `hinge` or `aal`.
 | `uca_out` | upper ball stud on the carrier | Req [2] |
 | `tie_in` | inner tie-rod ball (rack end) | Req [4] |
 | `tie_out` | outer tie-rod ball (steering arm) | Req [4] |
-| `wc` | wheel centre at ride height | Req [2,5,6] |
+| `wc` | wheel centre at ride height — **derived**, never stored (§2.1) | Req [2,5,6] |
 | `damper_lo` | lower damper eye (or spring seat) | Req [5] |
 | `damper_up` | upper damper eye | Req [5] |
 | `arb_drop` | ARB drop-link attachment on the lower arm | Req [5] when a bar is fitted |
@@ -379,7 +394,7 @@ to the paths below is at the end of this section.
 
 ```json
 {
-  "schema_version": "1.1.0",
+  "schema_version": "1.2.0",
   "kind": "car_model",
   "id": "mdl_ref_1tc",
   "name": "Reference 1/10 TC — measured 2026-10-30",
@@ -471,12 +486,11 @@ to the paths below is at the end of this section.
       "points": {
         "lca_in_a":  { "value": [238.00, 30.00,  5.00],  "source": "s1" },
         "lca_in_b":  { "value": [272.00, 30.00,  5.00],  "source": "s1" },
-        "lca_out":   { "value": [259.00, 78.00,  0.00],  "source": "s1" },
+        "lca_out":   { "value": [2.00, -8.00, -25.00],   "source": "s1" },
         "uca_in":    { "value": [250.00, 42.00, 38.00],  "source": "s1" },
-        "uca_out":   { "value": [254.00, 72.80, 37.00],  "source": "s1" },
+        "uca_out":   { "value": [-3.00, -13.20, 12.00],  "source": "s1" },
         "tie_in":    { "value": [225.00, 26.00, 23.00],  "source": "s1" },
-        "tie_out":   { "value": [243.68, 74.04, 25.00],  "source": "s1" },
-        "wc":        { "value": [257.00, 86.00, 25.00],  "source": "s1" },
+        "tie_out":   { "value": [-13.32, -11.96, 0.00],  "source": "s1" },
         "damper_lo": { "value": [257.00, 60.00,  1.875], "source": "s1" },
         "damper_up": { "value": [257.00, 44.00, 51.00],  "source": "s1" },
         "arb_drop":  { "value": [250.00, 55.00,  2.40],  "source": "s1" }
@@ -500,11 +514,13 @@ Notes that matter to the implementer:
   without a source is a schema error, not a review note. The per-point prose map this
   section used to carry (`"sources": {"lca_out": "caliper, 2026-10-30"}`) is retired —
   provenance that lives in two places is provenance that disagrees with itself.
-- **Arrays are `[x, y, z]` in millimetres.** The one 1000× error that used to be possible
-  here was a metre-valued coordinate; the parser rejects any coordinate with
-  `|c| > 3000 mm` (a 3 m hardpoint does not exist on a 1/10 car) and the error message
-  says "coordinates are millimetres". Round 1's guard was `|c| > 3` on a metre-valued
-  field; the ruling re-expresses it, it does not weaken it.
+- **Arrays are `[x, y, z]` in millimetres.** Chassis-fixed points are absolute in the
+  chassis frame; the three hub-fixed points (`lca_out`, `uca_out`, `tie_out`) are offsets
+  from the derived wheel centre (§2.1). The one 1000× error that used to be possible here
+  was a metre-valued coordinate; the parser rejects any coordinate with `|c| > 3000 mm` (a
+  3 m hardpoint does not exist on a 1/10 car) and the error message says "coordinates are
+  millimetres". Round 1's guard was `|c| > 3` on a metre-valued field; the ruling
+  re-expresses it, it does not weaken it.
 - **Angles are degrees on disk** — including `camber`, `toe` and `oil_temp`, which round 1's
   file labelled `"units": "SI"` while storing degrees. SI inside the package is radians,
   and the adapter is the only place that conversion happens.
@@ -512,26 +528,30 @@ Notes that matter to the implementer:
   its `units` block declares nine. The former §5 declared four (`length, mass, angle,
   spring_rate`) while the body also carried newtons, N·s/m and cSt — a document that
   refused itself under `spec.md` §4.1 rule 1.
-- **`schema_version` is `1.1.0`**, the version the app writes (`spec.md` §4.7). `1.0.x`
+- **`schema_version` is `1.2.0`**, the version the app writes (`spec.md` §4.7). `1.0.x`
   documents are migrated on load: every stored `z` becomes
   `z' = z − (chassis_thickness + reference_ride_height)`, the frame origin is rewritten,
-  and a `derived` migration record is added to `sources`. Exporting and reloading the
-  migrated document does not shift it a second time.
-- **`symmetry: true` and no `RF` corner.** The right-hand corner is generated at load by
-  **negating y only** — with `derived_by_mirror` provenance, not `measured`, and not
-  re-solved as if it were the left corner (its crank angle, branch sign and monotonicity
-  direction all differ, §6.5). Camber is antisymmetric and toe is symmetric, but both are
-  stored per-wheel and both are **copied unchanged** through the mirror; the side factor
-  `s = ±1` (§3.1) is what carries the sign into the car frame, applied once inside the
-  solver. This is D-17, and §6.1 plus G01.1, G01.8, G01.9 and G01.12 are what prove it. The
-  per-corner `"mirror_of": "LF"` key this section used to carry is retired as a *schema*
-  key: the document says `symmetry: true`, one mechanism is enough, and where §6 says
-  `mirror_of` it means this derivation — whose source record is `derived_by_mirror`, with
-  `from` naming the left corner's field path.
-- **What is derived is not stored.** Contact patches (`(0, ±track/2, 0)` and
-  `(wheelbase, ±track/2, 0)`), `x_cg` (`wheelbase · (1 − front_mass_share)`, = 141.35 mm
-  here), per-corner unsprung mass (half the axle value), the bar's `drop_radius` and every
-  link length. §6 derives them once and later modules never recompute them differently.
+  and a `derived` migration record is added to `sources`. `1.1.x` documents then migrate
+  to the hub-relative form: `offset = outboard − wc` for the three upright points, the
+  stored `wc` is removed, and the wheel radius is stored explicitly. Exporting and
+  reloading the migrated document does not shift it a second time.
+- **`symmetry: true` and no right-hand corner.** The right-hand corner is generated at
+  load by **negating y only** — with `derived_by_mirror` provenance, not `measured`, and
+  not re-solved as if it were the left corner (its crank angle, branch sign and
+  monotonicity direction all differ, §6.5). This applies to `RF` from `LF` and `RR` from
+  `LR`. Camber is antisymmetric and toe is symmetric, but both are stored per-wheel and
+  both are **copied unchanged** through the mirror; the side factor `s = ±1` (§3.1) is
+  what carries the sign into the car frame, applied once inside the solver. This is D-17,
+  and §6.1 plus G01.1, G01.8, G01.9 and G01.12 are what prove it. The per-corner
+  `"mirror_of": "LF"` key this section used to carry is retired as a *schema* key: the
+  document says `symmetry: true`, one mechanism is enough, and where §6 says `mirror_of`
+  it means this derivation — whose source record is `derived_by_mirror`, with `from`
+  naming the left corner's field path.
+- **What is derived is not stored.** The **wheel centre/hub** (§2.1), contact patches
+  (`(0, ±track/2, 0)` and `(wheelbase, ±track/2, 0)`), `x_cg`
+  (`wheelbase · (1 − front_mass_share)`, = 141.35 mm here), per-corner unsprung mass (half
+  the axle value), the bar's `drop_radius` and every link length. §6 derives them once and
+  later modules never recompute them differently.
 - **Absence is a missing key**, never `0`, `null` or a sentinel (`spec.md` §4.1 rule 3).
   The rear corners are absent here for the honest reason in §8.4 — they have never been
   measured — and every rear-corner output is `REFUSED` naming `corners.LR.points.*`
@@ -648,19 +668,29 @@ solver — once, and never in the document. Consequences: a symmetric car has id
 and toe left and right, its axle total toe is `2τ` (zero on a straight car), and no code path negates a
 stored setup value on the mirror. G01.8, G01.12 and I13 pin it.
 
-### 6.2 Ride height — the algorithm round 1 did not specify
+### 6.2 Ride height — chassis-fixed points stay, the hub moves
 
-`setRideHeight(dz)` is not "translate and hope". After translating the chassis-side points by +dz,
-the linkage still has one degree of freedom and nothing about the wheel is determined. The physical
-constraint is that **the wheel is still on the road**:
+`setRideHeight(dz)` is a change to `body.reference_ride_height`, not a translation of the whole
+document. The physical constraint is that **the wheel is still on the road**, and the derived hub is
+what enforces it:
 
 ```
-1. translate chassis-side points (lca_in_*, uca_in*, tie_in, damper_up) by +dz
-   — dz > 0 raises the chassis relative to the wheels, i.e. DROOP of the wheel
-2. solve θ such that W(θ).z = tyre_radius  (the wheel stays at ride height on the road)
-3. re-derive θ₀, (u,v), branch sign and the static Uₒ from that state
-4. re-derive everything in §6.6
+1. leave every chassis-fixed point byte-identical
+2. hub.z = wheel_radius − (chassis_thickness + ride_height)
+3. every hub-fixed outboard point moves with the hub: outboard = hub + offset
+4. add (chassis_thickness + ride_height) to every z to build the solver's ground frame
+5. re-solve module 2 from the new absolute geometry
 ```
+
+`dz > 0` raises the chassis relative to the wheels, i.e. DROOP of the wheel: the hub and its outboard
+points move **down** in the chassis frame by `dz`, while the inner pivots stay. The arms therefore
+rotate and the front-view results change; that is the geometry's answer, not a +dz rule. Growing the
+wheel diameter has the opposite sign for the hub: `+1 mm` radius raises the hub and every outboard
+point by `1 mm`, leaves the chassis-fixed points and the ride height alone, and again lets the arms
+decide the roll-centre change.
+
+> The numerical example below belongs to the retired chassis-pinned model; it is kept as the
+> sign-convention warning, not as a +1 mm rule for the hub-relative model.
 
 **Why the label matters, and what it costs to get wrong.** Module 2's convention (02 §2, §3.5) is
 `bump = wheel moves up relative to the chassis`. Holding the wheel on the road and raising the chassis

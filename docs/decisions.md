@@ -209,6 +209,33 @@ the assembled bar gives, and is the normal case for a club racer. Torsion bars, 
 ignore it. Forecloses: nothing — the field is optional and defaults to the behaviour every existing
 model already assumed.
 
+---
+
+**D-25 — Corner geometry is split chassis-fixed / hub-fixed, and the hub is derived.** Ruled
+2026-11-04. The outboard ball studs (`lca_out`, `uca_out`, `tie_out`) are screwed to the upright, so
+they are stored as **offsets from the wheel centre**, not as absolute chassis-frame points. The inner
+pivots, the damper mounts and the ARB drop link stay chassis-fixed and absolute. The wheel centre is
+**derived, never stored**:
+
+```text
+z_ground = -(chassis_thickness + ride_height)
+hub.z    = z_ground + wheel_radius
+hub.y    = ±track/2
+hub.x    = 0 at the rear axle, wheelbase at the front
+```
+
+`axles.<axle>.tyre_radius` is an input again (displayed and edited as diameter `2r`); the previous
+slice's read-only inferred diameter was correct only while the wheel centre was pinned to the chassis.
+The adapter composes `outboard = hub + offset` at one boundary and physics keeps consuming absolute
+coordinates, so no equation changes. Consequences: a ride-height rise moves the hub and every outboard
+point down in the chassis frame and leaves the inner pivots byte-identical, so the arms rotate and the
+front-view outputs change by the geometry rather than by +1 mm; a larger wheel raises the hub and its
+outboard points. `schema_version` becomes **1.2.0**; 1.1 documents migrate by `offset = outboard − wc`,
+dropping the stored `wc` and storing the radius explicitly, and round-trip to the same absolute
+geometry. Forecloses: editing a wheel centre directly (edit the radius, track, wheelbase, thickness or
+ride height), and a separate wheel-diameter field (the diameter is the display form of the single
+stored `tyre_radius`).
+
 ## Proposals awaiting a decision
 
 - **Setup-sheet library with a change interpreter.** Compare not only two setups but a *sequence*
