@@ -2,9 +2,11 @@ import {
   absoluteCornerPointMm,
   buildFrontViewInput,
   buildToeInput,
+  hubCentreMeasured,
   reportedRollCentreHeightM,
   type CarModelDocument,
   type CornerKey,
+  type CornerPointKey,
 } from '@setuplab/data';
 import {
   buildCamberSeries,
@@ -15,8 +17,12 @@ import {
   type Solved,
   type ToeSeriesResult,
 } from '@setuplab/physics';
-import type { Axle } from '../editor/hardpoints.js';
-import { cornerKeyForAxle } from '../editor/hardpoints.js';
+import type { Axle, GeometryHardpointDefinition } from '../editor/hardpoints.js';
+import {
+  GEOMETRY_INNER_HARDPOINTS,
+  GEOMETRY_OUTBOARD_HARDPOINTS,
+  cornerKeyForAxle,
+} from '../editor/hardpoints.js';
 import {
   SHIM_BAND_MM,
   hingeAngleBandDegrees,
@@ -39,6 +45,7 @@ import type { SceneLabels } from '../scene/FrontViewScene.js';
 import { buildSceneLabels } from '../view/endSummary.js';
 import type { ValueProvenance } from '../view/Value.js';
 import {
+  provenanceForConfidence,
   provenanceForConfidences,
   provenanceForSolved,
 } from '../view/provenance.js';
@@ -54,6 +61,30 @@ export interface GeometryValue {
   readonly reason?: string;
   readonly accessibleName: string;
   readonly size: 'large' | 'medium';
+}
+
+export interface GeometryHardpointAxis {
+  readonly axis: 1 | 2;
+  readonly axisName: 'y' | 'z';
+  readonly baseMm: number;
+  readonly editValueMm: number | null;
+  readonly value: GeometryValue;
+  readonly absolute: GeometryValue;
+  readonly direction: string;
+  readonly edited: boolean;
+}
+
+export interface GeometryHardpointRow {
+  readonly key: CornerPointKey;
+  readonly label: string;
+  readonly group: 'inner' | 'outboard';
+  readonly xMm: number | null;
+  readonly axes: readonly GeometryHardpointAxis[];
+}
+
+export interface GeometryHub {
+  readonly y: GeometryValue;
+  readonly z: GeometryValue;
 }
 
 export interface GeometryColumn {
@@ -74,6 +105,9 @@ export interface GeometryColumn {
     readonly baseMidpointMm: number | null;
     readonly spanMm: number | null;
   };
+  readonly innerPivots: readonly GeometryHardpointRow[];
+  readonly outboardPoints: readonly GeometryHardpointRow[];
+  readonly hub: GeometryHub;
   readonly refusal: string | null;
 }
 
@@ -242,11 +276,152 @@ function toeSeriesRefusal(toeSeries: ToeSeriesResult | null, axleLabel: string):
   );
 }
 
+function hardpointReading(
+  id: string,
+  label: string,
+  value: string | null,
+  provenance: GeometryValue['provenance'],
+  band: string | null,
+  bandReason: string,
+  accessibleName: string,
+  reason?: string,
+): GeometryValue {
+  return {
+    id,
+    label,
+    value,
+    unit: LENGTH_UNIT,
+    provenance,
+    band,
+    bandReason,
+    ...(reason === undefined ? {} : { reason }),
+    accessibleName,
+    size: 'medium',
+  };
+}
+
+function shimDirection(key: CornerPointKey, axisName: 'y' | 'z'): string {
+  if (key === 'uca_out' && axisName === 'z') {
+    return '+ is up and makes camber gain more negative; − is down and makes camber gain less negative.';
+  }
+  if (key === 'uca_out') {
+    return '+ is outboard; − is inboard.';
+  }
+  if (axisName === 'y') {
+    return '+ is outboard; − is inboard.';
+  }
+  return '+ is up; − is down.';
+}
+
+function buildHardpointRow(
+  model: CarModelDocument,
+  baseline: CarModelDocument,
+  axleLabel: string,
+  cornerKey: CornerKey,
+  definition: GeometryHardpointDefinition,
+): GeometryHardpointRow {
+  const point = model.corners[cornerKey]?.points[definition.key];
+  const baselinePoint = baseline.corners[cornerKey]?.points[definition.key];
+  const absolute = absoluteCornerPointMm(model, cornerKey, definition.key);
+  const shim = definition.group === 'outboard';
+  const axes: GeometryHardpointAxis[] = ([1, 2] as const).map((axis) => {
+    const axisName = axis === 1 ? 'y' : 'z';
+    const baseMm = shim ? (baselinePoint?.value[axis] ?? 0) : 0;
+    const currentMm = point?.value[axis] ?? null;
+    const editValueMm =
+      currentMm === null ? null : shim ? currentMm - baseMm : currentMm;
+    const absoluteMm = absolute?.value[axis] ?? null;
+    const provenance =
+      point === undefined ? 'missing' : provenanceForConfidence(point.confidence);
+    const absoluteProvenance =
+      absolute === null ? 'missing' : provenanceForConfidence(absolute.confidence);
+    const entryName = `${axleLabel} ${definition.label}${shim ? ' shim' : ''} ${axisName}`;
+    const absoluteName = `${axleLabel} ${definition.label} composed ${axisName}`;
+    const edited =
+      point !== undefined &&
+      baselinePoint !== undefined &&
+      point.value[axis] !== baselinePoint.value[axis];
+
+    return {
+      axis,
+      axisName,
+      baseMm,
+      editValueMm,
+      value: hardpointReading(
+        `${definition.key}-${axisName}`,
+        `${definition.label} ${axisName}`,
+        editValueMm === null ? null : formatFixedNumber(editValueMm, 1),
+        provenance,
+        null,
+        shim
+          ? 'the shim offset is entered to 0.1 mm'
+          : 'the model stores the hardpoint, not a tolerance',
+        entryName,
+        editValueMm === null
+          ? `The ${definition.label.toLowerCase()} is not in the model.`
+          : undefined,
+      ),
+      absolute: hardpointReading(
+        `${definition.key}-absolute-${axisName}`,
+        `${definition.label} absolute ${axisName}`,
+        absoluteMm === null ? null : formatFixedNumber(absoluteMm, 1),
+        absoluteProvenance,
+        null,
+        'the composed point stores no tolerance',
+        absoluteName,
+        absoluteMm === null
+          ? `The ${definition.label.toLowerCase()} is not computable.`
+          : undefined,
+      ),
+      direction: shim ? shimDirection(definition.key, axisName) : '',
+      edited,
+    };
+  });
+
+  return {
+    key: definition.key,
+    label: definition.label,
+    group: definition.group,
+    xMm: point?.value[0] ?? null,
+    axes,
+  };
+}
+
+function buildHub(model: CarModelDocument, axleLabel: string, cornerKey: CornerKey): GeometryHub {
+  const hub = hubCentreMeasured(model, cornerKey);
+  const provenance = hub === null ? 'missing' : provenanceForConfidence(hub.confidence);
+  const reason =
+    'The wheel centre needs the ride height, plate thickness and wheel diameter.';
+  return {
+    y: hardpointReading(
+      'hub-y',
+      'Hub y',
+      hub === null ? null : formatFixedNumber(hub.value[1], 1),
+      provenance,
+      null,
+      'the hub is derived, not measured, and stores no tolerance',
+      `${axleLabel} wheel centre y`,
+      hub === null ? reason : undefined,
+    ),
+    z: hardpointReading(
+      'hub-z',
+      'Hub z',
+      hub === null ? null : formatFixedNumber(hub.value[2], 1),
+      provenance,
+      null,
+      'the hub is derived, not measured, and stores no tolerance',
+      `${axleLabel} wheel centre z`,
+      hub === null ? reason : undefined,
+    ),
+  };
+}
+
 export function buildGeometryColumn(
   model: CarModelDocument,
   axle: Axle,
   includeInstantCentre: boolean,
   edited: boolean,
+  baseline: CarModelDocument = model,
 ): GeometryColumn {
   const cornerKey = cornerKeyForAxle(axle);
   const axleLabel = axle === 'front' ? 'Front' : 'Rear';
@@ -459,6 +634,13 @@ export function buildGeometryColumn(
           };
   }
 
+  const innerPivots = GEOMETRY_INNER_HARDPOINTS.map((definition) =>
+    buildHardpointRow(model, baseline, axleLabel, cornerKey, definition),
+  );
+  const outboardPoints = GEOMETRY_OUTBOARD_HARDPOINTS.map((definition) =>
+    buildHardpointRow(model, baseline, axleLabel, cornerKey, definition),
+  );
+
   return {
     axle,
     cornerKey,
@@ -473,6 +655,9 @@ export function buildGeometryColumn(
     shim,
     hingeAngle,
     shimInput: { valueMm: shimMm, baseMidpointMm, spanMm },
+    innerPivots,
+    outboardPoints,
+    hub: buildHub(model, axleLabel, cornerKey),
     refusal,
   };
 }
