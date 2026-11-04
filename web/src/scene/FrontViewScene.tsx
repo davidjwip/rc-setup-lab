@@ -159,13 +159,15 @@ export function FrontViewScene({ scene, labels }: FrontViewSceneProps) {
                 cy={yOf(scene.instantCentre.y)}
                 r={4}
               />
-              <text
-                className="scene-label"
-                x={xOf(scene.instantCentre.x) + 7}
-                y={yOf(scene.instantCentre.y) - 4}
-              >
-                {labels.instantCentre ?? 'instant centre'}
-              </text>
+              <a href="#glossary/instant-centre" className="scene-glossary-link">
+                <text
+                  className="scene-label"
+                  x={xOf(scene.instantCentre.x) + 7}
+                  y={yOf(scene.instantCentre.y) - 4}
+                >
+                  {labels.instantCentre ?? 'instant centre'}
+                </text>
+              </a>
             </g>
           ) : null}
 
@@ -173,22 +175,24 @@ export function FrontViewScene({ scene, labels }: FrontViewSceneProps) {
             <g data-field="roll_centre" className="scene-roll-centre">
               <title>Roll centre</title>
               <circle cx={xOf(scene.rollCentre.x)} cy={yOf(scene.rollCentre.y)} r={4} />
-              <text
-                className="scene-label scene-value-label"
-                x={xOf(scene.rollCentre.x) - 8}
-                y={yOf(scene.rollCentre.y) - 6}
-                textAnchor="end"
-              >
-                {labels.rollCentreValue}
-              </text>
-              <text
-                className="scene-label scene-band-label"
-                x={xOf(scene.rollCentre.x) - 8}
-                y={yOf(scene.rollCentre.y) + 4}
-                textAnchor="end"
-              >
-                {labels.rollCentreBand}
-              </text>
+              <a href="#glossary/roll-centre" className="scene-glossary-link">
+                <text
+                  className="scene-label scene-value-label"
+                  x={xOf(scene.rollCentre.x) - 8}
+                  y={yOf(scene.rollCentre.y) - 6}
+                  textAnchor="end"
+                >
+                  {labels.rollCentreValue}
+                </text>
+                <text
+                  className="scene-label scene-band-label"
+                  x={xOf(scene.rollCentre.x) - 8}
+                  y={yOf(scene.rollCentre.y) + 4}
+                  textAnchor="end"
+                >
+                  {labels.rollCentreBand}
+                </text>
+              </a>
             </g>
           ) : null}
 

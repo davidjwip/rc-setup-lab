@@ -27,6 +27,17 @@ may be copied from RC3's help text.
 Each entry: the one-liner the app shows in the Why sheet, the sentence a club racer would
 actually say, and where the term surfaces.
 
+### Instant centre
+Where the two suspension links would cross if you extended both in front view. The wheel does not
+travel straight up when it bumps — it swings around that point, and the further away the point sits
+the flatter that swing, which is why a long-link car gains so little camber and a short one gains a
+lot.
+It is *instantaneous*: it moves as the suspension moves, so the app recomputes it at every bump
+rather than treating it as a fixed point on the car. The line from the contact patch to the instant
+centre is what decides the roll centre, which is why moving one camber link changes both at once.
+*Where:* the drawing — the crossing point of the two extended links — and behind every roll-centre
+and camber-gain number. Reference car: 435.7 mm inboard of the wheel and 60.5 mm above the road.
+
 ### Roll centre
 The height the car rolls about at one end, found by extending the suspension links until they
 meet in front view. Raise it and that end rolls less but takes more of the weight transfer —

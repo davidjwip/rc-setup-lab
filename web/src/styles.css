@@ -293,6 +293,158 @@ summary:focus-visible {
   font-size: 0.76rem;
 }
 
+.masthead-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px 16px;
+  margin-bottom: 8px;
+}
+
+.masthead-row .eyebrow {
+  margin: 0;
+}
+
+.text-link {
+  color: var(--accent);
+  font-size: 0.84rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.text-link:hover {
+  text-decoration: underline;
+}
+
+.text-link:focus-visible,
+.glossary-search input:focus-visible,
+.glossary-clear:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.scene-glossary-link {
+  cursor: pointer;
+}
+
+.scene-glossary-link text {
+  text-decoration: underline;
+}
+
+.glossary-panel {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+  padding: 18px;
+}
+
+.glossary-search {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  margin-bottom: 18px;
+}
+
+.glossary-search-label {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.glossary-search input {
+  flex: 1 1 220px;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #0d1319;
+  color: var(--ink);
+  padding: 10px 12px;
+  font: inherit;
+}
+
+.glossary-clear {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel-raised);
+  color: var(--ink);
+  padding: 7px 12px;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.glossary-list {
+  margin: 0;
+}
+
+.glossary-entry {
+  border-top: 1px solid var(--line);
+  padding: 16px 0;
+  scroll-margin-top: 16px;
+}
+
+.glossary-entry:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.glossary-entry.is-active {
+  border-left: 3px solid var(--accent);
+  padding-left: 12px;
+}
+
+.glossary-entry dt {
+  color: var(--ink);
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.glossary-entry dd {
+  margin: 8px 0 0;
+}
+
+.glossary-oneliner {
+  margin: 0 0 8px;
+  color: var(--ink);
+  line-height: 1.55;
+}
+
+.glossary-racer {
+  margin: 0 0 8px;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.glossary-where {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+.glossary-where span {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.glossary-empty {
+  display: grid;
+  gap: 12px;
+  justify-items: start;
+  color: var(--muted);
+}
+
+.glossary-empty p {
+  margin: 0;
+  color: var(--ink);
+  font-weight: 700;
+}
+
 .scene-figure,
 .camber-figure {
   margin: 0;
@@ -514,6 +666,10 @@ summary:focus-visible {
   }
 
   .card {
+    padding: 15px;
+  }
+
+  .glossary-panel {
     padding: 15px;
   }
 }
