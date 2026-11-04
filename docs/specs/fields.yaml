@@ -447,13 +447,60 @@ fields:
       unit: length
       req: "no"
       on_absence: ESTIMATE
-      estimate: two_hang_plumb_line
+      estimate: raise_and_weigh
       estimate_alt: component_mass_moment
       band: true
       default: 28.0
       plausible: [15, 45]
       consumed_by: [load_transfer_split, roll_centre_height]
-      notes: "**Never asked as a measurement** — corner scales cannot locate a CG (D-14). `ASSUME` on this field is a schema error (spec §4.1 rule iii). Tier `inferred` on every consuming output; the band comes from the procedure (hang: ±1.5 mm) or from the component table's own ranges. 28.0 mm is the reference default, not a measurement: the component route on the reference car gives 18.7 mm (physics/01 §4.5)."
+      notes: "The CG's stored **chassis-frame z**. The height above the ground is derived, exactly like the hub: `cg_above_ground = cg.z − z_ground`, with `z_ground = −(thickness + ride_height)` (D-26). This is the anchor a ride-height change moves; the CG keeps its chassis-frame value. Now measurable: `body.cg.raise_and_weigh` is the preferred route (D-26), then the component-mass estimate, then the stated 28.0 mm default (D-18). `ASSUME` on this field is a schema error (spec §4.1 rule iii). The default's band is the stated 24–32 mm range; a measured route carries the weighing-tolerance band."
+
+    - path: body.cg.raise_and_weigh.raised_end
+      type: enum
+      values: [front, rear]
+      unit: null
+      req: "yes where body.cg.raise_and_weigh is present"
+      on_absence: REFUSE
+      plausible: null
+      consumed_by: [load_transfer_split, roll_centre_height]
+      notes: "The end put on the stand. The axle on the scales is the opposite one; `axle_weight_*` below refer to that axle (D-26)."
+
+    - path: body.cg.raise_and_weigh.raise_height
+      type: value
+      unit: length
+      req: "yes where body.cg.raise_and_weigh is present"
+      on_absence: REFUSE
+      plausible: [10, 200]
+      consumed_by: [load_transfer_split, roll_centre_height]
+      notes: "Height `h` of the stand under the raised end, millimetres. Bob's stand is 102 mm under the rear. `θ = asin(h / wheelbase)`."
+
+    - path: body.cg.raise_and_weigh.axle_weight_level
+      type: value
+      unit: mass
+      req: "yes where body.cg.raise_and_weigh is present"
+      on_absence: REFUSE
+      plausible: [50, 1500]
+      consumed_by: [load_transfer_split, roll_centre_height]
+      notes: "Grams on the axle **opposite** the raised end, car level, all four scales in place. The same pads stay under the wheels when one end is raised, so pad thickness needs no correction (D-26)."
+
+    - path: body.cg.raise_and_weigh.axle_weight_raised
+      type: value
+      unit: mass
+      req: "yes where body.cg.raise_and_weigh is present"
+      on_absence: REFUSE
+      plausible: [50, 1500]
+      consumed_by: [load_transfer_split, roll_centre_height]
+      notes: "Grams on the same opposite axle with the end raised. Take several readings; the repeat spread is `weighing_tolerance` (D-26)."
+
+    - path: body.cg.raise_and_weigh.weighing_tolerance
+      type: value
+      unit: mass
+      req: "no"
+      on_absence: ASSUME
+      assume: 5.0
+      plausible: [1, 20]
+      consumed_by: [load_transfer_split, roll_centre_height]
+      notes: "Repeat-reading spread of **one** scale, grams. The measured CG band is `±tol × √2 × (L / tan θ) / W_total`; D-26 states 5 g, and the video's 'take a few readings' is the same instruction. Absent → 5 g, flagged as assumed."
 
     - path: body.cg.front_mass_share
       type: value
@@ -1594,6 +1641,13 @@ worksheet:
 # here fails the schema stage.
 # =============================================================================
 procedures:
+  raise_and_weigh:
+    where: docs/specs/procedures/raise_and_weigh.md (pending)
+    gives: body.cg.height
+    band: "±tol × √2 × (L / tan θ) / W_total; ±3.2 mm at 5 g on the 280 mm / 1600 g example"
+    steps: "Car fully assembled (shocks on, body on), on four scales. Record the level axle weight. Raise one end by h with the scales still under every wheel; re-weigh the axle opposite the raised end several times. θ = asin(h/L); h_cg = (W_raised − W_level)/W_total × L/tanθ + wheel_radius."
+    notes: "Bob Wright's garage procedure (Creating AE B44.2 Model — Part 1). The wheel radius term is the axle centre height, so the result is the whole-car CG above the ground; subtract the unsprung masses for the sprung CG (physics/06 (6.1)). This is the only route that can be `measured` (D-26)."
+
   two_hang_plumb_line:
     where: docs/specs/procedures/two_hang_plumb_line.md (pending)
     gives: body.cg.height

@@ -299,8 +299,8 @@ Vehicle level, required by modules 6 and 10:
 |---|---|---|---|---|
 | `mass.total` m | g | 1000 – 1600 | `REFUSE` | everything in 6 |
 | `mass.unsprung` m_u | g **per axle** | 80 – 160 per axle (160 – 320 per car) | `ESTIMATE(unsprung_corner_weighing)`, default 120 g/axle — rows `unsprung_front` / `unsprung_rear` on disk (§5.1); the retired `ASSUME(0)` was outside the range and cost the front ride frequency 15 % | ΔW_u |
-| `cg.height` h | mm | 15 – 45 | **never `measured`** — see below; `ESTIMATE(two_hang_plumb_line)`, default 28.0. `ASSUME` on this field is a schema error | ΔW, φ |
-| `cg.provenance` | enum | `two_hang_plumb_line` \| `component_mass_moment` | **derived, not stored** — the `method` of the source on `cg.height` | the badge on every load number |
+| `cg.height` h | mm | 15 – 45 | **measured** by `raise_and_weigh` where recorded (D-26), else `ESTIMATE(component_mass_moment)`, default 28.0. `ASSUME` on this field is a schema error | ΔW, φ |
+| `cg.provenance` | enum | `raise_and_weigh` \| `component_mass_moment` \| `stated_default` | **derived, not stored** — the route actually used | the badge on every load number |
 | `cg.components[]` | `{mass, x, y, z}` | g, mm | `OMIT` → the component route is unavailable | the component route (§4.5) |
 | `cg.unsprung_height` h_u | mm | 0.55 – 0.75 × tyre radius | `ASSUME(0.625 R, flag)` | ΔW_u |
 | `chassis.material`, `chassis.thickness` | —, mm | see module 10 | `OMIT` → rigid chassis | k_ch |
@@ -312,14 +312,29 @@ Vehicle level, required by modules 6 and 10:
 `mass.total` and a weight split derives them (module 6 §3.1) and reports the derived values as
 `derived`, not `measured`.
 
-### 4.5 CG height is inferred, never "measured" (decision D-14, 2026-10-30)
+### 4.5 CG height is measurable by raised-axle weighing, or inferred (D-26 supersedes D-14's "never measured")
 
-No instrument a club racer owns locates a CG. Corner scales weigh the car; they do not find where
-the mass is. Round 1's example model cited `corner scales` as the source of `cg.height`, which is
-physically impossible, and the field was `Req`, so a model could not be "complete" without a number
-the user had to guess. The two routes now:
+Corner scales alone cannot locate a CG, which is what round 1's `corner scales` source claimed. But a
+four-scale car can be measured: raise one end by a known height with the scales still under every
+wheel and re-weigh the opposite axle. That is Bob Wright's procedure, and **D-26** makes it the
+preferred route. The CG is still stored in the chassis frame (`body.cg.height` is `cg.z`); the height
+above ground is derived as `cg.z − z_ground`, so a ride-height change moves the CG with the chassis.
+The routes, in priority order:
 
-**Route A — component-mass estimate (the default).** The user enters the mass and position of each
+**Route 0 — raised-axle weighing (`raise_and_weigh`, measured).** Car fully assembled on four scales;
+record the level axle weight; raise one end by `h_raise`; re-weigh the axle opposite the raised end
+several times. With `θ = asin(h_raise / L)`:
+
+```
+h    = (W_raised − W_level)/W_total × (L / tan θ) + r_wheel
+band = ±tol × √2 × (L / tan θ)/W_total
+```
+
+This is the **whole-car** CG. The roll moment uses the sprung CG from (6.1), never this number
+directly. The input lives at `body.cg.raise_and_weigh.*` (fields.yaml); the band comes from the
+repeat-reading tolerance, default 5 g per weighing.
+
+**Route A — component-mass estimate (the fallback).** The user enters the mass and position of each
 major component; the app computes the first moment:
 
 ```
@@ -589,8 +604,9 @@ not in `fields.yaml` is a worse one.
 | `damper.c_post` | `corners.<corner>.damper.c_post` | N·s/m | `ASSUME(12.0)` with flag `estimatedDamper` |
 | `mass.total` | `body.mass.total` | g | `REFUSE` |
 | `mass.unsprung` (**per axle**) | `body.mass.unsprung_front`, `body.mass.unsprung_rear` | g per axle | `ESTIMATE(unsprung_corner_weighing)`, default 120 |
-| `cg.height` | `body.cg.height` | mm | `ESTIMATE(two_hang_plumb_line)`, default 28.0 |
-| `cg.provenance` | derived from the `method` of the source on `body.cg.height` | enum | not stored |
+| `cg.height` | `body.cg.height` | mm | `ESTIMATE(component_mass_moment)`, default 28.0; preferred route `raise_and_weigh` |
+| `cg.raise_and_weigh` | `body.cg.raise_and_weigh.{raised_end, raise_height, axle_weight_level, axle_weight_raised, weighing_tolerance}` | —, mm, g | `OMIT` (measured route unavailable) |
+| `cg.provenance` | derived from the route actually used (`raise_and_weigh`, `component_mass_moment`, `stated_default`) | enum | not stored |
 | `cg.components[]` | `body.cg.components[]` | g, mm | `OMIT` |
 | `cg.unsprung_height` | `body.cg.unsprung_height` | mm | `ASSUME(0.625 × tyre_radius)` |
 | `chassis.material` | `body.chassis.material` | enum | `OMIT` |
@@ -604,8 +620,9 @@ Two of these changed meaning, not just name. `mass.unsprung` was **per car** (24
 this module's §4.4 and is **per axle** (120 g) in the file, because the sprung mass a
 corner carries is `corner weight − unsprung at that corner` and the front and rear
 unsprung masses are not the same number on any car that has been weighed. `cg.height` was
-`ASSUME(component estimate, flag cgInferred)` here and is `ESTIMATE(two_hang_plumb_line)`
-in the file: the number carries a band, and `ASSUME` on it is a schema error.
+`ASSUME(component estimate, flag cgInferred)` here and is now `raise_and_weigh` (measured),
+`component_mass_moment` (estimated) or the stated 28.0 mm default (D-26): the number carries a band,
+and `ASSUME` on it is a schema error.
 
 **Where this table and §4.4 disagree, this table and `fields.yaml` are right** — §4.4 is the
 module's shopping list and was written before the schema existed; the two rows above are the

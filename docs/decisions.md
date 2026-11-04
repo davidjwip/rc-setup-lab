@@ -236,6 +236,46 @@ geometry. Forecloses: editing a wheel centre directly (edit the radius, track, w
 ride height), and a separate wheel-diameter field (the diameter is the display form of the single
 stored `tyre_radius`).
 
+**D-26 — CG height is measurable by raised-axle weighing, and the roll moment uses the sprung CG.**
+Ruled 2026-11-04. D-14 said no instrument a club racer owns locates a CG; that was too strong. Bob
+Wright's *Creating AE B44.2 Model — Part 1 (Measurement)* documents a garage procedure that does:
+weigh the assembled car level on four scales, raise one end by a known height with the scales still
+under every wheel, and re-weigh the axle opposite the raised end several times. The route is now
+called **`raise_and_weigh`** and is the preferred route for `body.cg.height`:
+
+```text
+θ      = asin(h / L)
+h_cg   = (W_raised − W_level) / W_total × (L / tan θ) + r_wheel
+```
+
+`W_level` and `W_raised` are the axle **opposite** the raised end, so the difference is positive when
+raising the car adds load to that axle. The band is the repeat-reading uncertainty of the two
+weighings, combined in quadrature:
+`±tol × √2 × (L / tan θ) / W_total`; the reference tolerance is ±5 g, and a 5 g error on one reading
+moves the height by `5 / W_total × L / tan θ` (2.237 mm on the L = 280 mm, W = 1600 g example).
+Route priority is **measured `raise_and_weigh` → component-mass estimate → stated 28.0 mm default**;
+the card names which route produced the number.
+
+**The CG remains stored in the chassis frame.** `body.cg.height` is the CG's stored `z`, and the
+height above the ground is derived exactly like the hub:
+`cg_above_ground = cg.z − z_ground`, with `z_ground = −(thickness + ride_height)`. Raising ride
+height moves the chassis and the CG up relative to the ground; the hardpoints and the CG keep their
+chassis-frame values. The measured procedure fills that stored `z`; it is not re-derived from the
+current ride height on every solve.
+
+**The roll moment uses the sprung CG, never the whole-car CG.** The measured/estimated `h` is the
+whole-car CG, which includes the wheels and uprights. The moment arm is
+`sprung CG above ground − roll-axis height`, where
+`h_s = (m·h − m_u·h_u) / m_s` (physics/06 (6.1)) and `h_ra` is interpolated between the front and
+rear roll-centre heights at the CG's longitudinal position. `M = m_s · a_y · (h_s − h_ra)`, and Bob's
+**chassis roll sensitivity** is `M / (k_φ,f + k_φ,r)` in degrees per g. Where unsprung masses are
+absent the app keeps fields.yaml's 120 g/axle estimate, says so, and widens the band rather than
+silently treating the whole-car CG as sprung.
+
+Forecloses the blanket claim that a CG can never be measured (D-14's "never `measured`" sentence is
+superseded for this route; the component and default routes stay `inferred`), and forecloses using a
+whole-car CG directly in the roll moment.
+
 ## Proposals awaiting a decision
 
 - **Setup-sheet library with a change interpreter.** Compare not only two setups but a *sequence*

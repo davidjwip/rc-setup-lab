@@ -117,11 +117,29 @@ export interface CgComponentDocument {
   readonly height: MeasuredValue<number>;
 }
 
+export type RaisedEndDocument = 'front' | 'rear';
+
+/**
+ * The raised-axle two-scale procedure's raw readings. `axleWeightLevel` and
+ * `axleWeightRaised` are the axle **opposite** `raisedEnd`, in grams. The CG
+ * height is derived from them; it is never typed in. `weighingTolerance` is the
+ * repeat-reading spread of one scale, also grams.
+ */
+export interface RaiseAndWeighDocument {
+  readonly raisedEnd: RaisedEndDocument;
+  readonly raiseHeight: MeasuredValue<number>;
+  readonly axleWeightLevel: MeasuredValue<number>;
+  readonly axleWeightRaised: MeasuredValue<number>;
+  readonly weighingTolerance: MeasuredValue<number> | null;
+}
+
 export interface CgDocument {
+  /** The stored chassis-frame z of the CG, in millimetres. Ground height is derived. */
   readonly height: MeasuredValue<number> | null;
   readonly frontMassShare: MeasuredValue<number> | null;
   readonly unsprungHeight: MeasuredValue<number> | null;
   readonly components: readonly CgComponentDocument[] | null;
+  readonly raiseAndWeigh: RaiseAndWeighDocument | null;
 }
 
 export interface CarModelDocument {

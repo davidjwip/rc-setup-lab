@@ -33,6 +33,9 @@ export const GRAVITY_MPS2 = 9.81;
 /** D-18: the stated default, never a measurement. 28.0 mm. */
 export const STATED_CG_HEIGHT_M = 0.028;
 
+/** D-18 / 06 §6.7: the stated 24–32 mm plausible range around the 28.0 mm default. */
+export const STATED_CG_HEIGHT_BAND_M: Band = { low: 0.024, high: 0.032 };
+
 /**
  * D-18 / 06 §6.7: a change of CG height over the plausible 24–32 mm range moves
  * the whole-car transfer by ±14.3 %, the roll angle by ±22.2 % and the balance
@@ -156,17 +159,28 @@ function addDefined(
 }
 
 /**
- * 01 §4.5 Route A / D-18 default: infer the whole-car CG height. With a
- * component table, `h = (Σ m_i·z_i + m_u·h_u) / (Σ m_i + m_u)`; without one,
- * the stated 28.0 mm default is used. The result is never `measured`.
+ * 01 §4.5 / D-26 / D-18: resolve the whole-car CG height. Priority:
+ *
+ * 1. `raise_and_weigh` — the measured route (D-26), when its result is supplied;
+ * 2. the component-mass first moment `(Σ m_i·z_i + m_u·h_u) / (Σ m_i + m_u)`;
+ * 3. the stated 28.0 mm default (D-18), carrying its 24–32 mm band.
+ *
+ * The measured route is the only one that can be `firm`; the other two stay
+ * `inferred` and carry `cgInferred`.
  */
 export function inferCgHeight(input: CgInferenceInput): CgHeightResult {
   const total = input.totalMass_kg;
   const unsprungMass = input.unsprungMass_kg;
   const unsprungHeight = input.unsprungHeight_m;
   const components = input.components;
+  const measured = input.measuredHeight_m ?? null;
   const hasComponents = components !== null && components.length > 0;
-  const route: CgRoute = hasComponents ? 'component_mass_moment' : 'stated_default';
+  const route: CgRoute =
+    measured !== null
+      ? 'raise_and_weigh'
+      : hasComponents
+        ? 'component_mass_moment'
+        : 'stated_default';
   const baseSources: readonly Sourced<unknown>[] = [total, unsprungMass, unsprungHeight];
 
   if (
@@ -180,6 +194,21 @@ export function inferCgHeight(input: CgInferenceInput): CgHeightResult {
   ) {
     const refs = baseSources.map((source) => source.ref);
     return { height_m: undefinedResult('outOfDomain', refs), route };
+  }
+
+  if (measured !== null) {
+    if (!finite(measured.value) || measured.value <= 0) {
+      return { height_m: undefinedResult('outOfDomain', [measured.ref]), route };
+    }
+    return {
+      height_m: defined(measured.value, {
+        // The measurement needs the total mass; it does not need the unsprung
+        // masses, which are subtracted later for the sprung CG.
+        ...optionsFromSources([total, measured]),
+        band: input.measuredBand_m ?? null,
+      }),
+      route,
+    };
   }
 
   if (!hasComponents) {
@@ -196,7 +225,16 @@ export function inferCgHeight(input: CgInferenceInput): CgHeightResult {
       defaultHeight === undefined || defaultHeight === null
         ? baseSources
         : [...baseSources, defaultHeight];
-    return { height_m: defined(height, withCg(optionsFromSources(sources))), route };
+    const statedHalfWidth =
+      (STATED_CG_HEIGHT_BAND_M.high - STATED_CG_HEIGHT_BAND_M.low) / 2;
+    const band =
+      defaultHeight === undefined || defaultHeight === null
+        ? STATED_CG_HEIGHT_BAND_M
+        : absoluteBand(height, statedHalfWidth);
+    return {
+      height_m: defined(height, withCg(optionsFromSources(sources), band)),
+      route,
+    };
   }
 
   let componentMass = 0;
@@ -276,8 +314,10 @@ function refusedResult(
     staticRearCorner: staticRear,
     totalLateralLoadTransfer: failure,
     rollAxisHeight: failure,
+    rollMomentArm: failure,
     rollMoment: failure,
     rollAngle: failure,
+    rollSensitivity_degPerG: failure,
     front: refusedAxle(failure),
     rear: refusedAxle(failure),
     balance: failure,
@@ -338,7 +378,13 @@ export function solveLoadTransfer(input: LoadTransferInput): LoadTransferResult 
   const lateralAcceleration = input.lateralAcceleration_mps2;
   const unsprungMass = unsprungFront.value + unsprungRear.value;
   const meanTrack = (trackFront.value + trackRear.value) / 2;
-  const route: CgRoute = cgComponentsOf(input) === null ? 'stated_default' : 'component_mass_moment';
+  const measuredCg = input.cgMeasuredHeight_m ?? null;
+  const route: CgRoute =
+    measuredCg !== null
+      ? 'raise_and_weigh'
+      : cgComponentsOf(input) === null
+        ? 'stated_default'
+        : 'component_mass_moment';
 
   type MutableWorking = { -readonly [K in keyof LoadTransferWorking]: LoadTransferWorking[K] };
   const working: MutableWorking = {
@@ -357,6 +403,8 @@ export function solveLoadTransfer(input: LoadTransferInput): LoadTransferResult 
     rollCentreFront_m: finite(rollCentreFront.value) ? rollCentreFront.value : null,
     rollCentreRear_m: finite(rollCentreRear.value) ? rollCentreRear.value : null,
     rollAxisHeight_m: null,
+    rollMomentArm_m: null,
+    rollSensitivity_degPerG: null,
     rollStiffnessFront_NmPerRad:
       input.rollStiffnessFront_NmPerRad.kind === 'defined'
         ? input.rollStiffnessFront_NmPerRad.value
@@ -438,6 +486,12 @@ export function solveLoadTransfer(input: LoadTransferInput): LoadTransferResult 
     ...(input.cgDefaultHeight_m === undefined
       ? {}
       : { defaultHeight_m: input.cgDefaultHeight_m }),
+    ...(input.cgMeasuredHeight_m === undefined
+      ? {}
+      : { measuredHeight_m: input.cgMeasuredHeight_m }),
+    ...(input.cgMeasuredBand_m === undefined
+      ? {}
+      : { measuredBand_m: input.cgMeasuredBand_m }),
   });
   working.cgHeight_m = cg.height_m.kind === 'defined' ? cg.height_m.value : null;
 
@@ -460,7 +514,13 @@ export function solveLoadTransfer(input: LoadTransferInput): LoadTransferResult 
   working.sprungMass_kg = sprungMass;
 
   const sprungCgHeight = (mass.value * h.value - unsprungMass * unsprungHeight.value) / sprungMass;
-  const hS = defined(sprungCgHeight, cgOptions([h], [mass, unsprungHeight]));
+  const cgHalfWidth = h.band === null ? null : (h.band.high - h.band.low) / 2;
+  // h_s = (m·h − m_u·h_u)/m_s; only h carries a band, so its half-width scales by m/m_s.
+  const hSBand =
+    cgHalfWidth === null
+      ? null
+      : absoluteBand(sprungCgHeight, (cgHalfWidth * mass.value) / sprungMass);
+  const hS = defined(sprungCgHeight, cgOptions([h], [mass, unsprungHeight], hSBand));
   working.sprungCgHeight_m = sprungCgHeight;
 
   const cgLongitudinal = frontShare.value * wheelbase.value;
@@ -473,26 +533,78 @@ export function solveLoadTransfer(input: LoadTransferInput): LoadTransferResult 
     cgOptions([], [rollCentreFront, rollCentreRear, frontShare]),
   );
 
+  const armValue = sprungCgHeight - rollAxisHeight;
+  const armHalfWidth = hSBand === null ? null : (hSBand.high - hSBand.low) / 2;
+  const arm = defined(
+    armValue,
+    cgOptions([hS, hRa], [], armHalfWidth === null ? null : absoluteBand(armValue, armHalfWidth)),
+  );
+  working.rollMomentArm_m = armValue;
+
   const tlltValue = (mass.value * lateralAcceleration * h.value) / meanTrack;
   const tllt = defined(
     tlltValue,
     cgOptions([h], [mass, trackFront, trackRear], relativeBand(tlltValue, CG_TLLT_BAND_RELATIVE)),
   );
 
-  const rollMomentValue = sprungMass * lateralAcceleration * (sprungCgHeight - rollAxisHeight);
+  const rollMomentValue = sprungMass * lateralAcceleration * armValue;
   const rollOptions = cgOptions([h, hS, hRa], [mass, frontShare, unsprungHeight]);
   const rollFlags = new Set<Flag>();
   if (rollOptions.flags !== undefined) {
     for (const flag of rollOptions.flags) rollFlags.add(flag);
   }
   if (sprungCgHeight < rollAxisHeight) rollFlags.add('rollCentreAboveCg');
-  const rollMoment = defined(rollMomentValue, { ...rollOptions, flags: rollFlags });
+  const rollMoment = defined(rollMomentValue, {
+    ...rollOptions,
+    band:
+      armHalfWidth === null
+        ? null
+        : absoluteBand(
+            rollMomentValue,
+            Math.abs(sprungMass * lateralAcceleration) * armHalfWidth,
+          ),
+    flags: rollFlags,
+  });
 
   const stiffnessFront = input.rollStiffnessFront_NmPerRad;
   const stiffnessRear = input.rollStiffnessRear_NmPerRad;
   const stiffnessTotal = addDefined([stiffnessFront, stiffnessRear], (parts) =>
     optionsFromParts(parts, []),
   );
+
+  let rollSensitivity: Solved<number>;
+  if (
+    stiffnessTotal.kind !== 'defined' ||
+    !(stiffnessTotal.value > 0) ||
+    arm.kind !== 'defined'
+  ) {
+    rollSensitivity =
+      stiffnessTotal.kind !== 'defined'
+        ? stiffnessTotal
+        : stiffnessTotal.value > 0
+          ? arm
+          : undefinedResult('noRollStiffness');
+    working.rollSensitivity_degPerG = null;
+  } else {
+    // At 1 g the roll moment is m_s·g·arm; dividing by the total roll stiffness
+    // gives the roll angle per g, converted from radians to degrees at the boundary.
+    const sensitivityValue =
+      ((sprungMass * GRAVITY_MPS2 * armValue) / stiffnessTotal.value) * (180 / Math.PI);
+    const sensitivityHalfWidth =
+      armHalfWidth === null
+        ? null
+        : Math.abs(
+            (sprungMass * GRAVITY_MPS2 / stiffnessTotal.value) * (180 / Math.PI) * armHalfWidth,
+          );
+    rollSensitivity = defined(sensitivityValue, {
+      ...cgOptions([arm, stiffnessTotal], []),
+      band:
+        sensitivityHalfWidth === null
+          ? null
+          : absoluteBand(sensitivityValue, sensitivityHalfWidth),
+    });
+    working.rollSensitivity_degPerG = sensitivityValue;
+  }
 
   let rollAngle: Solved<number>;
   let elasticFront: Solved<number>;
@@ -632,13 +744,15 @@ export function solveLoadTransfer(input: LoadTransferInput): LoadTransferResult 
   return {
     cgHeight: h,
     cgRoute: cg.route,
-    cgHeightBand: null,
+    cgHeightBand: h.band,
     staticFrontCorner: staticFront,
     staticRearCorner: staticRear,
     totalLateralLoadTransfer: tllt,
     rollAxisHeight: hRa,
+    rollMomentArm: arm,
     rollMoment,
     rollAngle,
+    rollSensitivity_degPerG: rollSensitivity,
     front: frontTotal,
     rear: rearTotal,
     balance,

@@ -1,8 +1,10 @@
 import {
   solveFrontView,
+  solveRaiseAndWeigh,
   solveRates,
   solveRollStiffness,
   type AntiRollBarInput,
+  type Band,
   type CgComponentInput,
   type FrontViewInput,
   type DampingRatioInput,
@@ -68,6 +70,13 @@ const DEFAULT_UNSPRUNG_AXLE_KG = 0.12;
 
 /** fields.yaml `body.cg.unsprung_height`: ASSUME(0.625 × tyre radius). */
 const UNSPRUNG_HEIGHT_TYRE_RADIUS_FACTOR = 0.625;
+
+/**
+ * fields.yaml `body.cg.raise_and_weigh.weighing_tolerance`: the repeat-reading
+ * spread of one scale, grams. A club scale is worth ±5 g; the video's "take a
+ * few readings" is the same statement. It drives the measured CG band.
+ */
+const DEFAULT_WEIGHING_TOLERANCE_G = 5;
 
 function sourcedNumber(
   measured: MeasuredValue<number> | null,
@@ -763,11 +772,101 @@ export function buildRollStiffnessInput(model: CarModelDocument): DataResult<Rol
   });
 }
 
+interface MeasuredCg {
+  readonly groundHeight_m: Sourced<number>;
+  readonly band_m: Band | null;
+}
+
+/**
+ * D-26: run the raised-axle, two-scale procedure the document recorded. The
+ * wheel radius comes from the axle opposite the raised end, because that is the
+ * axle sitting on the scales whose centre defines the pivot height. A missing
+ * scale tolerance falls back to fields.yaml's stated ±5 g and is flagged as an
+ * assumption in the type, not silently treated as exact.
+ */
+function measuredCg(model: CarModelDocument): MeasuredCg | null {
+  const block = model.cg.raiseAndWeigh;
+  const total = model.mass.total;
+  const wheelbase = model.wheelbase;
+  if (block === null || total === null || wheelbase === null) return null;
+
+  const measuredAxleKey: 'front' | 'rear' = block.raisedEnd === 'front' ? 'rear' : 'front';
+  const measuredAxle =
+    measuredAxleKey === 'front' ? model.axles.front : model.axles.rear;
+  const radius = measuredAxle?.tyreRadius ?? model.axles.front.tyreRadius;
+  if (radius === null) return null;
+
+  const tolerance =
+    block.weighingTolerance === null
+      ? {
+          value: DEFAULT_WEIGHING_TOLERANCE_G,
+          ref: 'body.cg.raise_and_weigh.weighing_tolerance',
+          confidence: 'assumed' as const,
+        }
+      : {
+          value: block.weighingTolerance.value,
+          ref: 'body.cg.raise_and_weigh.weighing_tolerance',
+          confidence: block.weighingTolerance.confidence,
+        };
+
+  const solved = solveRaiseAndWeigh({
+    wheelbase_m: {
+      value: millimetresToMetres(wheelbase.value),
+      ref: 'body.wheelbase',
+      confidence: wheelbase.confidence,
+    },
+    totalMass_kg: {
+      value: gramsToKilograms(total.value),
+      ref: 'body.mass.total',
+      confidence: total.confidence,
+    },
+    raisedEnd: block.raisedEnd,
+    raiseHeight_m: {
+      value: millimetresToMetres(block.raiseHeight.value),
+      ref: 'body.cg.raise_and_weigh.raise_height',
+      confidence: block.raiseHeight.confidence,
+    },
+    axleWeightLevel_kg: {
+      value: gramsToKilograms(block.axleWeightLevel.value),
+      ref: 'body.cg.raise_and_weigh.axle_weight_level',
+      confidence: block.axleWeightLevel.confidence,
+    },
+    axleWeightRaised_kg: {
+      value: gramsToKilograms(block.axleWeightRaised.value),
+      ref: 'body.cg.raise_and_weigh.axle_weight_raised',
+      confidence: block.axleWeightRaised.confidence,
+    },
+    wheelRadius_m: {
+      value: millimetresToMetres(radius.value),
+      ref: `axles.${measuredAxleKey}.tyre_radius`,
+      confidence: radius.confidence,
+    },
+    weighingTolerance_kg: {
+      value: gramsToKilograms(tolerance.value),
+      ref: tolerance.ref,
+      confidence: tolerance.confidence,
+    },
+  });
+
+  if (solved.cgHeight_m.kind !== 'defined') return null;
+
+  return {
+    groundHeight_m: {
+      value: solved.cgHeight_m.value,
+      ref: 'body.cg.raise_and_weigh',
+      confidence: solved.cgHeight_m.tier === 'firm' ? 'measured' : 'derived',
+    },
+    band_m: solved.band_m,
+  };
+}
+
 /**
  * Build the SI load-transfer input at one lateral acceleration. Lengths are
  * converted once (mm → m), masses once (g → kg), and the front mass share once
- * (% → fraction). The CG height is not read as a measurement: the physics
- * package infers it from `body.cg.components[]`, or uses the stated default.
+ * (% → fraction). The CG route priority is measured raise-and-weigh, then the
+ * component estimate, then the stated 28.0 mm default (D-26 / D-14 / D-18).
+ * The stored chassis-frame z stays the anchor when it is present, so lowering
+ * the car moves the CG down relative to the ground.
  */
 export function buildLoadTransferInput(
   model: CarModelDocument,
@@ -921,13 +1020,28 @@ export function buildLoadTransferInput(
         }));
 
   const cgHeight = model.cg.height;
-  const cgDefaultHeight: Sourced<number> | null =
+  const storedCgGround: Sourced<number> | null =
     cgHeight === null
       ? null
       : {
           value: millimetresToMetres(cgHeight.value + zOffsetMm),
           ref: 'body.cg.height',
           confidence: cgHeight.confidence,
+        };
+  const measured = measuredCg(model);
+  const cgDefaultHeight = storedCgGround;
+  const cgMeasuredHeight =
+    measured === null ? null : (storedCgGround ?? measured.groundHeight_m);
+  const measuredHalfWidth =
+    measured === null || measured.band_m === null
+      ? null
+      : (measured.band_m.high - measured.band_m.low) / 2;
+  const cgMeasuredBand =
+    cgMeasuredHeight === null || measuredHalfWidth === null
+      ? null
+      : {
+          low: cgMeasuredHeight.value - measuredHalfWidth,
+          high: cgMeasuredHeight.value + measuredHalfWidth,
         };
 
   return ok({
@@ -946,6 +1060,8 @@ export function buildLoadTransferInput(
     unsprungHeight_m: unsprungHeight,
     cgComponents: components,
     ...(cgDefaultHeight === null ? {} : { cgDefaultHeight_m: cgDefaultHeight }),
+    ...(cgMeasuredHeight === null ? {} : { cgMeasuredHeight_m: cgMeasuredHeight }),
+    ...(cgMeasuredBand === null ? {} : { cgMeasuredBand_m: cgMeasuredBand }),
     wheelbase_m: {
       value: millimetresToMetres(wheelbase.value),
       ref: 'body.wheelbase',

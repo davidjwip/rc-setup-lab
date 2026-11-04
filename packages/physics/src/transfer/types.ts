@@ -2,12 +2,13 @@ import type { Sourced } from '../frontView/types.js';
 import type { Band, Solved } from '../result/solved.js';
 
 /**
- * How `body.cg.height` was obtained. It is never measured (D-14): either the
- * component-mass first moment (§4.5 Route A) or the stated 28.0 mm default
- * (D-18). A future plumb-line route adds a third value; the two-hang procedure
- * is not implemented in this slice.
+ * How the whole-car CG height was obtained. The raised-axle two-scale
+ * measurement (D-26) wins when present; otherwise the component-mass first
+ * moment (§4.5 Route A), otherwise the stated 28.0 mm default (D-18). A future
+ * plumb-line route adds a fourth value; the two-hang procedure is not
+ * implemented in this slice.
  */
-export type CgRoute = 'component_mass_moment' | 'stated_default';
+export type CgRoute = 'raise_and_weigh' | 'component_mass_moment' | 'stated_default';
 
 /**
  * One component in the §4.5 component-mass table. `mass_kg` is kilograms and
@@ -29,6 +30,10 @@ export interface CgInferenceInput {
   readonly unsprungHeight_m: Sourced<number>;
   readonly components: readonly CgComponentInput[] | null;
   readonly defaultHeight_m?: Sourced<number> | null;
+  /** Whole-car CG height from the raised-axle measurement, metres. */
+  readonly measuredHeight_m?: Sourced<number> | null;
+  /** Absolute band from the weighings, metres. */
+  readonly measuredBand_m?: Band | null;
 }
 
 export interface CgHeightResult {
@@ -49,6 +54,10 @@ export interface LoadTransferInput {
   readonly unsprungHeight_m: Sourced<number>;
   readonly cgComponents: readonly CgComponentInput[] | null;
   readonly cgDefaultHeight_m?: Sourced<number> | null;
+  /** Whole-car CG height from the raised-axle measurement, metres (D-26). */
+  readonly cgMeasuredHeight_m?: Sourced<number> | null;
+  /** Absolute band from the weighings, metres (D-26). */
+  readonly cgMeasuredBand_m?: Band | null;
   readonly wheelbase_m: Sourced<number>;
   readonly trackFront_m: Sourced<number>;
   readonly trackRear_m: Sourced<number>;
@@ -100,6 +109,10 @@ export interface LoadTransferWorking {
   readonly rollCentreFront_m: number | null;
   readonly rollCentreRear_m: number | null;
   readonly rollAxisHeight_m: number | null;
+  /** Sprung CG height above the roll axis at the CG's longitudinal position, metres. */
+  readonly rollMomentArm_m: number | null;
+  /** Roll moment / total roll stiffness, degrees per g. */
+  readonly rollSensitivity_degPerG: number | null;
   readonly rollStiffnessFront_NmPerRad: number | null;
   readonly rollStiffnessRear_NmPerRad: number | null;
   readonly lateralAcceleration_mps2: number;
@@ -118,8 +131,12 @@ export interface LoadTransferResult {
   readonly staticRearCorner: Solved<number>;
   readonly totalLateralLoadTransfer: Solved<number>;
   readonly rollAxisHeight: Solved<number>;
+  /** Sprung CG height minus roll-axis height, metres. */
+  readonly rollMomentArm: Solved<number>;
   readonly rollMoment: Solved<number>;
   readonly rollAngle: Solved<number>;
+  /** Roll moment per total roll stiffness at 1 g, degrees per g. */
+  readonly rollSensitivity_degPerG: Solved<number>;
   readonly front: AxleTransfer;
   readonly rear: AxleTransfer;
   readonly balance: Solved<number>;

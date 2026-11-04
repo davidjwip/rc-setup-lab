@@ -239,6 +239,73 @@ function readMass(
   };
 }
 
+function readRaiseAndWeigh(
+  cg: Record<string, unknown>,
+  errors: DataError[],
+  sources: Readonly<Record<string, SourceRecord>>,
+): CgDocument['raiseAndWeigh'] {
+  const block = asRecord(cg['raise_and_weigh']);
+  if (block === null) {
+    if (cg['raise_and_weigh'] !== undefined) {
+      errors.push(
+        dataError('invalidValue', 'body.cg.raise_and_weigh', 'raise_and_weigh must be an object'),
+      );
+    }
+    return null;
+  }
+
+  const rawEnd = asString(block['raised_end']);
+  if (rawEnd !== 'front' && rawEnd !== 'rear') {
+    errors.push(
+      dataError(
+        'invalidValue',
+        'body.cg.raise_and_weigh.raised_end',
+        'raised_end must be front or rear',
+      ),
+    );
+    return null;
+  }
+
+  const raiseHeight = readMeasuredNumber(
+    block,
+    'body.cg.raise_and_weigh',
+    'raise_height',
+    errors,
+    sources,
+  );
+  const axleWeightLevel = readMeasuredNumber(
+    block,
+    'body.cg.raise_and_weigh',
+    'axle_weight_level',
+    errors,
+    sources,
+  );
+  const axleWeightRaised = readMeasuredNumber(
+    block,
+    'body.cg.raise_and_weigh',
+    'axle_weight_raised',
+    errors,
+    sources,
+  );
+  if (raiseHeight === null || axleWeightLevel === null || axleWeightRaised === null) {
+    return null;
+  }
+
+  return {
+    raisedEnd: rawEnd,
+    raiseHeight,
+    axleWeightLevel,
+    axleWeightRaised,
+    weighingTolerance: readOptionalMeasuredNumber(
+      block,
+      'body.cg.raise_and_weigh',
+      'weighing_tolerance',
+      errors,
+      sources,
+    ),
+  };
+}
+
 function readCg(
   raw: Record<string, unknown>,
   errors: DataError[],
@@ -247,7 +314,13 @@ function readCg(
   const body = asRecord(raw['body']);
   const cg = body === null ? null : asRecord(body['cg']);
   if (cg === null) {
-    return { height: null, frontMassShare: null, unsprungHeight: null, components: null };
+    return {
+      height: null,
+      frontMassShare: null,
+      unsprungHeight: null,
+      components: null,
+      raiseAndWeigh: null,
+    };
   }
 
   const rawComponents = cg['components'];
@@ -283,6 +356,7 @@ function readCg(
     frontMassShare: readOptionalMeasuredNumber(cg, 'body.cg', 'front_mass_share', errors, sources),
     unsprungHeight: readOptionalMeasuredNumber(cg, 'body.cg', 'unsprung_height', errors, sources),
     components,
+    raiseAndWeigh: readRaiseAndWeigh(cg, errors, sources),
   };
 }
 
