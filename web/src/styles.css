@@ -1588,6 +1588,77 @@ summary:focus-visible,
   padding: 0 14px;
 }
 
+.shock-drawing-note,
+.shock-note {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+.shock-note {
+  flex-basis: 100%;
+  border-top: 1px solid var(--line);
+  padding-top: 8px;
+}
+
+.shock-note strong {
+  color: var(--warn);
+  font-weight: 700;
+}
+
+.shock-settings .settings-label {
+  min-width: 10.5rem;
+}
+
+.shock-select {
+  min-height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #0d1319;
+  color: var(--ink);
+  padding: 0 10px;
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+}
+
+.shock-select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.shock-none-note {
+  border-top: 1px solid var(--line);
+  padding-top: 8px;
+}
+
+.shock-derived {
+  display: grid;
+  gap: 0;
+}
+
+.shock-summary {
+  width: min(1080px, 100%);
+  margin: 18px auto 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+  padding: 16px;
+}
+
+.shock-summary h2 {
+  margin: 0 0 8px;
+  font-size: 1.25rem;
+  line-height: 1.625rem;
+  font-weight: 500;
+}
+
+.scene-damper-label {
+  fill: var(--accent);
+  font-size: 9px;
+  font-weight: 700;
+}
+
 @media (max-width: 900px) {
   .geometry-columns {
     grid-template-columns: 1fr;

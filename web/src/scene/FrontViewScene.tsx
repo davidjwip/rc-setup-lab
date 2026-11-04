@@ -10,6 +10,8 @@ export interface SceneLabels {
   readonly rollCentreBand: string;
   readonly instantCentre: string | null;
   readonly description: string;
+  /** Optional motion-ratio annotation drawn beside the damper, e.g. `MR 0.565`. */
+  readonly damperLabel?: string | null;
 }
 
 interface FrontViewSceneProps {
@@ -91,6 +93,23 @@ export function FrontViewScene({
     geometryNotice === null ? labels.description : `${labels.description} ${geometryNotice}`;
 
   const showInstantCentre = scene.instantCentre.kind === 'visible';
+  const damperLabel =
+    scene.damper === null || labels.damperLabel === undefined || labels.damperLabel === null
+      ? null
+      : {
+          text: labels.damperLabel,
+          x: Math.min(
+            xOf((scene.damper.from.x + scene.damper.to.x) / 2) + 5,
+            VIEW_WIDTH - 48,
+          ),
+          y: Math.max(
+            10,
+            Math.min(
+              yOf((scene.damper.from.y + scene.damper.to.y) / 2) - 4,
+              VIEW_HEIGHT - 4,
+            ),
+          ),
+        };
 
   return (
     <figure className="scene-figure">
@@ -192,14 +211,26 @@ export function FrontViewScene({
           )}
 
           {scene.damper === null ? null : (
-            <line
-              className="scene-damper"
-              data-field="damper"
-              x1={xOf(scene.damper.from.x)}
-              y1={yOf(scene.damper.from.y)}
-              x2={xOf(scene.damper.to.x)}
-              y2={yOf(scene.damper.to.y)}
-            />
+            <>
+              <line
+                className="scene-damper"
+                data-field="damper"
+                x1={xOf(scene.damper.from.x)}
+                y1={yOf(scene.damper.from.y)}
+                x2={xOf(scene.damper.to.x)}
+                y2={yOf(scene.damper.to.y)}
+              />
+              {damperLabel === null ? null : (
+                <text
+                  className="scene-damper-label"
+                  data-field="damper-motion-ratio"
+                  x={damperLabel.x}
+                  y={damperLabel.y}
+                >
+                  {damperLabel.text}
+                </text>
+              )}
+            </>
           )}
 
           {scene.instantCentre.kind === 'visible' ? (

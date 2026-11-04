@@ -92,6 +92,8 @@ export {
 export {
   resetAxleRates,
   resetCornerPointsMm,
+  restoreCornerPointMm,
+  updateAxleArbBlades,
   updateAxleArbType,
   updateAxleArbValue,
   updateAxleDamperCoefficient,
@@ -105,6 +107,7 @@ export {
   updateChassisThickness,
   updateChassisValue,
   updateCornerPointMm,
+  updateDamperMountLateralMm,
   updateMassTotal,
   updateUnsprungMass,
   updateWheelDiameter,

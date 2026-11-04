@@ -14,11 +14,14 @@ import {
   buildRollStiffnessInput,
   parseCarModel,
   resetAxleRates,
+  restoreCornerPointMm,
+  updateAxleArbBlades,
   updateAxleArbType,
   updateAxleArbValue,
   updateAxleDamperCoefficient,
   updateAxleSpringRate,
   updateCornerPointMm,
+  updateDamperMountLateralMm,
   type CarModelDocument,
 } from '../src/index.js';
 
@@ -198,6 +201,82 @@ describe('rates editor edits the model document per axle', () => {
       JSON.stringify(baseline.corners.LF?.points),
     );
     expect(snapshot(reset, 'front').rates).toEqual(snapshot(baseline, 'front').rates);
+  });
+});
+
+describe('blade count and damper mount offsets are scoped per axle', () => {
+  it('writes the blade count on the selected axle and leaves the other axle untouched', () => {
+    const baseline = parseReference();
+    const rearBefore = JSON.stringify({
+      axle: baseline.axles.rear,
+      corner: baseline.corners.LR,
+    });
+
+    const model = edited(baseline, updateAxleArbBlades(baseline, 'front', 2));
+    expect(model.axles.front.arb?.blades?.value).toBe(2);
+    expect(model.axles.front.arb?.blades?.confidence).toBe('estimated');
+    expect(
+      JSON.stringify({ axle: model.axles.rear, corner: model.corners.LR }),
+    ).toBe(rearBefore);
+  });
+
+  it('moves one damper eye laterally as a session edit and leaves the other corner untouched', () => {
+    const baseline = parseReference();
+    const rearBefore = JSON.stringify(baseline.corners.LR);
+
+    const model = edited(
+      baseline,
+      updateDamperMountLateralMm(baseline, 'front', 'damper_up', 49),
+    );
+    const before = baseline.corners.LF?.points.damper_up;
+    const after = model.corners.LF?.points.damper_up;
+    expect(before).toBeDefined();
+    expect(after).toBeDefined();
+    if (before === undefined || after === undefined) return;
+    expect(after.value[1]).toBeCloseTo(49, 12);
+    expect(after.value[0]).toBe(before.value[0]);
+    expect(after.value[2]).toBe(before.value[2]);
+    expect(after.confidence).toBe('estimated');
+    expect(after.source).toBe('s_session');
+    expect(JSON.stringify(model.corners.LR)).toBe(rearBefore);
+  });
+
+  it('restores a moved damper eye exactly, including its baseline provenance', () => {
+    const baseline = parseReference();
+    const moved = edited(
+      baseline,
+      updateDamperMountLateralMm(baseline, 'front', 'damper_up', 49),
+    );
+    const restored = edited(
+      moved,
+      restoreCornerPointMm(moved, baseline, 'LF', 'damper_up'),
+    );
+
+    expect(restored.corners.LF?.points.damper_up).toEqual(
+      baseline.corners.LF?.points.damper_up,
+    );
+    expect(restored.corners.LF?.points.damper_up?.source).toBe('s_worked');
+    expect(restored.corners.LF?.points.damper_up?.confidence).toBe('measured');
+  });
+
+  it('does not touch the front ARB or spring when a damper eye moves', () => {
+    const baseline = parseReference();
+    const before = snapshot(baseline, 'front');
+    const model = edited(
+      baseline,
+      updateDamperMountLateralMm(baseline, 'front', 'damper_up', 49),
+    );
+    const after = snapshot(model, 'front');
+
+    expect(model.axles.front.springRate?.value).toBe(3.5);
+    expect(model.axles.front.arb?.barDiameter?.value).toBe(1.5);
+    expect(values(after.rates.installationRatio)).not.toBe(
+      values(before.rates.installationRatio),
+    );
+    expect(values(after.rates.wheelRate)).not.toBe(values(before.rates.wheelRate));
+    expect(values(after.roll.front.antiRollBar.wheelRate)).toBe(
+      values(before.roll.front.antiRollBar.wheelRate),
+    );
   });
 });
 
