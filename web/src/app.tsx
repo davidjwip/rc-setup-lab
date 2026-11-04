@@ -27,7 +27,6 @@ import {
   solveFrontView,
   solveLoadTransfer,
   solveRollStiffness,
-  type Solved,
 } from '@setuplab/physics';
 import rawModel from '../../assets/models/reference-touring-car.json';
 import { HardpointEditor } from './editor/HardpointEditor.js';
@@ -79,19 +78,12 @@ import {
 } from './format/format.js';
 import { GlossaryView } from './glossary/GlossaryView.js';
 import { currentHash, routeFromHash, type Route } from './route.js';
+import { buildEndPanel, buildSceneLabels, stateLabel } from './view/endSummary.js';
+import { BothEndPanel, InstantCentreToggle } from './view/EndPanels.js';
+import { ViewModeControl } from './view/ViewModeControl.js';
+import { writeAnalysisModeHash, type AnalysisMode } from './view/viewMode.js';
 
 const initialParse = parseCarModel(rawModel);
-
-function stateLabel(value: Solved<unknown>): string {
-  switch (value.kind) {
-    case 'defined':
-      return `computed · ${value.tier} · not yet validated`;
-    case 'notMeasured':
-      return `not measured · ${value.missing.join(', ')}`;
-    case 'undefined':
-      return `undefined · ${value.reason}`;
-  }
-}
 
 function ParseErrors({ errors }: { readonly errors: readonly DataError[] }) {
   return (
@@ -113,14 +105,19 @@ function ParseErrors({ errors }: { readonly errors: readonly DataError[] }) {
 
 export function AnalysisView({
   initialAxle = 'front',
+  initialMode,
 }: {
   readonly initialAxle?: Axle;
+  readonly initialMode?: AnalysisMode | undefined;
 }) {
   const [model, setModel] = useState<CarModelDocument | null>(
     initialParse.ok ? initialParse.value : null,
   );
   const [lateralG, setLateralG] = useState(1.0);
-  const [axle, setAxle] = useState<Axle>(initialAxle);
+  const [mode, setMode] = useState<AnalysisMode>(initialMode ?? initialAxle);
+  const [axle, setAxle] = useState<Axle>(
+    initialMode === 'both' ? initialAxle : (initialMode ?? initialAxle),
+  );
   const [includeInstantCentre, setIncludeInstantCentre] = useState<boolean>(() =>
     readInstantCentrePreference(),
   );
@@ -146,7 +143,26 @@ export function AnalysisView({
     writeInstantCentrePreference(includeInstantCentre);
   }, [includeInstantCentre]);
 
+  useEffect(() => {
+    writeAnalysisModeHash(mode);
+  }, [mode]);
+
+  useEffect(() => {
+    if (initialMode === undefined) return;
+    setMode((current) => (current === initialMode ? current : initialMode));
+    if (initialMode !== 'both') setAxle(initialMode);
+  }, [initialMode]);
+
+  const selectMode = (next: AnalysisMode) => {
+    if (next === mode) return;
+    setMode(next);
+    if (next !== 'both') setAxle(next);
+    setRateNote(null);
+    setEditorKey((value) => value + 1);
+  };
+
   const selectAxle = (next: Axle) => {
+    if (next === axle) return;
     setAxle(next);
     setRateNote(null);
     setEditorKey((value) => value + 1);
@@ -215,47 +231,23 @@ export function AnalysisView({
         : null,
     [camberSeries],
   );
-  const sceneLabels = useMemo(() => {
-    if (scene === null || result === null) return null;
-
-    const rollCentre = result.rollCentreHeight;
-    const instantCentre = result.instantCentre;
-    const reportedRollCentre =
-      model === null ? null : reportedRollCentreHeightM(model, result);
-    const rollCentreValue =
-      rollCentre.kind === 'defined' && reportedRollCentre !== null
-        ? formatRollCentreHeight(reportedRollCentre)
-        : 'not defined';
-    const rollCentreBand =
-      rollCentre.kind === 'defined' && rollCentre.band !== null
-        ? formatBandFromMetres(rollCentre.band)
-        : 'no band';
-    const instantCentreText =
-      instantCentre.kind === 'defined' && scene.instantCentre.kind === 'visible'
-        ? `y ${formatLengthFromMetres(instantCentre.value.y)}, z ${formatLengthFromMetres(
-            instantCentre.value.z,
-          )}`
-        : null;
-    const side = scene.side === 1 ? 'left' : 'right';
-    const axleName = axle === 'front' ? 'front' : 'rear';
-    const descriptionParts = [
-      `${axle === 'front' ? 'Front' : 'Rear'}-view elevation of the ${side}-${axleName} corner.`,
-      `Roll centre ${rollCentreValue} with band ${rollCentreBand}.`,
-    ];
-    if (scene.instantCentre.kind !== 'hidden') {
-      descriptionParts.push(
-        instantCentreText === null
-          ? 'Instant centre not drawn.'
-          : `Instant centre at ${instantCentreText}.`,
-      );
-    }
-    if (edited) {
-      descriptionParts.push('The hardpoint values are user-edited this session.');
-    }
-    const description = descriptionParts.join(' ');
-
-    return { rollCentreValue, rollCentreBand, instantCentre: instantCentreText, description };
-  }, [scene, result, axle, edited, model]);
+  const sceneLabels = useMemo(
+    () =>
+      model === null || scene === null || result === null
+        ? null
+        : buildSceneLabels(model, axle, scene, result, edited),
+    [model, scene, result, axle, edited],
+  );
+  const bothEnds = useMemo(
+    () =>
+      mode !== 'both' || model === null
+        ? null
+        : [
+            buildEndPanel(model, 'front', includeInstantCentre, editedCorners.has('LF')),
+            buildEndPanel(model, 'rear', includeInstantCentre, editedCorners.has('LR')),
+          ],
+    [mode, model, includeInstantCentre, editedCorners],
+  );
 
   const reportedRollCentre =
     model === null || result === null ? null : reportedRollCentreHeightM(model, result);
@@ -393,12 +385,15 @@ export function AnalysisView({
     <main className="shell">
       <header className="masthead">
         <div className="masthead-row">
-          <p className="eyebrow">Setup Lab · Slice 13</p>
+          <p className="eyebrow">Setup Lab · Slice 14</p>
           <a className="text-link" href="#glossary">
             Glossary
           </a>
         </div>
         <h1>Front- and rear-view kinematics</h1>
+        <div className="view-bar">
+          <ViewModeControl value={mode} onChange={selectMode} />
+        </div>
         <p className="lede">
           {model.name}. Left-front and left-rear corners, ISO 8855: x forward, y left, z up from
           the top surface of the chassis plate. The selected axle drives the drawing, the hardpoint
@@ -440,71 +435,77 @@ export function AnalysisView({
         </div>
 
         <div className="outputs">
-          <article className="card scene-card">
-            <div className="card-heading">
-              <div>
-                <h2>{axle === 'front' ? 'Front' : 'Rear'}-view drawing</h2>
-                <div className="scene-controls">
-                  <div className="axle-toggle" role="group" aria-label="Axle">
-                    <button
-                      type="button"
-                      aria-pressed={axle === 'front'}
-                      onClick={() => selectAxle('front')}
-                    >
-                      Front
-                    </button>
-                    <button
-                      type="button"
-                      aria-pressed={axle === 'rear'}
-                      onClick={() => selectAxle('rear')}
-                    >
-                      Rear
-                    </button>
-                  </div>
-                  <div className="axle-toggle" role="group" aria-label="Instant centre overlay">
-                    <button
-                      type="button"
-                      aria-pressed={includeInstantCentre}
-                      onClick={() => setIncludeInstantCentre(toggleInstantCentre)}
-                    >
-                      Instant centre{' '}
-                      <span className="toggle-state">{includeInstantCentre ? 'on' : 'off'}</span>
-                    </button>
+          {mode === 'both' && bothEnds !== null ? (
+            <>
+              <div className="both-toolbar">
+                <p className="hint">
+                  Both ends drawn. Click a panel to choose which end the editors change; the cards
+                  below stay global and read that end.
+                </p>
+                <InstantCentreToggle
+                  value={includeInstantCentre}
+                  onToggle={() => setIncludeInstantCentre(toggleInstantCentre)}
+                />
+              </div>
+              {bothEnds.map((end) => (
+                <BothEndPanel
+                  key={end.axle}
+                  end={end}
+                  editing={end.axle === axle}
+                  groundLabel={
+                    datum === null
+                      ? 'ground (derived)'
+                      : `ground (derived, z ${formatLengthMm(datum.groundPlaneMm, 1)})`
+                  }
+                  onSelect={() => selectAxle(end.axle)}
+                />
+              ))}
+            </>
+          ) : (
+            <article className="card scene-card">
+              <div className="card-heading">
+                <div>
+                  <h2>{axle === 'front' ? 'Front' : 'Rear'}-view drawing</h2>
+                  <div className="scene-controls">
+                    <InstantCentreToggle
+                      value={includeInstantCentre}
+                      onToggle={() => setIncludeInstantCentre(toggleInstantCentre)}
+                    />
                   </div>
                 </div>
+                <span className="pill">
+                  {scene !== null && scene.derivedGeometry
+                    ? 'derived · not measured'
+                    : scene !== null && scene.modelledGeometry
+                      ? 'modelled · not measured'
+                      : 'left front · live'}
+                </span>
               </div>
-              <span className="pill">
-                {scene !== null && scene.derivedGeometry
-                  ? 'derived · not measured'
-                  : scene !== null && scene.modelledGeometry
-                    ? 'modelled · not measured'
-                    : 'left front · live'}
-              </span>
-            </div>
-            {scene !== null && sceneLabels !== null ? (
-              <FrontViewScene
-                scene={scene}
-                labels={sceneLabels}
-                groundLabel={
-                  datum === null
-                    ? 'ground (derived)'
-                    : `ground (derived, z ${formatLengthMm(datum.groundPlaneMm, 1)})`
-                }
-              />
-            ) : (
-              <p className="no-answer">The drawing needs a solved corner.</p>
-            )}
-            {camberChart !== null ? (
-              <CamberGainChart view={camberChart} />
-            ) : (
-              <p className="no-answer">The camber curve needs a solved corner.</p>
-            )}
-            <p className="footnote">
-              The drawing renders the solver's numbers. It does not re-solve the geometry: the
-              roll-centre marker is the value in the card below, and the dashed lines are the
-              construction lines that produced it.
-            </p>
-          </article>
+              {scene !== null && sceneLabels !== null ? (
+                <FrontViewScene
+                  scene={scene}
+                  labels={sceneLabels}
+                  groundLabel={
+                    datum === null
+                      ? 'ground (derived)'
+                      : `ground (derived, z ${formatLengthMm(datum.groundPlaneMm, 1)})`
+                  }
+                />
+              ) : (
+                <p className="no-answer">The drawing needs a solved corner.</p>
+              )}
+              {camberChart !== null ? (
+                <CamberGainChart view={camberChart} />
+              ) : (
+                <p className="no-answer">The camber curve needs a solved corner.</p>
+              )}
+              <p className="footnote">
+                The drawing renders the solver's numbers. It does not re-solve the geometry: the
+                roll-centre marker is the value in the card below, and the dashed lines are the
+                construction lines that produced it.
+              </p>
+            </article>
+          )}
 
           <article className="card result-card">
             <div className="card-heading">
@@ -1011,5 +1012,5 @@ export function App() {
     return <GlossaryView entryId={route.entryId} />;
   }
 
-  return <AnalysisView />;
+  return route.mode === undefined ? <AnalysisView /> : <AnalysisView initialMode={route.mode} />;
 }
