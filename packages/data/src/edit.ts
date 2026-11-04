@@ -1,5 +1,10 @@
-import { dataError, fail, type DataResult } from './errors.js';
-import type { CarModelDocument, CornerKey, CornerPointKey } from './model.js';
+import { dataError, fail, type DataError, type DataResult } from './errors.js';
+import type {
+  ArbTypeDocument,
+  CarModelDocument,
+  CornerKey,
+  CornerPointKey,
+} from './model.js';
 import { parseCarModel } from './parse.js';
 
 export function updateCornerPointMm(
@@ -107,5 +112,278 @@ export function resetCornerPointsMm(
   }
 
   targetCorner['points'] = JSON.parse(JSON.stringify(baselinePoints)) as unknown;
+  return parseCarModel(raw);
+}
+
+type AxleEdit = 'front' | 'rear';
+type ArbGeometryField = 'bar_diameter' | 'span' | 'arm_length';
+
+const AXLE_CORNER: Readonly<Record<AxleEdit, CornerKey>> = {
+  front: 'LF',
+  rear: 'LR',
+};
+
+const SESSION_SOURCE = 's_session';
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function cloneRaw(model: CarModelDocument): Record<string, unknown> {
+  return JSON.parse(JSON.stringify(model.raw)) as Record<string, unknown>;
+}
+
+function ensureSessionSource(raw: Record<string, unknown>): void {
+  let sources = asRecord(raw['sources']);
+  if (sources === null) {
+    sources = {};
+    raw['sources'] = sources;
+  }
+  if (sources[SESSION_SOURCE] === undefined) {
+    sources[SESSION_SOURCE] = {
+      type: 'estimated',
+      method: 'edited this session — not measured',
+    };
+  }
+}
+
+function ensureRecord(
+  parent: Record<string, unknown>,
+  key: string,
+): Record<string, unknown> | null {
+  const existing = parent[key];
+  if (existing === undefined) {
+    const created: Record<string, unknown> = {};
+    parent[key] = created;
+    return created;
+  }
+  return asRecord(existing);
+}
+
+function setMeasuredNumber(
+  parent: Record<string, unknown>,
+  key: string,
+  value: number,
+  raw: Record<string, unknown>,
+  path: string,
+): DataError | null {
+  const existing = parent[key];
+  if (existing === undefined) {
+    ensureSessionSource(raw);
+    parent[key] = { value, source: SESSION_SOURCE };
+    return null;
+  }
+  const node = asRecord(existing);
+  if (node === null || typeof node['value'] !== 'number' || typeof node['source'] !== 'string') {
+    return dataError('invalidValue', path, 'this value is not a stored measurement');
+  }
+  node['value'] = value;
+  return null;
+}
+
+function axleRecord(
+  raw: Record<string, unknown>,
+  axle: AxleEdit,
+): Record<string, unknown> | null {
+  const axles = asRecord(raw['axles']);
+  return axles === null ? null : ensureRecord(axles, axle);
+}
+
+/**
+ * Write one axle's spring rate. The value is N/mm on disk; the builder converts
+ * it to N/m once. Other axles and every hardpoint are untouched.
+ */
+export function updateAxleSpringRate(
+  model: CarModelDocument,
+  axle: AxleEdit,
+  valueNpm: number,
+): DataResult<CarModelDocument> {
+  if (!Number.isFinite(valueNpm)) {
+    return fail([
+      dataError('invalidValue', `axles.${axle}.spring.rate`, 'value must be finite'),
+    ]);
+  }
+  const raw = cloneRaw(model);
+  const axleNode = axleRecord(raw, axle);
+  if (axleNode === null) {
+    return fail([dataError('missingField', `axles.${axle}`, 'this axle is not in the document')]);
+  }
+  const spring = ensureRecord(axleNode, 'spring');
+  if (spring === null) {
+    return fail([
+      dataError('invalidValue', `axles.${axle}.spring`, 'spring must be an object'),
+    ]);
+  }
+  const error = setMeasuredNumber(
+    spring,
+    'rate',
+    valueNpm,
+    raw,
+    `axles.${axle}.spring.rate`,
+  );
+  return error === null ? parseCarModel(raw) : fail([error]);
+}
+
+/**
+ * Write one axle's damper coefficient (`c_post`, N·s/m). Only the left corner of
+ * the selected axle is stored; symmetry derives the right corner. The edited
+ * value is labelled `estimated`, never promoted to measured.
+ */
+export function updateAxleDamperCoefficient(
+  model: CarModelDocument,
+  axle: AxleEdit,
+  valueNsPerM: number,
+): DataResult<CarModelDocument> {
+  if (!Number.isFinite(valueNsPerM)) {
+    return fail([
+      dataError(
+        'invalidValue',
+        `corners.${AXLE_CORNER[axle]}.damper.c_post`,
+        'value must be finite',
+      ),
+    ]);
+  }
+  const raw = cloneRaw(model);
+  const corners = asRecord(raw['corners']);
+  const corner = corners === null ? null : asRecord(corners[AXLE_CORNER[axle]]);
+  if (corner === null) {
+    return fail([
+      dataError(
+        'missingField',
+        `corners.${AXLE_CORNER[axle]}`,
+        'this corner is not in the document',
+      ),
+    ]);
+  }
+  const damper = ensureRecord(corner, 'damper');
+  if (damper === null) {
+    return fail([
+      dataError(
+        'invalidValue',
+        `corners.${AXLE_CORNER[axle]}.damper`,
+        'damper must be an object',
+      ),
+    ]);
+  }
+  const error = setMeasuredNumber(
+    damper,
+    'c_post',
+    valueNsPerM,
+    raw,
+    `corners.${AXLE_CORNER[axle]}.damper.c_post`,
+  );
+  return error === null ? parseCarModel(raw) : fail([error]);
+}
+
+const ARB_TYPES: readonly ArbTypeDocument[] = ['torsion_bar', 'blade', 'fixed', 'none'];
+
+/**
+ * Set the bar type. `none` disables the geometry rows in the UI but does not
+ * zero them: the stored diameter/span/arm stay so switching back is lossless.
+ */
+export function updateAxleArbType(
+  model: CarModelDocument,
+  axle: AxleEdit,
+  type: ArbTypeDocument,
+): DataResult<CarModelDocument> {
+  if (!ARB_TYPES.includes(type)) {
+    return fail([dataError('invalidValue', `axles.${axle}.arb.type`, 'unknown bar type')]);
+  }
+  const raw = cloneRaw(model);
+  const axleNode = axleRecord(raw, axle);
+  if (axleNode === null) {
+    return fail([dataError('missingField', `axles.${axle}`, 'this axle is not in the document')]);
+  }
+  const arb = ensureRecord(axleNode, 'arb');
+  if (arb === null) {
+    return fail([dataError('invalidValue', `axles.${axle}.arb`, 'arb must be an object')]);
+  }
+  arb['type'] = type;
+  return parseCarModel(raw);
+}
+
+export function updateAxleArbValue(
+  model: CarModelDocument,
+  axle: AxleEdit,
+  field: ArbGeometryField,
+  valueMm: number,
+): DataResult<CarModelDocument> {
+  const path = `axles.${axle}.arb.${field}`;
+  if (!Number.isFinite(valueMm)) {
+    return fail([dataError('invalidValue', path, 'value must be finite')]);
+  }
+  const raw = cloneRaw(model);
+  const axleNode = axleRecord(raw, axle);
+  if (axleNode === null) {
+    return fail([dataError('missingField', `axles.${axle}`, 'this axle is not in the document')]);
+  }
+  const arb = asRecord(axleNode['arb']);
+  if (arb === null) {
+    return fail([dataError('missingField', `axles.${axle}.arb`, 'this axle has no bar')]);
+  }
+  const error = setMeasuredNumber(arb, field, valueMm, raw, path);
+  return error === null ? parseCarModel(raw) : fail([error]);
+}
+
+/**
+ * Restore one axle's rate edits from a baseline: spring rate, the whole ARB
+ * block and the left corner's damper coefficient. Hardpoints, the other axle
+ * and every body value stay exactly as they are on `model`.
+ */
+export function resetAxleRates(
+  model: CarModelDocument,
+  baseline: CarModelDocument,
+  axle: AxleEdit,
+): DataResult<CarModelDocument> {
+  const raw = cloneRaw(model);
+  const baselineRaw = asRecord(baseline.raw);
+  if (baselineRaw === null) {
+    return fail([dataError('invalidDocument', '', 'the baseline is not a document')]);
+  }
+  const targetAxle = axleRecord(raw, axle);
+  const baselineAxles = asRecord(baselineRaw['axles']);
+  const baselineAxle = baselineAxles === null ? null : asRecord(baselineAxles[axle]);
+  if (targetAxle === null || baselineAxle === null) {
+    return fail([dataError('missingField', `axles.${axle}`, 'the baseline has no such axle')]);
+  }
+
+  const targetSpring = ensureRecord(targetAxle, 'spring');
+  const baselineSpring = asRecord(baselineAxle['spring']);
+  if (targetSpring !== null) {
+    const baselineRate = baselineSpring?.['rate'];
+    if (baselineRate === undefined) {
+      delete targetSpring['rate'];
+    } else {
+      targetSpring['rate'] = JSON.parse(JSON.stringify(baselineRate)) as unknown;
+    }
+  }
+
+  const baselineArb = baselineAxle['arb'];
+  if (baselineArb === undefined) {
+    delete targetAxle['arb'];
+  } else {
+    targetAxle['arb'] = JSON.parse(JSON.stringify(baselineArb)) as unknown;
+  }
+
+  const cornerKey = AXLE_CORNER[axle];
+  const targetCorners = asRecord(raw['corners']);
+  const targetCorner = targetCorners === null ? null : asRecord(targetCorners[cornerKey]);
+  const baselineCorners = asRecord(baselineRaw['corners']);
+  const baselineCorner =
+    baselineCorners === null ? null : asRecord(baselineCorners[cornerKey]);
+  if (targetCorner === null || baselineCorner === null) {
+    return fail([
+      dataError('missingField', `corners.${cornerKey}`, 'the baseline has no such corner'),
+    ]);
+  }
+  const baselineDamper = baselineCorner['damper'];
+  if (baselineDamper === undefined) {
+    delete targetCorner['damper'];
+  } else {
+    targetCorner['damper'] = JSON.parse(JSON.stringify(baselineDamper)) as unknown;
+  }
+
   return parseCarModel(raw);
 }

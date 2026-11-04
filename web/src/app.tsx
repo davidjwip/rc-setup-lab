@@ -1,12 +1,17 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  buildAxleRates,
   buildFrontViewInput,
   buildLoadTransferInput,
-  buildRatesInput,
   buildRollStiffnessInput,
   gravitiesToMetresPerSecondSquared,
   parseCarModel,
+  resetAxleRates,
   resetCornerPointsMm,
+  updateAxleArbType,
+  updateAxleArbValue,
+  updateAxleDamperCoefficient,
+  updateAxleSpringRate,
   updateCornerPointMm,
   type CarModelDocument,
   type CornerKey,
@@ -18,13 +23,14 @@ import {
   buildFrontViewScene,
   solveFrontView,
   solveLoadTransfer,
-  solveRates,
   solveRollStiffness,
   type Solved,
 } from '@setuplab/physics';
 import rawModel from '../../assets/models/reference-touring-car.json';
 import { HardpointEditor } from './editor/HardpointEditor.js';
 import { cornerKeyForAxle, type Axle } from './editor/hardpoints.js';
+import { RatesEditor } from './editor/RatesEditor.js';
+import { describeRateChange, rateSnapshot, type RateChange } from './editor/rates.js';
 import { CamberGainChart } from './scene/CamberGainChart.js';
 import { FrontViewScene } from './scene/FrontViewScene.js';
 import {
@@ -118,6 +124,10 @@ export function AnalysisView({
   const [editedCorners, setEditedCorners] = useState<ReadonlySet<CornerKey>>(
     () => new Set<CornerKey>(),
   );
+  const [editedRateAxles, setEditedRateAxles] = useState<ReadonlySet<Axle>>(
+    () => new Set<Axle>(),
+  );
+  const [rateNote, setRateNote] = useState<string | null>(null);
   const [editorKey, setEditorKey] = useState(0);
   const editorModel = useRef<CarModelDocument | null>(model);
   const cornerKey: CornerKey = cornerKeyForAxle(axle);
@@ -130,6 +140,7 @@ export function AnalysisView({
 
   const selectAxle = (next: Axle) => {
     setAxle(next);
+    setRateNote(null);
     setEditorKey((value) => value + 1);
   };
 
@@ -141,15 +152,15 @@ export function AnalysisView({
     () => (inputResult !== null && inputResult.ok ? solveFrontView(inputResult.value) : null),
     [inputResult],
   );
-  const ratesInputResult = useMemo(
-    () => (model === null ? null : buildRatesInput(model, 'LF')),
-    [model],
+  const axleRatesResult = useMemo(
+    () => (model === null ? null : buildAxleRates(model, axle)),
+    [model, axle],
   );
   const ratesResult = useMemo(
-    () =>
-      ratesInputResult !== null && ratesInputResult.ok ? solveRates(ratesInputResult.value) : null,
-    [ratesInputResult],
+    () => (axleRatesResult !== null && axleRatesResult.ok ? axleRatesResult.value : null),
+    [axleRatesResult],
   );
+
   const rollInputResult = useMemo(
     () => (model === null ? null : buildRollStiffnessInput(model)),
     [model],
@@ -288,6 +299,58 @@ export function AnalysisView({
     setEditorKey((value) => value + 1);
   };
 
+  const commitRateChange = (change: RateChange): string | null => {
+    const current = editorModel.current;
+    if (current === null) return 'No model is loaded.';
+    const before = rateSnapshot(current, axle, lateralG);
+    let edited;
+    switch (change.kind) {
+      case 'spring':
+        edited = updateAxleSpringRate(current, axle, change.valueNmm);
+        break;
+      case 'damper':
+        edited = updateAxleDamperCoefficient(current, axle, change.valueNsPerM);
+        break;
+      case 'arbType':
+        edited = updateAxleArbType(current, axle, change.value);
+        break;
+      case 'arbValue':
+        edited = updateAxleArbValue(current, axle, change.field, change.valueMm);
+        break;
+    }
+    if (!edited.ok) {
+      return edited.errors.map((item) => `${item.path}: ${item.message}`).join('; ');
+    }
+    const after = rateSnapshot(edited.value, axle, lateralG);
+    editorModel.current = edited.value;
+    setModel(edited.value);
+    setEditedRateAxles((previous) => {
+      if (previous.has(axle)) return previous;
+      const next = new Set(previous);
+      next.add(axle);
+      return next;
+    });
+    setRateNote(describeRateChange(change, axle, before, after));
+    return null;
+  };
+
+  const resetRateAxle = () => {
+    const current = editorModel.current;
+    if (current === null || baseline === null) return;
+    const reset = resetAxleRates(current, baseline, axle);
+    if (!reset.ok) return;
+    editorModel.current = reset.value;
+    setModel(reset.value);
+    setEditedRateAxles((previous) => {
+      if (!previous.has(axle)) return previous;
+      const next = new Set(previous);
+      next.delete(axle);
+      return next;
+    });
+    setRateNote(null);
+    setEditorKey((value) => value + 1);
+  };
+
   const solverRefusal =
     result.rollCentreHeight.kind === 'defined' ? null : stateLabel(result.rollCentreHeight);
 
@@ -297,15 +360,25 @@ export function AnalysisView({
   const upperOuter = selectedCorner?.points.uca_out?.value;
   const working = result.working;
   const springRateNpm =
-    ratesInputResult !== null && ratesInputResult.ok
-      ? ratesInputResult.value.springRate_Npm.value
+    ratesResult !== null && ratesResult.working.springRate_Npm > 0
+      ? ratesResult.working.springRate_Npm
       : null;
+  const ratesRefusal =
+    ratesResult === null
+      ? axleRatesResult !== null && !axleRatesResult.ok
+        ? axleRatesResult.errors.map((error) => error.path).join(', ')
+        : 'no model'
+      : ratesResult.wheelRate.kind === 'defined'
+        ? rollResult !== null && rollResult[axle].rollStiffness.kind !== 'defined'
+          ? stateLabel(rollResult[axle].rollStiffness)
+          : null
+        : stateLabel(ratesResult.wheelRate);
 
   return (
     <main className="shell">
       <header className="masthead">
         <div className="masthead-row">
-          <p className="eyebrow">Setup Lab · Slice 0</p>
+          <p className="eyebrow">Setup Lab · Slice 12</p>
           <a className="text-link" href="#glossary">
             Glossary
           </a>
@@ -313,23 +386,37 @@ export function AnalysisView({
         <h1>Front- and rear-view kinematics</h1>
         <p className="lede">
           {model.name}. Left-front and left-rear corners, ISO 8855: x forward, y left, z up. The
-          selected axle drives both the drawing and the hardpoint editor; moving a hardpoint
-          recomputes that end's roll centre and camber gain. The rear corner is modelled from
+          selected axle drives the drawing, the hardpoint editor and the rates editor. Moving a
+          hardpoint recomputes that end's roll centre and camber gain; changing a spring, damper or
+          bar recomputes rates, roll stiffness and balance. The rear corner is modelled from
           plausible rear geometry, not measured, and says so.
         </p>
       </header>
 
       <section className="grid">
-        <HardpointEditor
-          key={`${cornerKey}:${editorKey}`}
-          model={model}
-          axle={axle}
-          cornerKey={cornerKey}
-          edited={edited}
-          solverRefusal={solverRefusal}
-          onCommit={commitHardpoint}
-          onReset={resetCorner}
-        />
+        <div className="inputs">
+          <HardpointEditor
+            key={`${cornerKey}:${editorKey}`}
+            model={model}
+            axle={axle}
+            cornerKey={cornerKey}
+            edited={edited}
+            solverRefusal={solverRefusal}
+            onCommit={commitHardpoint}
+            onReset={resetCorner}
+          />
+          <RatesEditor
+            key={`rates:${cornerKey}:${editorKey}`}
+            model={model}
+            axle={axle}
+            edited={editedRateAxles.has(axle)}
+            solverRefusal={ratesRefusal}
+            changeNote={rateNote}
+            lateralG={lateralG}
+            onCommit={commitRateChange}
+            onReset={resetRateAxle}
+          />
+        </div>
 
         <div className="outputs">
           <article className="card scene-card">
@@ -483,8 +570,8 @@ export function AnalysisView({
                 <span className="pill">not computable</span>
               </div>
               <p className="no-answer">
-                {ratesInputResult !== null && !ratesInputResult.ok
-                  ? ratesInputResult.errors.map((error) => error.path).join(', ')
+                {axleRatesResult !== null && !axleRatesResult.ok
+                  ? axleRatesResult.errors.map((error) => error.path).join(', ')
                   : 'no model'}
               </p>
             </article>
@@ -698,29 +785,38 @@ export function AnalysisView({
                   </li>
                   {ratesResult !== null && ratesResult.installationRatio.kind === 'defined' ? (
                     <>
-                      <li>
-                        <span>
-                          IR = −[L(+{formatLengthFromMetres(ratesResult.working.bumpStep_m, 1)}) − L(−
-                          {formatLengthFromMetres(ratesResult.working.bumpStep_m, 1)})] / (2 ×{' '}
-                          {formatLengthFromMetres(ratesResult.working.bumpStep_m, 1)}) ={' '}
-                          {ratesResult.working.damperLengthHigh_m === null ||
-                          ratesResult.working.damperLengthLow_m === null
-                            ? 'undefined'
-                            : `−[${formatLengthFromMetres(
-                                ratesResult.working.damperLengthHigh_m,
-                                3,
-                              )} − ${formatLengthFromMetres(
-                                ratesResult.working.damperLengthLow_m,
-                                3,
-                              )}] / ${formatLengthFromMetres(
-                                2 * ratesResult.working.bumpStep_m,
-                                1,
-                              )} = ${formatInstallationRatio(
-                                ratesResult.installationRatio.value,
-                                3,
-                              )}`}
-                        </span>
-                      </li>
+                      {ratesResult.working.bumpStep_m > 0 ? (
+                        <li>
+                          <span>
+                            IR = −[L(+{formatLengthFromMetres(ratesResult.working.bumpStep_m, 1)}) − L(−
+                            {formatLengthFromMetres(ratesResult.working.bumpStep_m, 1)})] / (2 ×{' '}
+                            {formatLengthFromMetres(ratesResult.working.bumpStep_m, 1)}) ={' '}
+                            {ratesResult.working.damperLengthHigh_m === null ||
+                            ratesResult.working.damperLengthLow_m === null
+                              ? 'undefined'
+                              : `−[${formatLengthFromMetres(
+                                  ratesResult.working.damperLengthHigh_m,
+                                  3,
+                                )} − ${formatLengthFromMetres(
+                                  ratesResult.working.damperLengthLow_m,
+                                  3,
+                                )}] / ${formatLengthFromMetres(
+                                  2 * ratesResult.working.bumpStep_m,
+                                  1,
+                                )} = ${formatInstallationRatio(
+                                  ratesResult.installationRatio.value,
+                                  3,
+                                )}`}
+                          </span>
+                        </li>
+                      ) : (
+                        <li>
+                          <span>
+                            IR = {formatInstallationRatio(ratesResult.installationRatio.value, 4)}{' '}
+                            (assumed input; rear spring hardpoints are not wired yet)
+                          </span>
+                        </li>
+                      )}
                       <li>
                         <span>
                           k_w = k_s × IR² ={' '}
