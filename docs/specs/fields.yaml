@@ -25,12 +25,12 @@
 # happened to it. Nothing is silently reinterpreted: an old name is either an
 # accepted import alias or a refusal with the new name in the message.
 #
-#  D1. `schema_version` is **1.0.0**. Nothing has shipped, so there is no
-#      migration ladder and no need for a second version. `1.1.0`, declared by
-#      physics/01 §5, is retired: it described the same document kind with a
-#      different shape, and two versions of one kind with no migration between
-#      them is the defect this file exists to prevent (spec §4.7 requires one
-#      fixture per version the app can write).
+#  D1. `schema_version` is **1.1.0**. The vertical datum moved from the ground
+#      plane to the top surface of the chassis plate; 1.0.x documents are
+#      migrated on load by a rigid translation `z' = z - (thickness +
+#      ride_height)`. The migration is recorded in `sources`, so a migrated
+#      document exported and reloaded is not shifted twice (spec §4.7 requires
+#      one fixture per version the app writes).
 #  D2. Every stored numerical value is an object `{ "value": <n>, "source": <id> }`
 #      per D-16: a value without a source is a schema error, not a review note.
 #      Retired: `{ "v": n, "s": id }` (spec §4.1 rule 2 up to v0.2) and the bare
@@ -149,18 +149,21 @@
 # `τ_global = s · τ_per_wheel`. It never happens in a document, a setup or an
 # export. Proven by physics/01 §6.1 and golden cases G01.1, G01.8, G01.9.
 #
-# Frame: ISO 8855, x forward, y **left**, z up, origin on the ground plane at
-# the rear-axle centre on the vehicle centreline. The requirements document has
-# used this frame since v0.2; there is no second frame in this project.
+# Frame: ISO 8855, x forward, y **left**, z up, origin on the **top surface of
+# the chassis plate** at the rear-axle centre on the vehicle centreline. The
+# ground plane is derived, not assumed: `z_ground = -(chassis_thickness +
+# reference_ride_height)`. The physics package still works in the ground frame;
+# the adapter adds that offset when it builds solver input and removes it when it
+# reports a chassis-frame coordinate. There is no third frame.
 # -----------------------------------------------------------------------------
 
 meta:
-  schema_version: "1.0.0"
+  schema_version: "1.1.0"
   kinds: [car_model, setup]
   frame:
     standard: ISO 8855
     axes: "x forward, y left, z up"
-    origin: "ground plane, rear axle centre, vehicle centreline"
+    origin: "top surface of the chassis plate, rear axle centre, vehicle centreline"
   value_object:
     shape: {value: "number | [x, y, z]", source: "source id, or mirror:<id>"}
     bare_number: forbidden
@@ -416,7 +419,7 @@ fields:
       on_absence: REFUSE
       plausible: [1, 30]
       consumed_by: [roll_centre_height, camber_gain, bump_steer]
-      notes: "The ride height every z was measured at. Replaces `measured_at_ride_height` (physics/01 §5). See also `body.chassis.ride_height_basis`."
+      notes: "Ground clearance under the **bottom** of the plate. It is no longer the datum: with `body.chassis.thickness` it derives the ground plane at `z = -(thickness + ride_height)`. Replaces `measured_at_ride_height` (physics/01 §5). See also `body.chassis.ride_height_basis`."
 
     - path: body.wheelbase
       type: value
@@ -558,7 +561,7 @@ fields:
       on_absence: OMIT
       plausible: [0.5, 5.0]
       consumed_by: []
-      notes: "Plate thickness, caliper-measured. Moves mass, CG height and ride height (see `ride_height_basis`), never the roll centre."
+      notes: "Plate thickness, caliper-measured. Required for the chassis-datum conversion: the derived ground plane is `z = -(thickness + reference_ride_height)`. Moves mass, CG height and ride height (see `ride_height_basis`), never the roll centre."
 
     - path: body.chassis.span
       type: value

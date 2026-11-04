@@ -19,7 +19,7 @@ reviewer can diff against round 1 without re-reading everything.
 
 | # | Change | Closes | Where |
 |---|---|---|---|
-| 1 | **Frame is ISO 8855** — x forward, **y left**, z up, origin on the ground plane at the **rear axle centre**. Stated once, as normative, with the note that `spec.md` §4.2's y-right/mid-wheelbase frame is superseded (the `spec.md` edit is R2-B's). | A1 | 01 §2 |
+| 1 | **Frame is ISO 8855** — x forward, **y left**, z up, origin on the **top surface of the chassis plate** at the **rear axle centre**; the ground plane is derived at `-(thickness + ride_height)`. Stated once, as normative, with the note that `spec.md` §4.2's y-right/mid-wheelbase frame is superseded (the `spec.md` edit is R2-B's). | A1 | 01 §2 |
 | 2 | **Per-wheel signed conventions.** Camber, toe, KPI and scrub radius are per-wheel quantities: positive camber = top outboard, positive toe = toe-in, and every y-difference carries the side sign `s` (+1 left, −1 right). Car-level quantities (roll-centre height, load transfer, balance) are frame-free and never signed per side. | A3 | 01 §3, 02 §3.6–3.7 |
 | 3 | **Storage is mm, g, deg on disk** (R-2), converted to SI at exactly one boundary — the `packages/physics` adapter. The `\|c\| > 3 m` guard becomes `\|c\| > 3000 mm`. 01 §5's example file and §8 are re-stated in mm. | A2 | 00 §2, 01 §5–§6 |
 | 4 | **No implicit 10⁻³ anywhere.** Every equation states its symbols' units and applies its own conversion explicitly. Fixed: (5.7), (5.8), (5.9), (6.3), (6.7)–(6.9), (9.9), (9.12). | A4 | 05 §3, 06 §3, 09 §4 |
@@ -318,7 +318,7 @@ invented citations. What survives is the only part that constrains us:
 
 | Decision | Choice | Why |
 |---|---|---|
-| Frame | ISO 8855, y left, origin at the rear axle centre on the ground plane (R-1) | every equation in modules 2–6 was derived in it; it is the frame the published references use |
+| Frame | ISO 8855, y left, origin at the rear axle centre on the top of the chassis plate; ground plane derived at `-(thickness + ride_height)` (R-1) | every equation in modules 2–6 was derived in the ground frame, and the adapter restores that frame without changing an equation |
 | Units on disk | mm, g, deg (R-2) | a racer's instruments; one conversion at the adapter |
 | Front-view model | 2D transverse-plane four-bar, solved by circle intersection + bisection on the crank angle | robust, closed form, testable; a full 3D solve is a v2 upgrade |
 | Plan-view model | vertical steering axis through the axis's ground point, rigid knuckle | the standard hand construction; the 42 % ρ bias it carries is stated in 04 §5.1 |
