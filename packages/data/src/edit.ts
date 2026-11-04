@@ -1,4 +1,5 @@
 import { dataError, fail, type DataError, type DataResult } from './errors.js';
+import { isHubFixedPointKey } from './hub.js';
 import type {
   ArbTypeDocument,
   CarModelDocument,
@@ -14,6 +15,15 @@ export function updateCornerPointMm(
   axis: 1 | 2,
   valueMm: number,
 ): DataResult<CarModelDocument> {
+  if (pointKey === 'wc') {
+    return fail([
+      dataError(
+        'invalidValue',
+        `corners.${cornerKey}.points.wc`,
+        'the wheel centre is derived from the wheel radius, track, wheelbase and chassis values; edit those instead',
+      ),
+    ]);
+  }
   if (!Number.isFinite(valueMm)) {
     return fail([
       dataError('invalidValue', `corners.${cornerKey}.points.${pointKey}`, 'value must be finite'),
@@ -389,13 +399,40 @@ export function updateChassisThickness(
   return error === null ? parseCarModel(raw) : fail([error]);
 }
 
-export type ChassisValueField = 'ride_height' | 'thickness';
+export type ChassisValueField =
+  | 'ride_height'
+  | 'thickness'
+  | 'front_wheel_diameter'
+  | 'rear_wheel_diameter';
 
 /**
- * Write one of the two values that locate the ground plane. `ride_height` is
- * the clearance under the bottom of the plate; `thickness` is the plate. The
- * wheel's diameter is inferred from the wheel centre and this ground plane, so
- * it has no stored field and no edit of its own.
+ * Write one axle's wheel diameter. The single stored source stays
+ * `axles.<axle>.tyre_radius`; the diameter is only the display/edit form a racer
+ * uses. The derived hub is placed from that radius.
+ */
+export function updateWheelDiameter(
+  model: CarModelDocument,
+  axle: AxleEdit,
+  diameterMm: number,
+): DataResult<CarModelDocument> {
+  const path = `axles.${axle}.tyre_radius`;
+  if (!Number.isFinite(diameterMm) || diameterMm <= 0) {
+    return fail([dataError('invalidValue', path, 'wheel diameter must be a positive number')]);
+  }
+  const radiusMm = diameterMm / 2;
+  const raw = cloneRaw(model);
+  const axleNode = axleRecord(raw, axle);
+  if (axleNode === null) {
+    return fail([dataError('missingField', `axles.${axle}`, 'this axle is not in the document')]);
+  }
+  const error = setMeasuredNumber(axleNode, 'tyre_radius', radiusMm, raw, path);
+  return error === null ? parseCarModel(raw) : fail([error]);
+}
+
+/**
+ * Write a chassis value. Ride height and plate thickness locate the ground
+ * plane; the two wheel diameters are per-axle and write the single stored
+ * `tyre_radius`.
  */
 export function updateChassisValue(
   model: CarModelDocument,
@@ -407,6 +444,10 @@ export function updateChassisValue(
       return updateChassisRideHeight(model, valueMm);
     case 'thickness':
       return updateChassisThickness(model, valueMm);
+    case 'front_wheel_diameter':
+      return updateWheelDiameter(model, 'front', valueMm);
+    case 'rear_wheel_diameter':
+      return updateWheelDiameter(model, 'rear', valueMm);
     default:
       return fail([
         dataError(

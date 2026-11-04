@@ -5,21 +5,22 @@ export type Axle = 'front' | 'rear';
 export interface HardpointRow {
   readonly key: CornerPointKey;
   readonly label: string;
+  /** Chassis-fixed rows edit an absolute point; hub-fixed rows edit a shim offset. */
+  readonly kind: 'chassis' | 'hub';
 }
 
 const BASE_ROWS: readonly HardpointRow[] = [
-  { key: 'lca_in_a', label: 'Lower arm inner (hinge point)' },
-  { key: 'lca_out', label: 'Lower ball joint' },
-  { key: 'uca_in', label: 'Upper link inner' },
-  { key: 'uca_out', label: 'Upper ball stud' },
-  { key: 'damper_lo', label: 'Lower damper eye' },
-  { key: 'damper_up', label: 'Upper damper eye' },
-  { key: 'wc', label: 'Wheel centre' },
+  { key: 'lca_in_a', label: 'Lower arm inner (hinge point)', kind: 'chassis' },
+  { key: 'lca_out', label: 'Lower ball joint', kind: 'hub' },
+  { key: 'uca_in', label: 'Upper link inner', kind: 'chassis' },
+  { key: 'uca_out', label: 'Upper ball stud', kind: 'hub' },
+  { key: 'damper_lo', label: 'Lower damper eye', kind: 'chassis' },
+  { key: 'damper_up', label: 'Upper damper eye', kind: 'chassis' },
 ];
 
 const STEERING_ROWS: readonly HardpointRow[] = [
-  { key: 'tie_in', label: 'Tie rod inner' },
-  { key: 'tie_out', label: 'Tie rod outer' },
+  { key: 'tie_in', label: 'Tie rod inner', kind: 'chassis' },
+  { key: 'tie_out', label: 'Tie rod outer', kind: 'hub' },
 ];
 
 /** Both ends have a tie link: the front rack and the rear toe link. */

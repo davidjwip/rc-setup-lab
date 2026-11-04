@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  absoluteCornerPointMm,
   buildAxleRates,
   buildFrontViewInput,
   buildLoadTransferInput,
@@ -282,8 +283,6 @@ export function AnalysisView({
       />
     );
   }
-  const selectedCorner = editorCorner;
-
   const commitChassis = (field: ChassisValueField, valueMm: number): string | null => {
     const current = editorModel.current;
     if (current === null) return 'No model is loaded.';
@@ -390,10 +389,10 @@ export function AnalysisView({
   const solverRefusal =
     result.rollCentreHeight.kind === 'defined' ? null : stateLabel(result.rollCentreHeight);
 
-  const lowerInner = selectedCorner?.points.lca_in_a?.value;
-  const lowerOuter = selectedCorner?.points.lca_out?.value;
-  const upperInner = selectedCorner?.points.uca_in?.value;
-  const upperOuter = selectedCorner?.points.uca_out?.value;
+  const lowerInner = absoluteCornerPointMm(model, cornerKey, 'lca_in_a')?.value;
+  const lowerOuter = absoluteCornerPointMm(model, cornerKey, 'lca_out')?.value;
+  const upperInner = absoluteCornerPointMm(model, cornerKey, 'uca_in')?.value;
+  const upperOuter = absoluteCornerPointMm(model, cornerKey, 'uca_out')?.value;
   const working = result.working;
   const springRateNpm =
     ratesResult !== null && ratesResult.working.springRate_Npm > 0
@@ -428,9 +427,9 @@ export function AnalysisView({
           the top surface of the chassis plate. The selected axle drives the drawing, the hardpoint
           editor and the rates editor. Moving a hardpoint recomputes that end's roll centre and
           camber gain; changing a spring, damper or bar recomputes rates, roll stiffness and balance.
-          The ground plane is derived from the plate thickness and ride height, never stored; the
-          Chassis panel edits both and infers each wheel's diameter from the wheel centre. The
-          rear corner is modelled from plausible rear geometry, not measured, and says so.
+          The chassis panel edits ride height, plate thickness and wheel diameter; the hub is
+          derived from them and every outboard point is stored as a shim offset from that hub.
+          The rear corner is modelled from plausible rear geometry, not measured, and says so.
         </p>
       </header>
 

@@ -1,7 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
-import type { CarModelDocument, CornerKey, CornerPointKey } from '@setuplab/data';
+import {
+  absoluteCornerPointMm,
+  hubCentreMm,
+  isHubFixedPointKey,
+  type CarModelDocument,
+  type CornerKey,
+  type CornerPointKey,
+} from '@setuplab/data';
 import type { Solved } from '@setuplab/physics';
-import { LENGTH_UNIT, formatInstallationRatio } from '../format/format.js';
+import { LENGTH_UNIT, formatInstallationRatio, formatLengthMm } from '../format/format.js';
 import {
   checkHardpointMm,
   hardpointRowsForAxle,
@@ -41,6 +48,7 @@ export function HardpointEditor({
   const [error, setError] = useState<string | null>(null);
   const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const corner = model.corners[cornerKey];
+  const hub = hubCentreMm(model, cornerKey);
 
   useEffect(() => {
     const pending = timers.current;
@@ -94,7 +102,8 @@ export function HardpointEditor({
           <p className="edit-note">
             z is measured from the <strong>top surface of the chassis plate</strong> at the rear axle
             centre-line. The ground plane is derived below it, at z = −(plate thickness + ride
-            height); it is not the datum.
+            height). The hub is derived at ({hub === null ? 'not computable' : `${formatLengthMm(hub.y, 1)}, ${formatLengthMm(hub.z, 1)}`}) mm;
+            it is never stored and it carries every outboard point with it.
           </p>
         </div>
         <span className="pill">{edited ? 'edited this session' : 'millimetres'}</span>
@@ -111,8 +120,9 @@ export function HardpointEditor({
         <thead>
           <tr>
             <th scope="col">Point</th>
-            <th scope="col">y ({LENGTH_UNIT})</th>
-            <th scope="col">z ({LENGTH_UNIT}, plate top)</th>
+            <th scope="col">y / offset y ({LENGTH_UNIT})</th>
+            <th scope="col">z / offset z ({LENGTH_UNIT})</th>
+            <th scope="col">Composed absolute (y, z)</th>
           </tr>
         </thead>
         <tbody>
@@ -122,16 +132,23 @@ export function HardpointEditor({
               return (
                 <tr key={row.key}>
                   <th scope="row">{row.label}</th>
-                  <td colSpan={2}>not measured</td>
+                  <td colSpan={3}>not measured</td>
                 </tr>
               );
             }
+            const isHub = isHubFixedPointKey(row.key);
+            const absolute = isHub
+              ? absoluteCornerPointMm(model, cornerKey, row.key)
+              : point;
             return (
-              <tr key={row.key}>
-                <th scope="row">{row.label}</th>
+              <tr key={row.key} data-point={row.key} data-kind={row.kind}>
+                <th scope="row">
+                  {row.label}
+                  {isHub ? <span className="field-unit">shim offset</span> : null}
+                </th>
                 <td>
                   <input
-                    aria-label={`${row.label} y in ${LENGTH_UNIT}`}
+                    aria-label={`${row.label} ${isHub ? 'offset ' : ''}y in ${LENGTH_UNIT}`}
                     type="number"
                     inputMode="decimal"
                     step="0.1"
@@ -142,7 +159,7 @@ export function HardpointEditor({
                 </td>
                 <td>
                   <input
-                    aria-label={`${row.label} z in ${LENGTH_UNIT}`}
+                    aria-label={`${row.label} ${isHub ? 'offset ' : ''}z in ${LENGTH_UNIT}`}
                     type="number"
                     inputMode="decimal"
                     step="0.1"
@@ -151,11 +168,26 @@ export function HardpointEditor({
                     onBlur={(event) => commitNow(row.key, 2, event.target.value)}
                   />
                 </td>
+                <td className="readonly-point">
+                  {absolute === null
+                    ? 'not computable'
+                    : `${formatLengthMm(absolute.value[1], 1)}, ${formatLengthMm(
+                        absolute.value[2],
+                        1,
+                      )}`}
+                </td>
               </tr>
             );
           })}
         </tbody>
       </table>
+
+      <p className="edit-note">
+        Upright rows edit the <strong>shim offset</strong> from the derived wheel centre. For the y
+        offset, <strong>+</strong> means a shim inboard of the ball stud (the stud moves outboard),
+        and <strong>−</strong> moves the stud inboard. For z, <strong>+</strong> is up. The composed
+        absolute point shown beside each row is what the solver consumes; it is read-only here.
+      </p>
 
       <div className="motion-ratio" role="status">
         <span className="motion-ratio-label">Derived damper motion ratio</span>
@@ -210,8 +242,8 @@ export function HardpointEditor({
       </div>
 
       <p className="footnote">
-        Arm type: {corner?.armType.lower} / {corner?.armType.upper}. Track is derived from the wheel
-        centre, so moving it moves the contact patch too.
+        Arm type: {corner?.armType.lower} / {corner?.armType.upper}. Track is derived from the hub,
+        so moving it moves the contact patch too.
       </p>
     </div>
   );
