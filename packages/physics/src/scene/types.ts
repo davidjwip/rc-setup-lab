@@ -26,6 +26,8 @@ export type HardpointId =
   | 'lca_out'
   | 'uca_in'
   | 'uca_out'
+  | 'tie_in'
+  | 'tie_out'
   | 'wheel_centre'
   | 'contact_patch';
 
@@ -37,7 +39,7 @@ export interface SceneHardpoint {
   readonly source: string;
 }
 
-export type SegmentRole = 'arm' | 'link' | 'construction';
+export type SegmentRole = 'arm' | 'link' | 'tie' | 'construction';
 
 export interface SceneSegment {
   readonly kind: 'segment';
@@ -115,6 +117,8 @@ export interface FrontViewScene {
   readonly hardpoints: readonly SceneHardpoint[];
   readonly lowerArm: SceneSegment;
   readonly upperLink: SceneSegment;
+  /** Tie rod in front view, or null when the corner has no tie link. */
+  readonly tieRod: SceneSegment | null;
   readonly carrier: SceneCarrier;
   readonly wheel: SceneWheel;
   readonly instantCentre: SceneInstantCentre;

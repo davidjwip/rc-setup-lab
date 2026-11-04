@@ -51,6 +51,26 @@ export type {
   SceneWheel,
   SegmentRole,
 } from './scene/types.js';
+export {
+  TOE_SWEEP_MAX_M,
+  TOE_SWEEP_MIN_M,
+  TOE_SWEEP_SAMPLES,
+  buildToeSeries,
+  solveAckermann,
+  solveSteerAngle,
+  solveToe,
+  solveToeAtTieOutHeight,
+} from './steering/toe.js';
+export type {
+  AckermannResult,
+  RackSteeringOptions,
+  ToeInput,
+  ToeSample,
+  ToeSeries,
+  ToeSeriesResult,
+  ToeSeriesUnavailable,
+} from './steering/types.js';
+export type { Vec3 } from './geometry/vec3.js';
 export { solveRates, solveRatesFromRatio } from './rates/rates.js';
 export { solveDampingRatio } from './damping/damping.js';
 export { solveAntiRollBar, solveRollStiffness } from './roll/roll.js';

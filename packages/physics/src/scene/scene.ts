@@ -217,6 +217,26 @@ export function buildFrontViewScene(
       point: toScene(input.ucaOut_m.value),
       source: input.ucaOut_m.ref,
     },
+    ...(input.tieIn_m === undefined
+      ? []
+      : [
+          {
+            kind: 'hardpoint' as const,
+            id: 'tie_in' as const,
+            point: toScene(input.tieIn_m.value),
+            source: input.tieIn_m.ref,
+          },
+        ]),
+    ...(input.tieOut_m === undefined
+      ? []
+      : [
+          {
+            kind: 'hardpoint' as const,
+            id: 'tie_out' as const,
+            point: toScene(input.tieOut_m.value),
+            source: input.tieOut_m.ref,
+          },
+        ]),
     {
       kind: 'hardpoint',
       id: 'wheel_centre',
@@ -396,6 +416,16 @@ export function buildFrontViewScene(
       upperOuter,
       input.ucaIn_m.ref,
     ),
+    tieRod:
+      input.tieIn_m === undefined || input.tieOut_m === undefined
+        ? null
+        : segment(
+            'tie-rod',
+            'tie',
+            toScene(input.tieIn_m.value),
+            toScene(input.tieOut_m.value),
+            input.tieIn_m.ref,
+          ),
     carrier,
     wheel,
     instantCentre,

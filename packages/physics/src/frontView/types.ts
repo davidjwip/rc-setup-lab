@@ -23,6 +23,10 @@ export interface FrontViewInput {
   readonly ucaIn_m: Sourced<Vec2>;
   readonly ucaOut_m: Sourced<Vec2>;
   readonly wheelCentre_m: Sourced<Vec2>;
+  /** Tie-rod inner ball in the front view (y, z), when the corner has a tie link. */
+  readonly tieIn_m?: Sourced<Vec2>;
+  /** Tie-rod outer ball in the front view (y, z), when the corner has a tie link. */
+  readonly tieOut_m?: Sourced<Vec2>;
   readonly bumpLimit_m: number;
   readonly droopLimit_m: number;
 }
