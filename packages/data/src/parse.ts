@@ -17,6 +17,7 @@ import type {
   MeasuredValue,
   SourceRecord,
   SourceType,
+  SpringLocation,
 } from './model.js';
 
 /** The datum this build writes. `1.0.x` is the ground-plane origin and migrates. */
@@ -30,6 +31,11 @@ const LEGACY_PLATE_THICKNESS_MM = 2.0;
 
 const CORNER_KEYS: readonly CornerKey[] = ['LF', 'RF', 'LR', 'RR'];
 const ARB_TYPES: readonly ArbTypeDocument[] = ['torsion_bar', 'blade', 'fixed', 'none'];
+const SPRING_LOCATIONS: readonly SpringLocation[] = [
+  'coilover_at_damper',
+  'separate_seat',
+  'inboard_rocker',
+];
 const SOURCE_TYPES: readonly SourceType[] = [
   'measured',
   'manufacturer',
@@ -86,10 +92,12 @@ function readSources(
       continue;
     }
     const method = asString(record['method']);
+    const note = asString(record['note']);
     const by = asString(record['by']);
     sources[id] = {
       type: type as Confidence,
       ...(method === null ? {} : { method }),
+      ...(note === null ? {} : { note }),
       ...(by === null ? {} : { by }),
     };
   }
@@ -311,6 +319,22 @@ function readAxle(
     spring === null
       ? null
       : readOptionalMeasuredNumber(spring, `${path}.spring`, 'rate', errors, sources);
+  let springLocation: SpringLocation | null = null;
+  const rawLocation = spring === null ? undefined : spring['location'];
+  if (rawLocation !== undefined) {
+    const location = asString(rawLocation);
+    if (location === null || !SPRING_LOCATIONS.includes(location as SpringLocation)) {
+      errors.push(
+        dataError(
+          'invalidValue',
+          `${path}.spring.location`,
+          'spring.location must be coilover_at_damper, separate_seat or inboard_rocker',
+        ),
+      );
+    } else {
+      springLocation = location as SpringLocation;
+    }
+  }
   const arb = readArb(raw, path, errors, sources);
 
   const rawDerivedFrom = raw['derived_from'];
@@ -330,7 +354,16 @@ function readAxle(
   }
 
   if (track === null) return null;
-  return { derivedFrom, track, tyreRadius, bumpLimit, droopLimit, springRate, arb };
+  return {
+    derivedFrom,
+    track,
+    tyreRadius,
+    bumpLimit,
+    droopLimit,
+    springLocation,
+    springRate,
+    arb,
+  };
 }
 
 function readArmType(

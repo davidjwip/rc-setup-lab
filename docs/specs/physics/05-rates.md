@@ -319,35 +319,40 @@ k_bar = 0.43792 × (0.80/0.020)² = 0.43792 × 1600 = 700.67 N/m = 0.70067 N/mm
 Note `0.020` is `a_arm` **in metres** — that conversion is (5.7)'s, and it is written there now.
 
 Compare with the spring's wheel rate of 1.12 N/mm: the bar is 63 % of it at the wheel, a strong front
-bar. Rear bar, d = 1.20 mm, same geometry: `k_bar = 0.28700 N/mm`.
+bar. Rear bar, d = 1.20 mm, same bar geometry, with the modelled rear drop-link ratio
+`IR_arm = 0.54572`: `k_bar,r = 0.13356 N/mm` at the wheel (was 0.28700 N/mm at the assumed
+`IR_arm = 0.80`).
 
 ### 6.4 Roll stiffness
 
 ```
 k_φ,f = (1.11851/2 + 0.70067) × 172²/1000 = 1.25993 × 29.584 = 37.274 N·m/rad
-k_φ,r = (1.29998/2 + 0.28700) × 174²/1000 = 0.93699 × 30.276 = 28.368 N·m/rad
-k_φ,total = 65.642 N·m/rad       front share 56.78 %
+k_φ,r = (1.23501/2 + 0.13356) × 174²/1000 = 0.75107 × 30.276 = 22.739 N·m/rad
+k_φ,total = 60.013 N·m/rad       front share 62.11 %
 ```
 
-### 6.5 Rear ride frequency (corrected — and flagged as assumed input)
+### 6.5 Rear ride frequency (derived from the modelled rear damper geometry)
 
-**`IR_r = 0.7071` is an assumed input, not a computed value.** The reference car has no rear
-hardpoints (module 1 §8.4), so `IR_r`, the rear bar rate and `z_rc,r` are labelled inputs with ranges.
-Round 1 presented them as "the same geometry" and quoted every value as a hand calculation; 00 §12's
-checklist ("no step relies on a number that appears nowhere else") failed on all three.
+The reference car now carries a **modelled** rear corner (01 §8.4, source `s_modelled`), so `IR_r`
+is computed from its damper mounts rather than assumed. In the chassis frame they are
+`damper_lo = (0, 68, 2)` and `damper_up = (-2, 56, 56)` mm; the adapter adds the 7.0 mm chassis
+datum before solving. The independent four-bar hand check gives `IR_r = 0.689205`, and the shipped
+±0.5 mm wheel step agrees within 1e-5 (`packages/physics/test/probe.test.ts`).
 
 ```
-rear spring 2.60 N/mm, IR_r = 0.7071 (assumed, range 0.60–0.80)
-k_w,r = 2.60 × 0.7071² = 2.60 × 0.50000 = 1.30000 N/mm
-m_s,r = 0.31125 kg  (module 6 §6.1; round 1 used 0.400 kg)
-ω_n = √(1300/0.31125) = √4176.7 = 64.628 rad/s
-f   = 10.286 Hz                                    (round 1: 9.073 Hz)
-c_crit = 2 × √(1300 × 0.31125) = 2 × 20.115 = 40.230 N·s/m   (round 1: 45.607)
+rear spring 2.60 N/mm, IR_r = 0.689205 (derived from the modelled damper geometry)
+k_w,r = 2.60 × 0.689205² = 2.60 × 0.475004 = 1.23501 N/mm
+m_s,r = 0.31125 kg  (module 6 §6.1)
+ω_n = √(1235.01/0.31125) = √3967.9 = 62.992 rad/s
+f   = 10.025 Hz
+c_crit = 2 × √(1235.01 × 0.31125) = 2 × 19.606 = 39.212 N·s/m
 ```
 
-Front 10.781 Hz, rear 10.286 Hz — a 4.8 % split with a small front bias. **Both figures inherit the
-assumed `IR_r`**: a 10 % error in `IR_r` moves the rear frequency by 5 % and, because the split is the
-headline, moves the *relative* front/rear balance of the frequency pair by the same amount.
+Front 10.781 Hz, rear 10.025 Hz — a 7.0 % split. The modelled mount was placed to give MR ≈ 0.70,
+inside Bob Wright's published 0.55–0.80 range (0.64 Xray, 0.75 Mugen); the earlier placement gave
+0.51 and a 7.4 Hz rear, which is a road car. The **front** stays at its spec-derived 0.5653 and is
+not tuned toward the band: it sits slightly below Bob's two examples, and that is reported rather
+than hidden.
 
 ---
 
@@ -360,7 +365,7 @@ headline, moves the *relative* front/rear balance of the frequency pair by the s
 | **G05.3** | k_w = 1.11851 N/mm, **m_s = 0.24375 kg** | f = **10.781 Hz**, c_crit = **33.023 N·s/m** | hand calc §6.2 |
 | G05.4 | bar d = 1.50, L = 90, a = 20, IR_arm = 0.80, G = 79.3 GPa | k_bar = 0.70067 N/mm | hand calc §6.3 |
 | G05.5 | front axle, §6.4 data | k_φ,f = 37.274 N·m/rad; front share 56.78 % | hand calc §6.4 |
-| **G05.6** | rear, §6.5 data, **m_s = 0.31125 kg** | f = **10.286 Hz**, c_crit = **40.230 N·s/m** | hand calc §6.5 (IR_r assumed) |
+| **G05.6** | reference rear damper geometry, **m_s = 0.31125 kg** | IR = **0.689205**, f = **10.025 Hz**, c_crit = **39.212 N·s/m** | hand calc §6.5 (derived geometry) |
 | G05.7 | damper axis exactly perpendicular to the arm's motion | `Undefined(noMotionRatio)` | §5 |
 | G05.8 | k_s = 0 | validation error, no computation | §5 |
 | **G05.9** | **mass budget**: reference car | `2·m_s,f,corner + 2·m_s,r,corner + m_u = m_total` → 2(0.24375) + 2(0.31125) + 0.240 = 1.350 kg, to 1e-9 | identity, module 6 §6.1 |

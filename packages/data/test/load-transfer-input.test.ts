@@ -67,7 +67,7 @@ describe('load-transfer data', () => {
     }
     expect(result.cgHeight.value).toBeCloseTo(0.028, 12);
     expect(relativeError(result.totalLateralLoadTransfer.value, 2.1435)).toBeLessThanOrEqual(1e-4);
-    expect(relativeError(result.balance.value * 100, 47.01303)).toBeLessThanOrEqual(1e-4);
+    expect(relativeError(result.balance.value * 100, 47.46477)).toBeLessThanOrEqual(1e-4);
   });
 
   it('uses body.cg.components[] for the component-mass route when present (G06.9)', () => {

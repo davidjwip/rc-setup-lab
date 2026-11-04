@@ -38,6 +38,7 @@ export type {
   Point3Mm,
   SourceRecord,
   SourceType,
+  SpringLocation,
 } from './model.js';
 export { CURRENT_SCHEMA_VERSION, parseCarModel, parseCarModelJson } from './parse.js';
 export {
