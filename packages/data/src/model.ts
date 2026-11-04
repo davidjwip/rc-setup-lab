@@ -121,6 +121,10 @@ export interface CarModelDocument {
   readonly symmetry: boolean;
   readonly sources: Readonly<Record<string, SourceRecord>>;
   readonly wheelbase: MeasuredValue<number> | null;
+  /** Ground clearance under the bottom of the plate. Not the datum. */
+  readonly referenceRideHeight: MeasuredValue<number> | null;
+  /** Plate thickness; with ride height it locates the derived ground plane. */
+  readonly chassisThickness: MeasuredValue<number> | null;
   readonly corners: Partial<Record<CornerKey, CornerDocument>>;
   readonly axles: {
     readonly front: AxleDocument;

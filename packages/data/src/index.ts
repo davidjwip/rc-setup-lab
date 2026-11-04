@@ -39,7 +39,18 @@ export type {
   SourceRecord,
   SourceType,
 } from './model.js';
-export { parseCarModel, parseCarModelJson } from './parse.js';
+export { CURRENT_SCHEMA_VERSION, parseCarModel, parseCarModelJson } from './parse.js';
+export {
+  RIDE_HEIGHT_MISMATCH_TOLERANCE_MM,
+  chassisDatum,
+  derivedGroundPlaneMm,
+  groundOffsetMm,
+  impliedRideHeightMm,
+  reportedRollCentreHeightM,
+  rideHeightConsistency,
+  wheelGroundPlaneMm,
+  type ChassisDatum,
+} from './datum.js';
 export {
   SIDE_SIGN,
   buildAntiRollBarInput,

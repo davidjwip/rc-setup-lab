@@ -38,17 +38,28 @@ It computes no suspension physics. That starts in module 2.
 - **x** forward, positive toward the front of the car.
 - **y** positive to the **left** of the car, looking in the +x direction.
 - **z** up, positive away from the road.
-- **Origin**: the intersection of the ground plane with the vehicle centre plane, **at the rear axle
-  line**.
+- **Origin**: the **top surface of the chassis plate**, at the rear axle centre-line, on the vehicle
+  centre plane. `z = 0` there, not at the road.
 
-So: rear contact patches at `x = 0, y = ±t_r/2, z = 0`; front contact patches at
-`x = wheelbase, y = ±t_f/2, z = 0`; the centre plane is `y = 0`; the road is `z = 0`.
+The ground plane is derived from the plate, not assumed:
+
+```
+z_ground        = −(chassis_thickness + reference_ride_height)
+z_contact_patch = z_ground
+```
+
+`reference_ride_height` keeps its meaning — ground clearance under the **bottom** of the plate — and
+is no longer the datum. In the chassis frame the reference car has `z_ground = −7.0 mm` (2.0 mm plate
++ 5.0 mm ride height). The physics package continues to work in the ground frame; the one adapter in
+`packages/data` adds `(thickness + ride_height)` to every stored `z` when it builds solver input, so
+every equation below is unchanged and every ground-frame golden value is unchanged.
 
 **This is the single frame for the physics package and it is not negotiable per document.** Round 1
 found the requirements document using y-right with a mid-wheelbase origin, which put a developer
 128 mm and 257 mm away from a developer following this file, silently and plausibly. The ruling:
 
-> **R-1.** ISO 8855 — x forward, y left, z up, origin on the ground plane at the rear axle centre.
+> **R-1.** ISO 8855 — x forward, y left, z up, origin on the **top surface of the chassis plate** at
+> the rear axle centre. The ground plane is derived below it by the plate thickness plus ride height.
 > Per-wheel quantities (camber, toe) are **per-wheel signed and are not negated by mirroring**:
 > positive camber = top outboard, positive toe = toe-in, and a symmetric car stores the same camber
 > and the same toe on both sides. The conversion to a global-frame angle is done once, inside the
@@ -61,9 +72,11 @@ not a sign table here: negating a stored toe on the mirrored corner puts 1.0° o
 straight car, which is the same class of silent sign error round 1 was convened to find. A model file
 written by the app must satisfy this section.
 
-Because z is measured from the road, **ride-height changes move every hardpoint in z**. The model
-stores hardpoints at the ride height they were measured at (`measured_at_ride_height`), and a ride
-height change is a rigid translation of the chassis-side points followed by a re-solve (§6.4).
+Because z is measured from the **top of the plate**, a ride-height or plate-thickness change moves
+the derived ground plane, not the stored hardpoints. The model stores hardpoints in the chassis
+frame, and a ride-height change is a rigid translation of the chassis-side points followed by a
+re-solve (§6.2). The derived ground plane is reported wherever a height above the road is shown, and
+the drawing labels it as derived.
 
 ---
 
@@ -337,7 +350,7 @@ to the paths below is at the end of this section.
 
 ```json
 {
-  "schema_version": "1.0.0",
+  "schema_version": "1.1.0",
   "kind": "car_model",
   "id": "mdl_ref_1tc",
   "name": "Reference 1/10 TC — measured 2026-10-30",
@@ -348,7 +361,7 @@ to the paths below is at the end of this section.
     "count": "1", "shear_modulus": "GPa"
   },
   "frame": { "standard": "ISO 8855", "axes": "x forward, y left, z up",
-             "origin": "ground plane, rear axle centre, vehicle centreline" },
+             "origin": "top surface of the chassis plate, rear axle centre, vehicle centreline" },
   "symmetry": true,
   "license": { "id": "CC-BY-4.0", "url": "https://creativecommons.org/licenses/by/4.0/" },
   "contributors": [ { "name": "D. W.", "role": "measured" } ],
@@ -377,9 +390,9 @@ to the paths below is at the end of this section.
     "reference_ride_height": { "value": 5.0,   "source": "s1" },
     "wheelbase":             { "value": 257.0, "source": "s1" },
     "cg": {
-      "height":           { "value": 28.0, "source": "s2" },
+      "height":           { "value": 21.0, "source": "s2" },
       "front_mass_share": { "value": 45.0, "source": "s4" },
-      "unsprung_height":  { "value": 20.0, "source": "s3" }
+      "unsprung_height":  { "value": 13.0, "source": "s3" }
     },
     "mass": {
       "total":          { "value": 1350.00, "source": "s5" },
@@ -406,7 +419,7 @@ to the paths below is at the end of this section.
                "shear_modulus": { "value": 79.3, "source": "s6" } },
       "steering": { "rack": {
         "x":               { "value": 225.0, "source": "s1" },
-        "z":               { "value": 30.0,  "source": "s1" },
+        "z":               { "value": 23.0,  "source": "s1" },
         "y_left":          { "value": 26.0,  "source": "s1" },
         "y_right":         { "value": -26.0, "source": "s1" },
         "travel_per_turn": { "value": 12.0,  "source": "s6" } } }
@@ -427,17 +440,17 @@ to the paths below is at the end of this section.
     "LF": {
       "arm_type": { "lower": "hinge", "upper": "single_link" },
       "points": {
-        "lca_in_a":  { "value": [238.00, 30.00, 12.00],  "source": "s1" },
-        "lca_in_b":  { "value": [272.00, 30.00, 12.00],  "source": "s1" },
-        "lca_out":   { "value": [259.00, 78.00,  7.00],  "source": "s1" },
-        "uca_in":    { "value": [250.00, 42.00, 45.00],  "source": "s1" },
-        "uca_out":   { "value": [254.00, 72.80, 44.00],  "source": "s1" },
-        "tie_in":    { "value": [225.00, 26.00, 30.00],  "source": "s1" },
-        "tie_out":   { "value": [243.68, 74.04, 32.00],  "source": "s1" },
-        "wc":        { "value": [257.00, 86.00, 32.00],  "source": "s1" },
-        "damper_lo": { "value": [257.00, 60.00,  8.875], "source": "s1" },
-        "damper_up": { "value": [257.00, 44.00, 58.00],  "source": "s1" },
-        "arb_drop":  { "value": [250.00, 55.00,  9.40],  "source": "s1" }
+        "lca_in_a":  { "value": [238.00, 30.00,  5.00],  "source": "s1" },
+        "lca_in_b":  { "value": [272.00, 30.00,  5.00],  "source": "s1" },
+        "lca_out":   { "value": [259.00, 78.00,  0.00],  "source": "s1" },
+        "uca_in":    { "value": [250.00, 42.00, 38.00],  "source": "s1" },
+        "uca_out":   { "value": [254.00, 72.80, 37.00],  "source": "s1" },
+        "tie_in":    { "value": [225.00, 26.00, 23.00],  "source": "s1" },
+        "tie_out":   { "value": [243.68, 74.04, 25.00],  "source": "s1" },
+        "wc":        { "value": [257.00, 86.00, 25.00],  "source": "s1" },
+        "damper_lo": { "value": [257.00, 60.00,  1.875], "source": "s1" },
+        "damper_up": { "value": [257.00, 44.00, 51.00],  "source": "s1" },
+        "arb_drop":  { "value": [250.00, 55.00,  2.40],  "source": "s1" }
       },
       "damper": {
         "piston_bore":     { "value": 9.6,   "source": "s6" },
@@ -470,9 +483,11 @@ Notes that matter to the implementer:
   its `units` block declares nine. The former §5 declared four (`length, mass, angle,
   spring_rate`) while the body also carried newtons, N·s/m and cSt — a document that
   refused itself under `spec.md` §4.1 rule 1.
-- **`schema_version` is `1.0.0`**, the only version the app writes (`spec.md` §4.7), so one
-  fixture covers it. `1.1.0` is withdrawn; nothing has shipped, so there is nothing to
-  migrate.
+- **`schema_version` is `1.1.0`**, the version the app writes (`spec.md` §4.7). `1.0.x`
+  documents are migrated on load: every stored `z` becomes
+  `z' = z − (chassis_thickness + reference_ride_height)`, the frame origin is rewritten,
+  and a `derived` migration record is added to `sources`. Exporting and reloading the
+  migrated document does not shift it a second time.
 - **`symmetry: true` and no `RF` corner.** The right-hand corner is generated at load by
   **negating y only** — with `derived_by_mirror` provenance, not `measured`, and not
   re-solved as if it were the left corner (its crank angle, branch sign and monotonicity
@@ -720,7 +735,11 @@ frequency, every ζ and the entire damping direction table, to preserve one line
 56 % balance were all built on, so it is the column that keeps the document coherent. `06` §1 records
 the choice; G06.12 asserts it.
 
-### 8.2 Left front corner (x, y, z in mm)
+### 8.2 Left front corner (x, y, z in mm, ground frame)
+
+These are the solver's ground-frame values, not the document's stored chassis-frame values. The
+document stores each `z` 7.0 mm lower (§5), and the adapter adds that offset back when it builds
+solver input; this is why every golden value in modules 2–10 is unchanged by the datum move.
 
 | Point | x | y | z | Note |
 |---|---|---|---|---|

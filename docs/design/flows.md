@@ -797,10 +797,10 @@ there. Drafts are persisted to local storage on every change, with the last writ
    `upper_link_inner_shims`). This document's groups and task counts are a design estimate of
    how those fields are *asked for*, and must be re-derived from the field table before sprint
    planning — the count may go up, and every added task is 40 seconds of a 20-minute budget.
-2. **Coordinate datum.** The flows assume a per-car datum (ground plane + axle centreline +
-   car centreline). Absolute vs span-based measurement changes the wizard's wording
-   everywhere, and span-based is friendlier with calipers but harder to reconcile with a
-   shared model.
+2. **Coordinate datum.** The flows assume a per-car datum (top surface of the chassis plate +
+   rear axle centreline + car centreline); the ground plane is derived from the plate thickness and
+   ride height. Absolute vs span-based measurement changes the wizard's wording everywhere, and
+   span-based is friendlier with calipers but harder to reconcile with a shared model.
 3. **Template library provenance.** Every template hardpoint needs a `source`. If the family
    does not gift the RC3 databases, the initial library is a handful of community
    re-measurements — is that enough to ship a "template" door at launch, or does v1 open only

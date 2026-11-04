@@ -1,8 +1,9 @@
 # Measurement session — one touring car, one afternoon
 
 For Dave, on a real chassis. Everything here produces values in the units the file wants
-(**millimetres, from the ground plane at the rear axle centre**, ISO 8855: x forward, y left, z up —
-ruling R-1). Print `measurement-sheet.md` and fill it in by hand as you go; transcribe once at the end.
+(**millimetres, from the top surface of the chassis plate at the rear axle centre**, ISO 8855: x
+forward, y left, z up — ruling R-1). Record the plate thickness and the ride height under the bottom
+of the plate; together they derive the ground plane. Print `measurement-sheet.md` and fill it in by hand as you go; transcribe once at the end.
 
 Expect **70–90 minutes** for a whole car, **25 minutes** for the front axle only. The front axle is
 where the numbers a racer argues about come from (roll centre, camber gain, bump steer), so if time

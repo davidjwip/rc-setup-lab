@@ -47,7 +47,7 @@ describe('hardpoint edits follow the selected axle', () => {
     expect(before).toBeCloseTo(0.0178985, 6);
     expect(beforeSolved.camberGain.kind).toBe('defined');
 
-    const edited = updateCornerPointMm(baseline, 'LR', 'uca_in', 2, 60);
+    const edited = updateCornerPointMm(baseline, 'LR', 'uca_in', 2, 53);
     expect(edited.ok).toBe(true);
     if (!edited.ok) return;
 
@@ -65,7 +65,7 @@ describe('hardpoint edits follow the selected axle', () => {
 
   it('moves the rear ARB motion ratio, roll-stiffness share and balance through an exposed point', () => {
     const baseline = parseReference();
-    const edited = updateCornerPointMm(baseline, 'LR', 'lca_out', 2, 10);
+    const edited = updateCornerPointMm(baseline, 'LR', 'lca_out', 2, 3);
     expect(edited.ok).toBe(true);
     if (!edited.ok) return;
 
@@ -108,10 +108,10 @@ describe('hardpoint edits follow the selected axle', () => {
     const baseline = parseReference();
     const rearBefore = rearRollCentre(baseline);
 
-    const frontEdited = updateCornerPointMm(baseline, 'LF', 'uca_in', 2, 50);
+    const frontEdited = updateCornerPointMm(baseline, 'LF', 'uca_in', 2, 43);
     expect(frontEdited.ok).toBe(true);
     if (!frontEdited.ok) return;
-    const rearEdited = updateCornerPointMm(frontEdited.value, 'LR', 'uca_in', 2, 60);
+    const rearEdited = updateCornerPointMm(frontEdited.value, 'LR', 'uca_in', 2, 53);
     expect(rearEdited.ok).toBe(true);
     if (!rearEdited.ok) return;
     expect(rearRollCentre(rearEdited.value)).not.toBeCloseTo(rearBefore, 9);
@@ -120,8 +120,8 @@ describe('hardpoint edits follow the selected axle', () => {
     expect(reset.ok).toBe(true);
     if (!reset.ok) return;
 
-    expect(reset.value.corners.LR?.points.uca_in?.value).toEqual([-4, 44, 52]);
+    expect(reset.value.corners.LR?.points.uca_in?.value).toEqual([-4, 44, 45]);
     expect(rearRollCentre(reset.value)).toBeCloseTo(rearBefore, 12);
-    expect(reset.value.corners.LF?.points.uca_in?.value).toEqual([250, 42, 50]);
+    expect(reset.value.corners.LF?.points.uca_in?.value).toEqual([250, 42, 43]);
   });
 });

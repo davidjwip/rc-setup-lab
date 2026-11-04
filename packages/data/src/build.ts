@@ -91,11 +91,44 @@ export const SIDE_SIGN: Readonly<Record<CornerKey, 1 | -1>> = {
   RR: -1,
 };
 
-function sourcedPoint(key: CornerKey, pointKey: CornerPointKey, point: MeasuredPoint): Sourced<Vec2> {
+/**
+ * `thickness + ride_height`: the rigid translation from the document's chassis
+ * frame (top surface of the plate) to the ground frame the physics package uses.
+ * Null means the document cannot be converted and the caller refuses.
+ */
+function datumOffsetMm(model: CarModelDocument): number | null {
+  const thickness = model.chassisThickness;
+  const rideHeight = model.referenceRideHeight;
+  if (thickness === null || rideHeight === null) return null;
+  const offset = thickness.value + rideHeight.value;
+  return Number.isFinite(offset) ? offset : null;
+}
+
+function missingDatumErrors(): readonly DataError[] {
+  return [
+    dataError(
+      'missingField',
+      'body.chassis.thickness',
+      'the chassis datum needs the plate thickness to locate the ground plane',
+    ),
+    dataError(
+      'missingField',
+      'body.reference_ride_height',
+      'the chassis datum needs the reference ride height to locate the ground plane',
+    ),
+  ];
+}
+
+function sourcedPoint(
+  key: CornerKey,
+  pointKey: CornerPointKey,
+  point: MeasuredPoint,
+  offsetMm: number,
+): Sourced<Vec2> {
   return {
     value: {
       y: millimetresToMetres(point.value[1]),
-      z: millimetresToMetres(point.value[2]),
+      z: millimetresToMetres(point.value[2] + offsetMm),
     },
     ref: `${key}.points.${pointKey}`,
     confidence: point.confidence,
@@ -107,9 +140,10 @@ function point(
   corner: CornerDocument,
   cornerKey: CornerKey,
   pointKey: CornerPointKey,
+  offsetMm: number,
 ): Sourced<Vec2> | null {
   const measured = corner.points[pointKey];
-  return measured === undefined ? null : sourcedPoint(cornerKey, pointKey, measured);
+  return measured === undefined ? null : sourcedPoint(cornerKey, pointKey, measured, offsetMm);
 }
 
 /**
@@ -123,10 +157,12 @@ function derivedArbMotionRatio(
 ): Sourced<number> | null {
   const corner = cornerFor(model, cornerKey);
   if (!corner.ok) return null;
+  const offsetMm = datumOffsetMm(model);
+  if (offsetMm === null) return null;
 
-  const inner = point(corner.value, cornerKey, 'lca_in_a');
-  const outer = point(corner.value, cornerKey, 'lca_out');
-  const drop = point(corner.value, cornerKey, 'arb_drop');
+  const inner = point(corner.value, cornerKey, 'lca_in_a', offsetMm);
+  const outer = point(corner.value, cornerKey, 'lca_out', offsetMm);
+  const drop = point(corner.value, cornerKey, 'arb_drop', offsetMm);
   if (inner === null || outer === null || drop === null) return null;
 
   const armY = outer.value.y - inner.value.y;
@@ -195,13 +231,17 @@ export function buildFrontViewInput(
   if (!corner.ok) return corner;
 
   const errors = [];
-  const lcaIn = point(corner.value, cornerKey, 'lca_in_a');
-  const lcaOut = point(corner.value, cornerKey, 'lca_out');
+  const offsetMm = datumOffsetMm(model);
+  if (offsetMm === null) {
+    return fail(missingDatumErrors());
+  }
+  const lcaIn = point(corner.value, cornerKey, 'lca_in_a', offsetMm);
+  const lcaOut = point(corner.value, cornerKey, 'lca_out', offsetMm);
   const upperInnerKey: CornerPointKey =
     corner.value.armType.upper === 'single_link' ? 'uca_in' : 'uca_in_a';
-  const ucaIn = point(corner.value, cornerKey, upperInnerKey);
-  const ucaOut = point(corner.value, cornerKey, 'uca_out');
-  const wheelCentre = point(corner.value, cornerKey, 'wc');
+  const ucaIn = point(corner.value, cornerKey, upperInnerKey, offsetMm);
+  const ucaOut = point(corner.value, cornerKey, 'uca_out', offsetMm);
+  const wheelCentre = point(corner.value, cornerKey, 'wc', offsetMm);
 
   if (lcaIn === null) {
     errors.push(dataError('missingField', `corners.${cornerKey}.points.lca_in_a`, 'required'));
@@ -299,8 +339,10 @@ export function buildRatesInput(
   if (!corner.ok) return corner;
 
   const errors: DataError[] = [];
-  const damperLo = point(corner.value, cornerKey, 'damper_lo');
-  const damperUp = point(corner.value, cornerKey, 'damper_up');
+  const offsetMm = datumOffsetMm(model);
+  if (offsetMm === null) return fail(missingDatumErrors());
+  const damperLo = point(corner.value, cornerKey, 'damper_lo', offsetMm);
+  const damperUp = point(corner.value, cornerKey, 'damper_up', offsetMm);
   const springRate = model.axles.front.springRate;
 
   if (damperLo === null) {
@@ -629,6 +671,8 @@ export function buildLoadTransferInput(
   lateralAcceleration_mps2: number,
 ): DataResult<LoadTransferInput> {
   const errors: DataError[] = [];
+  const offsetMm = datumOffsetMm(model);
+  if (offsetMm === null) errors.push(...missingDatumErrors());
 
   const total = model.mass.total;
   if (total === null) {
@@ -718,10 +762,12 @@ export function buildLoadTransferInput(
           confidence: unsprungRearMeasured.confidence,
         };
 
+  const zOffsetMm = offsetMm ?? 0;
+
   let unsprungHeight: Sourced<number> | null = null;
   if (model.cg.unsprungHeight !== null) {
     unsprungHeight = {
-      value: millimetresToMetres(model.cg.unsprungHeight.value),
+      value: millimetresToMetres(model.cg.unsprungHeight.value + zOffsetMm),
       ref: 'body.cg.unsprung_height',
       confidence: model.cg.unsprungHeight.confidence,
     };
@@ -765,7 +811,7 @@ export function buildLoadTransferInput(
             confidence: component.mass.confidence,
           },
           height_m: {
-            value: millimetresToMetres(component.height.value),
+            value: millimetresToMetres(component.height.value + zOffsetMm),
             ref: `body.cg.components[${index}].z`,
             confidence: component.height.confidence,
           },
@@ -776,7 +822,7 @@ export function buildLoadTransferInput(
     cgHeight === null
       ? null
       : {
-          value: millimetresToMetres(cgHeight.value),
+          value: millimetresToMetres(cgHeight.value + zOffsetMm),
           ref: 'body.cg.height',
           confidence: cgHeight.confidence,
         };

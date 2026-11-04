@@ -406,14 +406,14 @@ is a consistency bug. *Revisit:* E8.5's ≤300 ms to open a stored model missed 
 ### 4.1 The on-disk shape
 
 ```json
-{ "schema_version": "1.0.0", "kind": "car_model", "id": "mdl_8f2c41",
+{ "schema_version": "1.1.0", "kind": "car_model", "id": "mdl_8f2c41",
   "frame": { "standard": "ISO 8855", "axes": "x forward, y left, z up",
-             "origin": "ground plane, rear axle centre, vehicle centreline" },
+             "origin": "top surface of the chassis plate, rear axle centre, vehicle centreline" },
   "units": { "length": "mm" },
   "sources": { "s1": { "type": "measured", "method": "digital caliper", "by": "DW" } },
   "axles": { "front": { "track": { "value": 172.0, "source": "s1" } } },
   "corners": { "LF": { "points": {
-      "lca_out": { "value": [259.0, 78.0, 7.0], "source": "s1" } } } }
+      "lca_out": { "value": [259.0, 78.0, 0.0], "source": "s1" } } } }
 ```
 
 The full shape is `docs/specs/fields.yaml`, and spec §4.2 prints the complete reference model; this
@@ -511,9 +511,11 @@ it is why the DOM is a type error rather than a convention.
 
 ### 5.1 The frame — ISO 8855 (R-1)
 
-**x forward, y left, z up; origin on the ground plane (flat plate) at the rear axle centre, on the
-vehicle centreline.** Left corner positive y, right corner negative y; roll positive with the left
-side up.
+**x forward, y left, z up; origin on the top surface of the chassis plate at the rear axle centre, on
+the vehicle centreline.** The ground plane is derived at `-(chassis_thickness +
+reference_ride_height)`; it is not the datum. Left corner positive y, right corner negative y; roll
+positive with the left side up. The physics package works in the ground frame, and the adapter adds
+that offset once when it builds solver input.
 
 Four consequences, each of which the old draft left open:
 

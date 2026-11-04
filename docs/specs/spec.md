@@ -214,7 +214,7 @@ Recorded here so they are not re-litigated later; each one costs something.
 | Physics in a pure TypeScript package — no DOM, no React | The UI cannot compute; it can only present. Anything the user sees must be obtainable from a function a headless test can call (E3.11, E3.16). SI lives inside the package only, at one conversion boundary (§4.1 rule 1). The package compiles without the DOM lib, so a component cannot reach into the maths and the maths cannot reach the browser. |
 | Free forever | No paid tier, no telemetry-funded tier, no ad SDK — which removes a whole class of "how do we see usage" features and replaces them with the instrumented usability test (E9.5, R2) and the dependency check (E8.13). |
 | Clean-room | Explanation text is written by us and mechanically checked against the research corpus (E5.4, E9.4). This is a build-time gate, not a promise. |
-| ISO 8855 frame (R-1) | x forward, y **left**, z up, origin on the ground plane at the rear axle centre. Per-wheel quantities are per-wheel signed (camber + = top outboard, toe + = toe-in) and **mirroring does not negate them** (D-17); only point `y` is negated, and the side factor `s` that converts to the car frame is applied once, inside the solver. Car-level quantities are never signed per side. Every hardpoint in every document is re-derived once. |
+| ISO 8855 frame (R-1) | x forward, y **left**, z up, origin on the **top surface of the chassis plate** at the rear axle centre. The ground plane is derived at `-(thickness + ride_height)`. Per-wheel quantities are per-wheel signed (camber + = top outboard, toe + = toe-in) and **mirroring does not negate them** (D-17); only point `y` is negated, and the side factor `s` that converts to the car frame is applied once, inside the solver. Car-level quantities are never signed per side. Every hardpoint in every document is re-derived once. |
 | mm/g/deg on disk (R-2) | The file is what a caliper and a setup sheet produce; the physics adapter converts to SI at exactly one site and a `\|coordinate\| > 3000 mm` guard catches a metre value (E3.8's property test covers the guard). |
 | Validity state on every number (D-11) | A computed value is never shown bare. Every surface, including every export, carries the state from §4.4.1 (E3.16). |
 | Owner decisions, 2026-10-30 | Setups carry **optional** conditions — surface (`carpet`/`asphalt`/`other`), ambient temperature, humidity, free-text tyre and motor — all `on_absence: OMIT` in the maths; a sheet diff warns when they differ (E4.9). Damping ratio ships as an **estimate with a band**, not deferred and not measured (E3.6, §4.8). CG height is **inferred** and never a MUST-measure field (§4.2.1). Grip is inference-only (§4.11, E5.6). The setup-sheet interpreter uses understeer/oversteer at entry/mid/exit with firm/inferred/speculative tiers and "all else equal" on every inferred claim (E2.13). |
@@ -1332,15 +1332,28 @@ with the physics package's own commentary — and not a second definition
 (`decisions.md` D-16).
 
 **Frame — ISO 8855, and nothing else (R-1).** Right-handed, **x forward, y to the
-LEFT, z up**. Origin on the ground plane (the flat plate the wheels stand on) at
-the intersection of the rear axle centreline and the vehicle centreline. So:
+LEFT, z up**. Origin on the **top surface of the chassis plate** at the
+intersection of the rear axle centreline and the vehicle centreline. The ground
+plane is derived, not assumed:
 
-- rear contact patches at `x = 0`, front contact patches at `x = +wheelbase`;
+```text
+z_ground        = -(chassis_thickness + reference_ride_height)   ... in the chassis frame
+z_contact_patch = z_ground
+```
+
+`reference_ride_height` is still the clearance under the **bottom** of the plate.
+The physics package keeps working in the ground frame; the adapter adds
+`(thickness + ride_height)` when it builds solver input, so every ground-frame
+golden value is unchanged. In the chassis frame:
+
+- rear contact patches are at `x = 0, z = z_ground`, front contact patches at
+  `x = +wheelbase, z = z_ground`;
 - a left-hand corner has **positive y**, a right-hand corner **negative y**;
-- every hardpoint is `[x, y, z]` in mm from that origin;
-- contact-patch positions are **derived, never stored**: `(0, ±track/2, 0)` and
-  `(wheelbase, ±track/2, 0)`, and the loader asserts the stored `wheelbase`
-  against the front wheel centres to ±3 mm.
+- every hardpoint is `[x, y, z]` in mm from the top-of-plate origin;
+- contact-patch positions are **derived, never stored**, and the loader asserts
+  the stored `wheelbase` against the front wheel centres to ±3 mm;
+- a `tyre_radius` change moves the wheel-derived ground and the reported
+  roll-centre height, and never rewrites a stored hardpoint `z`.
 
 **Per-wheel quantities are per-wheel signed, and mirroring does NOT negate them
 (D-17).** Camber positive = **top outboard**; toe positive = **toe-in**. Those
@@ -1371,7 +1384,7 @@ split — are frame-free and are **never** signed per side.
 
 ```json
 {
-  "schema_version": "1.0.0",
+  "schema_version": "1.1.0",
   "kind": "car_model",
   "id": "mdl_ref_1tc",
   "name": "Reference 1/10 TC — measured 2026-10-30",
@@ -1382,7 +1395,7 @@ split — are frame-free and are **never** signed per side.
     "count": "1", "shear_modulus": "GPa"
   },
   "frame": { "standard": "ISO 8855", "axes": "x forward, y left, z up",
-             "origin": "ground plane, rear axle centre, vehicle centreline" },
+             "origin": "top surface of the chassis plate, rear axle centre, vehicle centreline" },
   "symmetry": true,
   "license": { "id": "CC-BY-4.0", "url": "https://creativecommons.org/licenses/by/4.0/" },
   "contributors": [ { "name": "D. W.", "role": "measured" } ],
@@ -1411,9 +1424,9 @@ split — are frame-free and are **never** signed per side.
     "reference_ride_height": { "value": 5.0,   "source": "s1" },
     "wheelbase":             { "value": 257.0, "source": "s1" },
     "cg": {
-      "height":           { "value": 28.0, "source": "s2" },
+      "height":           { "value": 21.0, "source": "s2" },
       "front_mass_share": { "value": 45.0, "source": "s4" },
-      "unsprung_height":  { "value": 20.0, "source": "s3" }
+      "unsprung_height":  { "value": 13.0, "source": "s3" }
     },
     "mass": {
       "total":          { "value": 1350.00, "source": "s5" },
@@ -1440,7 +1453,7 @@ split — are frame-free and are **never** signed per side.
                "shear_modulus": { "value": 79.3, "source": "s6" } },
       "steering": { "rack": {
         "x":               { "value": 225.0, "source": "s1" },
-        "z":               { "value": 30.0,  "source": "s1" },
+        "z":               { "value": 23.0,  "source": "s1" },
         "y_left":          { "value": 26.0,  "source": "s1" },
         "y_right":         { "value": -26.0, "source": "s1" },
         "travel_per_turn": { "value": 12.0,  "source": "s6" } } }
@@ -1461,17 +1474,17 @@ split — are frame-free and are **never** signed per side.
     "LF": {
       "arm_type": { "lower": "hinge", "upper": "single_link" },
       "points": {
-        "lca_in_a":  { "value": [238.00, 30.00, 12.00],  "source": "s1" },
-        "lca_in_b":  { "value": [272.00, 30.00, 12.00],  "source": "s1" },
-        "lca_out":   { "value": [259.00, 78.00,  7.00],  "source": "s1" },
-        "uca_in":    { "value": [250.00, 42.00, 45.00],  "source": "s1" },
-        "uca_out":   { "value": [254.00, 72.80, 44.00],  "source": "s1" },
-        "tie_in":    { "value": [225.00, 26.00, 30.00],  "source": "s1" },
-        "tie_out":   { "value": [243.68, 74.04, 32.00],  "source": "s1" },
-        "wc":        { "value": [257.00, 86.00, 32.00],  "source": "s1" },
-        "damper_lo": { "value": [257.00, 60.00,  8.875], "source": "s1" },
-        "damper_up": { "value": [257.00, 44.00, 58.00],  "source": "s1" },
-        "arb_drop":  { "value": [250.00, 55.00,  9.40],  "source": "s1" }
+        "lca_in_a":  { "value": [238.00, 30.00,  5.00],  "source": "s1" },
+        "lca_in_b":  { "value": [272.00, 30.00,  5.00],  "source": "s1" },
+        "lca_out":   { "value": [259.00, 78.00,  0.00],  "source": "s1" },
+        "uca_in":    { "value": [250.00, 42.00, 38.00],  "source": "s1" },
+        "uca_out":   { "value": [254.00, 72.80, 37.00],  "source": "s1" },
+        "tie_in":    { "value": [225.00, 26.00, 23.00],  "source": "s1" },
+        "tie_out":   { "value": [243.68, 74.04, 25.00],  "source": "s1" },
+        "wc":        { "value": [257.00, 86.00, 25.00],  "source": "s1" },
+        "damper_lo": { "value": [257.00, 60.00,  1.875], "source": "s1" },
+        "damper_up": { "value": [257.00, 44.00, 51.00],  "source": "s1" },
+        "arb_drop":  { "value": [250.00, 55.00,  2.40],  "source": "s1" }
       },
       "damper": {
         "piston_bore":     { "value": 9.6,   "source": "s6" },
@@ -1517,8 +1530,10 @@ Notes on the example:
 - **`body.cg.front_mass_share` is 45.0 %**, which is what the masses in this file
   give (607.49 g of 1350 g on the front axle); `x_cg = 257 · (1 − 0.45) =
   141.35 mm` is derived from it and never stored.
-- **`schema_version` 1.0.0** is the only version this app writes (§4.7), so one
-  fixture covers it. The `1.1.0` of physics/01 §5 is retired.
+- **`schema_version` 1.1.0** is the version this app writes (§4.7). `1.0.x`
+  documents are migrated on load by the rigid datum translation
+  `z' = z − (thickness + ride_height)`; the migration is recorded in `sources`,
+  and an exported migrated document reloads without a second shift.
 
 #### 4.2.1 Field table — car model
 
@@ -1537,7 +1552,7 @@ by` lists §4.4's output ids, so a field that feeds nothing says so.
 
 | Field | Type | Unit | Req | `on_absence` | Consumed by | Notes |
 |---|---|---|---|---|---|---|
-| `schema_version` | string | — | yes | `REFUSE` | `all` | `MAJOR.MINOR.PATCH`; this file defines 1.0.0. A greater major is refused with the version named (spec E6.6). |
+| `schema_version` | string | — | yes | `REFUSE` | `all` | `MAJOR.MINOR.PATCH`; this file defines 1.1.0. `1.0.x` is migrated from the ground-plane datum. A greater major is refused with the version named (spec E6.6). |
 | `kind` | enum: `car_model` | — | yes | `REFUSE` | — | Tells the loader which field list to validate against. |
 | `id` | string | — | yes | `REFUSE` | — | Opaque, stable, never reused. `mdl_` prefix by convention. |
 | `name` | string | — | yes | `REFUSE` | — | Free text, shown in the library. |
@@ -1551,7 +1566,7 @@ by` lists §4.4's output ids, so a field that feeds nothing says so.
 | `sources` | object | — | yes | `REFUSE` | `motion_ratio`, `wheel_rate`, `ride_frequency`, `roll_stiffness`, `load_transfer_split`, `roll_centre_height`, `camber_gain`, `bump_steer`, `damping_ratio` | Map source id → source record (spec §4.1 rule 4). Replaces physics/01 §5's per-point prose map: every `source` on a value must resolve here. |
 | `meta` | object | — | no | `OMIT` | — | `{created, app_version, revises, mapped_at}`. Excluded from `content_hash` (spec §4.5.1). |
 | `representation_note` | string | — | no | `OMIT` | — | Free text ≤ 500 chars; shown in the share summary (E1.11). |
-| `body.reference_ride_height` | value | mm | yes | `REFUSE` | `roll_centre_height`, `camber_gain`, `bump_steer` | The ride height every z was measured at. Replaces `measured_at_ride_height` (physics/01 §5). See also `body.chassis.ride_height_basis`. |
+| `body.reference_ride_height` | value | mm | yes | `REFUSE` | `roll_centre_height`, `camber_gain`, `bump_steer` | Ground clearance under the **bottom** of the plate; not the datum. With `body.chassis.thickness` it derives `z_ground = -(thickness + ride_height)` in the chassis frame. Replaces `measured_at_ride_height` (physics/01 §5). See also `body.chassis.ride_height_basis`. |
 | `body.wheelbase` | value | mm | yes | `REFUSE` | `roll_centre_migration`, `load_transfer_split`, `camber_gain` | Stored and cross-checked against the front wheel centres to ±3 mm (spec §4.2); it is not derived, because a model with no front corner yet still needs the number. |
 | `body.cg.height` | value | mm | no | `ESTIMATE(two_hang_plumb_line)` | `load_transfer_split`, `roll_centre_height` | **Never asked as a measurement** — corner scales cannot locate a CG (D-14). `ASSUME` on this field is a schema error (spec §4.1 rule iii). Tier `inferred` on every consuming output; the band comes from the procedure (hang: ±1.5 mm) or from the component table's own ranges. 28.0 mm is the reference default, not a measurement: the component route on the reference car gives 18.7 mm (physics/01 §4.5). |
 | `body.cg.front_mass_share` | value | % | no | `REFUSE` | `load_transfer_split` | Front share of total mass, normally `derived` from corner weights. `x_cg = wheelbase · front_mass_share`, measured from the rear axle line — derived, never stored. Replaces `cg.longitudinal_front`. |
@@ -1565,7 +1580,7 @@ by` lists §4.4's output ids, so a field that feeds nothing says so.
 | `body.mass.unsprung_front` | value | g | no | `ESTIMATE(unsprung_corner_weighing)` | `load_transfer_split`, `ride_frequency` | Grams per **axle** (both front corners). Default 120 g = 60 g per corner = the reference car's 240 g total. Range 80–160 g per axle (160–320 g per car). `ASSUME(0)` is retired: 0 is outside the range and drops the reference front ride frequency from 10.782 to 9.156 Hz. |
 | `body.mass.unsprung_rear` | value | g | no | `ESTIMATE(unsprung_corner_weighing)` | `load_transfer_split`, `ride_frequency` | Grams per **axle**. Same procedure and band as the front. |
 | `body.chassis.material` | enum: `cfrp`, `aluminium`, `steel` | — | no | `OMIT` | — | Mass, CG height and (R2) torsional stiffness. Absent → the chassis is a rigid plate of the class default and the assumption is stated. Selects the default `shear_modulus` when the bar's material is the same. |
-| `body.chassis.thickness` | value | mm | no | `OMIT` | — | Plate thickness, caliper-measured. Moves mass, CG height and ride height (see `ride_height_basis`), never the roll centre. |
+| `body.chassis.thickness` | value | mm | no | `OMIT` | — | Plate thickness, caliper-measured. Required for the chassis-datum conversion: `z_ground = -(thickness + reference_ride_height)`. Moves mass, CG height and ride height (see `ride_height_basis`), never the roll centre. |
 | `body.chassis.span` | value | mm | no | `OMIT` | — | Plate width across the rails (`w` in physics/10 §4; 90 mm on the reference car). |
 | `body.chassis.rail_factor` | value | 1 | no | `ASSUME(1.0)` | — | κ_rail, the effective-torsion factor for a plate with rails and cut-outs (physics/10 §4). 1.0 = the thin-plate estimate taken at face value; the estimator's own range is ±1–3×, which is why no v1 output claims precision from it. |
 | `body.chassis.torsion_measured` | value | N·m/deg | no | `OMIT` | — | N·m/deg on disk (the racer's unit), converted to N·m/rad at the adapter. Absent → the thin-plate estimate is used and labelled as one. |
@@ -2488,7 +2503,7 @@ that a user is never promised them by accident.
 
 | # | Decision | Lands in |
 |---|---|---|
-| R-1 | **Frame is ISO 8855**: x forward, y **left**, z up, origin on the ground plane at the rear axle centre. Per-wheel quantities are per-wheel signed (camber positive = top outboard, toe positive = toe-in) and mirroring copies them **unchanged** — it negates point `y` only (D-17, `docs/decisions.md`); the side factor `s` is applied once in the solver. Car-level quantities are never signed per side. | §4.2, E3.3, E3.4, all hardpoints re-derived |
+| R-1 | **Frame is ISO 8855**: x forward, y **left**, z up, origin on the **top surface of the chassis plate** at the rear axle centre; the ground plane is derived at `-(thickness + ride_height)`. Per-wheel quantities are per-wheel signed (camber positive = top outboard, toe positive = toe-in) and mirroring copies them **unchanged** — it negates point `y` only (D-17, `docs/decisions.md`); the side factor `s` is applied once in the solver. Car-level quantities are never signed per side. | §4.2, E3.3, E3.4, all hardpoints re-derived |
 | R-2 | **Storage is mm, g, degrees**; SI exists only inside the physics package, at one conversion boundary; the metre-value guard is `\|c\| > 3000 mm`. | §4.1 rule 1, §4.5.4 |
 | D-09 | One gate command, **now `npm run gate`** (typecheck + unit + schema/field drift): the principle is unchanged, the tool is D-19's. | E9.8, AGENTS.md |
 | D-10 | **Superseded by D-19.** iOS is not deferred, because there is nothing to defer: one URL serves both phone platforms. No AC may require a store, an SDK version or a native permission — there is no artifact to hold either. | §2.4, L-10, §8.3 |
