@@ -1,13 +1,25 @@
 import { useEffect, useState } from 'react';
+import { commitHardpointText } from '../editor/hardpointCommit.js';
+import { checkHardpointMm } from '../editor/hardpoints.js';
 import { checkShimText } from '../editor/shim.js';
-import { LENGTH_UNIT, formatSignedNumber } from '../format/format.js';
+import {
+  LENGTH_UNIT,
+  formatFixedNumber,
+  formatSignedNumber,
+} from '../format/format.js';
 import { CamberGainChart } from '../scene/CamberGainChart.js';
 import { FrontViewScene } from '../scene/FrontViewScene.js';
 import { ToeGainChart } from '../scene/ToeGainChart.js';
 import { useSetupStore, type SetupStore } from '../state/setupStore.js';
 import { InstantCentreToggle } from '../view/EndPanels.js';
 import { Value } from '../view/Value.js';
-import { buildGeometryColumn, type GeometryColumn, type GeometryValue } from './geometryData.js';
+import {
+  buildGeometryColumn,
+  type GeometryColumn,
+  type GeometryHardpointAxis,
+  type GeometryHardpointRow,
+  type GeometryValue,
+} from './geometryData.js';
 import type { PageProps } from './PageShell.js';
 
 function GeometryReading({ reading }: { readonly reading: GeometryValue }) {
@@ -35,6 +47,191 @@ function Row({ label, reading }: { readonly label: string; readonly reading: Geo
   );
 }
 
+function entryText(value: number | null): string {
+  return value === null ? '' : String(value);
+}
+
+function HardpointAxisRow({
+  axis,
+  row,
+  axle,
+  axleLabel,
+  cornerKey,
+  store,
+}: {
+  readonly axis: GeometryHardpointAxis;
+  readonly row: GeometryHardpointRow;
+  readonly axle: GeometryColumn['axle'];
+  readonly axleLabel: string;
+  readonly cornerKey: GeometryColumn['cornerKey'];
+  readonly store: SetupStore;
+}) {
+  const [text, setText] = useState(entryText(axis.editValueMm));
+  const [error, setError] = useState<string | null>(null);
+  const fieldId = `hardpoint-${axle}-${row.key}-${axis.axisName}`;
+  const helpId = `${fieldId}-help`;
+  const shim = row.group === 'outboard';
+
+  useEffect(() => {
+    setText(entryText(axis.editValueMm));
+  }, [axis.editValueMm]);
+
+  const commit = () => {
+    if (axis.editValueMm === null) return;
+    const checked = checkHardpointMm(text);
+    if (!checked.ok) {
+      setError(checked.message);
+      return;
+    }
+    const refusal = commitHardpointText(
+      store,
+      {
+        cornerKey,
+        pointKey: row.key,
+        axis: axis.axis,
+        baseMm: axis.baseMm,
+        shim,
+      },
+      text,
+    );
+    if (refusal !== null) {
+      setError(refusal);
+      return;
+    }
+    setError(null);
+  };
+
+  const inputLabel = `${axleLabel} ${row.label}${shim ? ' shim' : ''} ${axis.axisName} in ${LENGTH_UNIT}`;
+
+  return (
+    <div
+      className="settings-row hardpoint-row"
+      data-row={`${row.key}-${axis.axisName}`}
+      data-point={row.key}
+      data-axis={axis.axisName}
+      data-group={row.group}
+    >
+      <label className="settings-label" htmlFor={fieldId}>
+        {row.label}
+        {shim ? ' shim' : ''} {axis.axisName}
+      </label>
+      <div className="shim-control">
+        <input
+          id={fieldId}
+          className="shim-input"
+          type="text"
+          inputMode="decimal"
+          value={text}
+          disabled={axis.editValueMm === null}
+          aria-label={inputLabel}
+          aria-describedby={helpId}
+          onChange={(event) => setText(event.target.value)}
+          onBlur={commit}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') event.currentTarget.blur();
+          }}
+        />
+        <span className="shim-unit">{LENGTH_UNIT}</span>
+        <GeometryReading reading={axis.value} />
+        {shim ? (
+          <span className="hardpoint-absolute" data-role="composed">
+            <span className="shim-unit">absolute {axis.axisName}</span>
+            <GeometryReading reading={axis.absolute} />
+          </span>
+        ) : null}
+      </div>
+      {shim ? (
+        <span className="hardpoint-direction" data-role="direction">
+          {axis.direction}
+        </span>
+      ) : null}
+      {axis.edited ? (
+        <span className="pill" data-edited="true">
+          edited this session
+        </span>
+      ) : null}
+      <p className="shim-help" id={helpId}>
+        {shim
+          ? `Shim offset from the model mount: ${axis.direction} The composed absolute position is shown beside it.`
+          : `${row.key.startsWith('lca_in') ? `x stays fixed at ${formatFixedNumber(row.xMm ?? 0, 1)} mm. ` : ''}Positive y is outboard; positive z is up.`}
+      </p>
+      {error === null ? null : (
+        <p className="editor-error" role="alert">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function HardpointBlock({
+  title,
+  block,
+  description,
+  rows,
+  axle,
+  axleLabel,
+  cornerKey,
+  store,
+}: {
+  readonly title: string;
+  readonly block: string;
+  readonly description: string;
+  readonly rows: readonly GeometryHardpointRow[];
+  readonly axle: GeometryColumn['axle'];
+  readonly axleLabel: string;
+  readonly cornerKey: GeometryColumn['cornerKey'];
+  readonly store: SetupStore;
+}) {
+  return (
+    <div className="geometry-hardpoints" data-block={block} aria-label={`${axleLabel} ${title.toLowerCase()}`}>
+      <h4>{title}</h4>
+      <p className="shim-help">{description}</p>
+      {rows.map((row) => (
+        <div key={row.key} data-hardpoint={row.key}>
+          {row.axes.map((axis) => (
+            <HardpointAxisRow
+              key={`${row.key}-${axis.axisName}`}
+              axis={axis}
+              row={row}
+              axle={axle}
+              axleLabel={axleLabel}
+              cornerKey={cornerKey}
+              store={store}
+            />
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function HubBlock({
+  column,
+  axleLabel,
+}: {
+  readonly column: GeometryColumn;
+  readonly axleLabel: string;
+}) {
+  return (
+    <div className="geometry-hub" data-block="hub" aria-label={`${axleLabel} wheel centre and hub`}>
+      <h4>Wheel centre / hub</h4>
+      <div className="settings-row" data-row="hub-y">
+        <span className="settings-label">Hub y</span>
+        <GeometryReading reading={column.hub.y} />
+      </div>
+      <div className="settings-row" data-row="hub-z">
+        <span className="settings-label">Hub z</span>
+        <GeometryReading reading={column.hub.z} />
+      </div>
+      <p className="shim-help">
+        Read-only. Derived on Home from the ride height, plate thickness and wheel diameter;
+        never editable here.
+      </p>
+    </div>
+  );
+}
+
 function ShimRow({
   column,
   store,
@@ -53,6 +250,7 @@ function ShimRow({
   const disabled = baseMidpointMm === null;
   const fieldId = `shim-${column.axle}`;
   const helpId = `shim-help-${column.axle}`;
+  const axisName = column.axle === 'front' ? 'anti-dive' : 'anti-squat';
 
   const commit = () => {
     if (disabled || baseMidpointMm === null) return;
@@ -73,7 +271,7 @@ function ShimRow({
   return (
     <div className="settings-row shim-row" data-row="shim">
       <label className="settings-label" htmlFor={fieldId}>
-        Shim
+        Shim · {axisName}
       </label>
       <div className="shim-control">
         <input
@@ -185,6 +383,28 @@ function GeometryColumnView({
           </a>
           .
         </p>
+
+        <HardpointBlock
+          title="Inner pivots"
+          block="inner-pivots"
+          description="Chassis-fixed. y and z are editable in millimetres; each inner pivot keeps its fore/aft x."
+          rows={column.innerPivots}
+          axle={column.axle}
+          axleLabel={label}
+          cornerKey={column.cornerKey}
+          store={store}
+        />
+        <HardpointBlock
+          title="Outboard points"
+          block="outboard-points"
+          description="Hub-fixed, entered as signed shim offsets from the model mount. The composed absolute point is read-only."
+          rows={column.outboardPoints}
+          axle={column.axle}
+          axleLabel={label}
+          cornerKey={column.cornerKey}
+          store={store}
+        />
+        <HubBlock column={column} axleLabel={label} />
       </section>
     </article>
   );
@@ -198,12 +418,14 @@ export function GeometryPage({ store }: PageProps) {
       'front',
       snapshot.includeInstantCentre,
       snapshot.editedCorners.has('LF'),
+      snapshot.baseline,
     ),
     buildGeometryColumn(
       snapshot.model,
       'rear',
       snapshot.includeInstantCentre,
       snapshot.editedCorners.has('LR'),
+      snapshot.baseline,
     ),
   ];
 

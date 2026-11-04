@@ -9,6 +9,34 @@ export interface HardpointRow {
   readonly kind: 'chassis' | 'hub';
 }
 
+export type GeometryHardpointGroup = 'inner' | 'outboard';
+
+export interface GeometryHardpointDefinition {
+  readonly key: CornerPointKey;
+  readonly label: string;
+  readonly group: GeometryHardpointGroup;
+}
+
+export const GEOMETRY_INNER_HARDPOINTS: readonly GeometryHardpointDefinition[] = [
+  { key: 'lca_in_a', label: 'Lower-arm inner a', group: 'inner' },
+  { key: 'lca_in_b', label: 'Lower-arm inner b', group: 'inner' },
+  { key: 'uca_in', label: 'Upper link inner', group: 'inner' },
+  { key: 'tie_in', label: 'Tie-rod inner', group: 'inner' },
+  { key: 'damper_up', label: 'Upper damper eye', group: 'inner' },
+];
+
+export const GEOMETRY_OUTBOARD_HARDPOINTS: readonly GeometryHardpointDefinition[] = [
+  { key: 'lca_out', label: 'Lower ball stud', group: 'outboard' },
+  { key: 'uca_out', label: 'Upper ball stud', group: 'outboard' },
+  { key: 'tie_out', label: 'Tie-rod outer', group: 'outboard' },
+  { key: 'damper_lo', label: 'Lower damper eye', group: 'outboard' },
+];
+
+export const GEOMETRY_HARDPOINTS: readonly GeometryHardpointDefinition[] = [
+  ...GEOMETRY_INNER_HARDPOINTS,
+  ...GEOMETRY_OUTBOARD_HARDPOINTS,
+];
+
 const BASE_ROWS: readonly HardpointRow[] = [
   { key: 'lca_in_a', label: 'Lower arm inner (hinge point)', kind: 'chassis' },
   { key: 'lca_out', label: 'Lower ball joint', kind: 'hub' },
