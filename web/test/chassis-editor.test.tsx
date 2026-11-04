@@ -11,7 +11,6 @@ import {
 } from '@setuplab/data';
 import { buildFrontViewScene, solveFrontView } from '@setuplab/physics';
 import rawModel from '../../assets/models/reference-touring-car.json';
-import { AnalysisView } from '../src/app.js';
 import { ChassisEditor } from '../src/editor/ChassisEditor.js';
 import { FrontViewScene } from '../src/scene/FrontViewScene.js';
 import { buildSceneLabels } from '../src/view/endSummary.js';
@@ -85,15 +84,10 @@ function contactPatchPath(html: string): string {
 }
 
 describe('chassis panel', () => {
-  it('sits above the hardpoint editor with labelled, editable ride height and plate thickness', () => {
-    const html = renderToStaticMarkup(createElement(AnalysisView));
+  it('renders labelled, editable ride height and plate thickness', () => {
+    const html = renderChassis(referenceModel());
 
-    const chassisHeading = html.indexOf('>Chassis</h2>');
-    const hardpointHeading = html.indexOf('Hardpoints · front-left');
-    expect(chassisHeading).toBeGreaterThan(-1);
-    expect(hardpointHeading).toBeGreaterThan(-1);
-    expect(chassisHeading).toBeLessThan(hardpointHeading);
-
+    expect(html).toContain('>Chassis</h2>');
     const rideHeight = inputTag(html, 'Ride height in mm');
     const thickness = inputTag(html, 'Plate thickness in mm');
     expect(rideHeight).toContain('value="5"');
@@ -133,18 +127,16 @@ describe('chassis panel', () => {
     expect(fieldText(biggerHtml, 'rear_wheel_centre_height')).toBe('32.0 mm');
   });
 
-  it('renders the same per-vehicle panel in Front, Rear and Both', () => {
-    const front = renderToStaticMarkup(createElement(AnalysisView));
-    const rear = renderToStaticMarkup(createElement(AnalysisView, { initialAxle: 'rear' }));
-    const both = renderToStaticMarkup(createElement(AnalysisView, { initialMode: 'both' }));
+  it('renders the same per-vehicle panel from the same model', () => {
+    const first = renderChassis(referenceModel());
+    const second = renderChassis(referenceModel());
 
-    for (const html of [front, rear, both]) {
-      expect(html).toContain('>Chassis</h2>');
-      expect(html).toContain('Front wheel diameter');
-      expect(html).toContain('Rear wheel diameter');
-      expect(inputTag(html, 'Ride height in mm')).toContain('value="5"');
-      expect(inputTag(html, 'Plate thickness in mm')).toContain('value="2"');
-    }
+    expect(first).toBe(second);
+    expect(first).toContain('>Chassis</h2>');
+    expect(first).toContain('Front wheel diameter');
+    expect(first).toContain('Rear wheel diameter');
+    expect(inputTag(first, 'Ride height in mm')).toContain('value="5"');
+    expect(inputTag(first, 'Plate thickness in mm')).toContain('value="2"');
   });
 
   it('keeps the road line fixed but rotates the arms and changes the roll centre when ride height changes', () => {

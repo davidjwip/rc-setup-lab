@@ -3,7 +3,6 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { parseCarModel, updateAxleSpringRate, type CarModelDocument } from '@setuplab/data';
 import rawModel from '../../assets/models/reference-touring-car.json';
-import { AnalysisView } from '../src/app.js';
 import { InterpreterPanel } from '../src/interpreter/InterpreterPanel.js';
 import { interpret } from '../src/interpreter/interpreter.js';
 
@@ -14,8 +13,11 @@ function referenceModel(): CarModelDocument {
 }
 
 describe('interpreter panel', () => {
-  it('sits in the analysis page and is silent on the unedited model', () => {
-    const html = renderToStaticMarkup(createElement(AnalysisView));
+  it('is silent on the unedited model', () => {
+    const base = referenceModel();
+    const html = renderToStaticMarkup(
+      createElement(InterpreterPanel, { interpretation: interpret(base, base) }),
+    );
     expect(html).toContain('What this change does');
     expect(html).toContain('roll sensitivity');
     expect(html).toContain('unchanged');

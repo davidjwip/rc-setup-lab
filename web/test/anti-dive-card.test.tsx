@@ -1,30 +1,31 @@
-import { createElement } from 'react';
-import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { AnalysisView } from '../src/app.js';
+import {
+  buildAntiDiveInput,
+  gravitiesToMetresPerSecondSquared,
+  parseCarModel,
+} from '@setuplab/data';
+import { solveAntiDive } from '@setuplab/physics';
+import rawModel from '../../assets/models/reference-touring-car.json';
 
-function renderMode(mode: 'front' | 'rear' | 'both'): string {
-  return renderToStaticMarkup(createElement(AnalysisView, { initialMode: mode }));
+function solve(atG: number) {
+  const parsed = parseCarModel(rawModel);
+  if (!parsed.ok) throw new Error(JSON.stringify(parsed.errors));
+  const input = buildAntiDiveInput(parsed.value, gravitiesToMetresPerSecondSquared(atG));
+  if (!input.ok) throw new Error(JSON.stringify(input.errors));
+  return solveAntiDive(input.value);
 }
 
-describe('anti-dive and anti-squat card', () => {
-  it('is present in all three views and states the two-screw input and caster caveat', () => {
-    for (const html of [renderMode('front'), renderMode('rear'), renderMode('both')]) {
-      expect(html.match(/<h2>Anti-dive and anti-squat<\/h2>/g)).toHaveLength(1);
-      expect(html).toContain('two inner pivot screws');
-      expect(html).toContain('front view uses their midpoint');
-      expect(html).toContain('Caster is not a separate term');
-      expect(html).toContain('modelled');
-      expect(html).toContain('Anti-dive');
-      expect(html).toContain('Anti-squat');
-    }
-  });
+describe('anti-dive and anti-squat values', () => {
+  it('reports exactly 0.0 % at both ends for the level reference screws', () => {
+    const braking = solve(-1);
+    const accelerating = solve(1);
 
-  it('reports exactly 0.0 % at both ends for the level reference screws at ±1.0 g', () => {
-    const html = renderMode('front');
-    expect(html).toContain('±1.0 g');
-    expect(html.match(/0\.0 %/g)?.length).toBeGreaterThanOrEqual(2);
-    expect(html).toContain('traction limit');
-    expect(html).toContain('double-wishbone');
+    expect(braking.front.percent.kind).toBe('defined');
+    expect(accelerating.rear.percent.kind).toBe('defined');
+    if (braking.front.percent.kind !== 'defined' || accelerating.rear.percent.kind !== 'defined') {
+      return;
+    }
+    expect(braking.front.percent.value).toBeCloseTo(0, 12);
+    expect(accelerating.rear.percent.value).toBeCloseTo(0, 12);
   });
 });

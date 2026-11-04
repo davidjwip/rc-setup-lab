@@ -7,7 +7,6 @@ import {
   type CarModelDocument,
 } from '@setuplab/data';
 import rawModel from '../../assets/models/reference-touring-car.json';
-import { AnalysisView } from '../src/app.js';
 import { RatesEditor } from '../src/editor/RatesEditor.js';
 
 function referenceModel(): CarModelDocument {
@@ -27,9 +26,23 @@ function inputTag(html: string, label: string): string {
   return html.match(new RegExp(`<input[^>]*aria-label="${escaped}"[^>]*>`))?.[0] ?? '';
 }
 
+function renderRates(axle: 'front' | 'rear'): string {
+  return renderToStaticMarkup(
+    createElement(RatesEditor, {
+      model: referenceModel(),
+      axle,
+      edited: false,
+      solverRefusal: null,
+      changeNote: null,
+      onCommit: () => null,
+      onReset: () => undefined,
+    }),
+  );
+}
+
 describe('rates editor follows the selected axle', () => {
   it('renders the rear spring rate and rear outputs when Rear is selected', () => {
-    const html = renderToStaticMarkup(createElement(AnalysisView, { initialAxle: 'rear' }));
+    const html = renderRates('rear');
     expect(inputTag(html, 'Spring rate in N/mm')).toContain('value="2.6"');
     expect(html).toContain('Rates · rear-left');
     expect(html).toContain('10.0 Hz');
@@ -39,7 +52,7 @@ describe('rates editor follows the selected axle', () => {
   });
 
   it('shows the computed outputs and the provenance of a model value', () => {
-    const html = renderToStaticMarkup(createElement(AnalysisView));
+    const html = renderRates('front');
     expect(inputTag(html, 'Spring rate in N/mm')).toContain('value="3.5"');
     expect(inputTag(html, 'Damper coefficient in N·s/m')).toContain('value="12"');
     expect(html).toContain('Rates · front-left');

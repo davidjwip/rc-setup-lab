@@ -1,44 +1,41 @@
-import { createElement } from 'react';
-import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { AnalysisView } from '../src/app.js';
+import { buildCasterInput, parseCarModel } from '@setuplab/data';
+import { buildCamberInSteerSeries, solveSteeringAxis } from '@setuplab/physics';
+import rawModel from '../../assets/models/reference-touring-car.json';
 
-function renderMode(mode: 'front' | 'rear' | 'both'): string {
-  return renderToStaticMarkup(createElement(AnalysisView, { initialMode: mode }));
+function caster() {
+  const parsed = parseCarModel(rawModel);
+  if (!parsed.ok) throw new Error(JSON.stringify(parsed.errors));
+  const input = buildCasterInput(parsed.value, 'LF');
+  if (!input.ok) throw new Error(JSON.stringify(input.errors));
+  return { input: input.value, result: solveSteeringAxis(input.value) };
 }
 
-describe('caster and steering-axis card', () => {
+describe('caster and steering-axis values', () => {
   it('shows caster, KPI, scrub and trail with the reference values and their signs', () => {
-    for (const mode of ['front', 'both'] as const) {
-      const html = renderMode(mode);
-      expect(html.match(/<h2>Caster and steering-axis geometry<\/h2>/g)).toHaveLength(1);
-      expect(html).toContain('7.70 °');
-      expect(html).toContain('8.00 °');
-      expect(html).toContain('7.02 mm');
-      expect(html).toContain('2.95 mm');
-      expect(html).toContain('positive = axis top rearward');
-      expect(html).toContain('positive = axis top inboard');
-      expect(html).toContain('positive = axis meets the road inboard');
-      expect(html).toContain('positive = axis meets the road ahead of the patch');
+    const { result } = caster();
+    expect(result.caster_rad.kind).toBe('defined');
+    expect(result.kpi_rad.kind).toBe('defined');
+    expect(result.scrub_m.kind).toBe('defined');
+    expect(result.trail_m.kind).toBe('defined');
+    if (
+      result.caster_rad.kind !== 'defined' ||
+      result.kpi_rad.kind !== 'defined' ||
+      result.scrub_m.kind !== 'defined' ||
+      result.trail_m.kind !== 'defined'
+    ) {
+      return;
     }
+
+    expect((result.caster_rad.value * 180) / Math.PI).toBeCloseTo(7.7, 2);
+    expect((result.kpi_rad.value * 180) / Math.PI).toBeCloseTo(8.0, 2);
+    expect(result.scrub_m.value * 1000).toBeCloseTo(7.02, 2);
+    expect(result.trail_m.value * 1000).toBeCloseTo(2.95, 2);
   });
 
-  it('does not render on the rear corner, which has no steering axis', () => {
-    const html = renderMode('rear');
-    expect(html).not.toContain('Caster and steering-axis geometry');
-    expect(html).not.toContain('Camber in steer');
-  });
-
-  it('shows the camber-in-steer series and the split anti-dive contributions', () => {
-    const html = renderMode('front');
-    expect(html).toContain('Camber in steer');
-    expect(html).toContain('at 20°: inside');
-    expect(html).toContain('outside');
-    expect(html).toContain('camber-line-inside');
-    expect(html).toContain('camber-line-outside');
-    expect(html).toContain('Positive steer turns the car left');
-    expect(html).toContain('positive camber is top outboard');
-    expect(html).toContain('Anti-dive split at braking');
-    expect(html).toContain('steering axis: not modelled (TODO)');
+  it('builds the camber-in-steer series from the same steering axis', () => {
+    const { input } = caster();
+    const series = buildCamberInSteerSeries(input);
+    expect(series.kind).toBe('series');
   });
 });

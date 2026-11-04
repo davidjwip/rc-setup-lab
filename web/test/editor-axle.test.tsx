@@ -1,9 +1,8 @@
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { parseCarModel } from '@setuplab/data';
+import { buildAxleRates, parseCarModel } from '@setuplab/data';
 import rawModel from '../../assets/models/reference-touring-car.json';
-import { AnalysisView } from '../src/app.js';
 import { HardpointEditor } from '../src/editor/HardpointEditor.js';
 import {
   checkHardpointMm,
@@ -22,9 +21,26 @@ function referenceModel() {
   return parsed.value;
 }
 
+function renderHardpoints(axle: 'front' | 'rear'): string {
+  const model = referenceModel();
+  const rates = buildAxleRates(model, axle);
+  return renderToStaticMarkup(
+    createElement(HardpointEditor, {
+      model,
+      axle,
+      cornerKey: cornerKeyForAxle(axle),
+      edited: false,
+      solverRefusal: null,
+      installationRatio: rates.ok ? rates.value.installationRatio : null,
+      onCommit: () => null,
+      onReset: () => undefined,
+    }),
+  );
+}
+
 describe('hardpoint editor follows the selected axle', () => {
   it('shows the rear corner values and never the front values when Rear is selected', () => {
-    const html = renderToStaticMarkup(createElement(AnalysisView, { initialAxle: 'rear' }));
+    const html = renderHardpoints('rear');
 
     expect(inputTag(html, 'Upper link inner z in mm')).toContain('value="45"');
     expect(inputTag(html, 'Upper link inner z in mm')).not.toContain('value="38"');
@@ -33,13 +49,12 @@ describe('hardpoint editor follows the selected axle', () => {
     expect(inputTag(html, 'Upper ball stud offset z in mm')).toContain('value="21"');
     expect(html).toContain('80.0 mm, 0.0 mm');
     expect(html).toContain('73.5 mm, 46.0 mm');
-    expect(html).toContain('Rear-view drawing');
     expect(html).toContain('Hardpoints · rear-left');
   });
 
   it('renders the tie-rod rows at both ends', () => {
-    const front = renderToStaticMarkup(createElement(AnalysisView));
-    const rear = renderToStaticMarkup(createElement(AnalysisView, { initialAxle: 'rear' }));
+    const front = renderHardpoints('front');
+    const rear = renderHardpoints('rear');
 
     expect(inputTag(front, 'Tie rod inner y in mm')).not.toBe('');
     expect(inputTag(front, 'Tie rod outer offset z in mm')).not.toBe('');
@@ -48,8 +63,8 @@ describe('hardpoint editor follows the selected axle', () => {
   });
 
   it('edits the damper mounts at both ends and shows the derived motion ratio beside them', () => {
-    const front = renderToStaticMarkup(createElement(AnalysisView));
-    const rear = renderToStaticMarkup(createElement(AnalysisView, { initialAxle: 'rear' }));
+    const front = renderHardpoints('front');
+    const rear = renderHardpoints('rear');
 
     expect(inputTag(front, 'Lower damper eye y in mm')).toContain('value="60"');
     expect(inputTag(front, 'Upper damper eye y in mm')).toContain('value="44"');

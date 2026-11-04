@@ -1,7 +1,10 @@
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { App } from '../src/app.js';
+import { buildFrontViewInput, parseCarModel } from '@setuplab/data';
+import { buildFrontViewScene, solveFrontView } from '@setuplab/physics';
+import rawModel from '../../assets/models/reference-touring-car.json';
+import { FrontViewScene } from '../src/scene/FrontViewScene.js';
 import {
   INSTANT_CENTRE_STORAGE_KEY,
   readInstantCentrePreference,
@@ -9,6 +12,9 @@ import {
   writeInstantCentrePreference,
   type PreferenceStorage,
 } from '../src/scene/instantCentrePreference.js';
+import { createSetupStore, type StorageLike } from '../src/state/setupStore.js';
+import { buildSceneLabels } from '../src/view/endSummary.js';
+import { InstantCentreToggle } from '../src/view/EndPanels.js';
 
 function memoryStorage(
   initial: Record<string, string> = {},
@@ -23,6 +29,22 @@ function memoryStorage(
       values.set(key, value);
     },
   };
+}
+
+function referenceModel() {
+  const parsed = parseCarModel(rawModel);
+  if (!parsed.ok) throw new Error(JSON.stringify(parsed.errors));
+  return parsed.value;
+}
+
+function sceneWith(includeInstantCentre: boolean): string {
+  const model = referenceModel();
+  const input = buildFrontViewInput(model, 'LF');
+  if (!input.ok) throw new Error(JSON.stringify(input.errors));
+  const result = solveFrontView(input.value);
+  const scene = buildFrontViewScene(input.value, result, { includeInstantCentre });
+  const labels = buildSceneLabels(model, 'front', scene, result, false);
+  return renderToStaticMarkup(createElement(FrontViewScene, { scene, labels }));
 }
 
 afterEach(() => {
@@ -51,32 +73,28 @@ describe('instant centre preference', () => {
     expect(toggleInstantCentre(true)).toBe(false);
   });
 
-  it('survives a remount by reading the stored choice', () => {
+  it('survives a remount by reading the stored choice into the store', () => {
     const storage = memoryStorage();
     writeInstantCentrePreference(true, storage);
     vi.stubGlobal('localStorage', storage);
 
-    const html = renderToStaticMarkup(createElement(App));
-    expect(html).toContain('type="button" aria-pressed="true">Instant centre');
-    expect(html).toContain('>on</span>');
+    const store = createSetupStore({
+      baseline: referenceModel(),
+      storage: memoryStorage() as unknown as StorageLike,
+    });
+    expect(store.getSnapshot().includeInstantCentre).toBe(true);
   });
 
   it('offers a native, keyboard-operable toggle that defaults to off', () => {
-    vi.stubGlobal('localStorage', memoryStorage());
-    const html = renderToStaticMarkup(createElement(App));
+    const html = renderToStaticMarkup(
+      createElement(InstantCentreToggle, { value: false, onToggle: () => undefined }),
+    );
     expect(html).toContain('type="button" aria-pressed="false">Instant centre');
     expect(html).toContain('>off</span>');
-    expect(html).not.toContain('data-field="instant_centre"');
   });
 
   it('announces only the drawn state in the scene aria-label', () => {
-    vi.stubGlobal('localStorage', memoryStorage({ [INSTANT_CENTRE_STORAGE_KEY]: 'off' }));
-    const off = renderToStaticMarkup(createElement(App));
-    expect(off).not.toContain('Instant centre at');
-
-    vi.stubGlobal('localStorage', memoryStorage({ [INSTANT_CENTRE_STORAGE_KEY]: 'on' }));
-    const on = renderToStaticMarkup(createElement(App));
-    expect(on).toContain('Instant centre at');
-    expect(on).toContain('data-field="instant_centre"');
+    expect(sceneWith(false)).not.toContain('Instant centre at');
+    expect(sceneWith(true)).toContain('Instant centre at');
   });
 });

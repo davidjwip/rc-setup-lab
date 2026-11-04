@@ -399,6 +399,141 @@ export function updateChassisThickness(
   return error === null ? parseCarModel(raw) : fail([error]);
 }
 
+/** Write `body.wheelbase` (millimetres). The stored source is kept. */
+export function updateBodyWheelbase(
+  model: CarModelDocument,
+  valueMm: number,
+): DataResult<CarModelDocument> {
+  if (!Number.isFinite(valueMm)) {
+    return fail([dataError('invalidValue', 'body.wheelbase', 'value must be finite')]);
+  }
+  const raw = cloneRaw(model);
+  const body = bodyRecord(raw);
+  if (body === null) {
+    return fail([dataError('invalidValue', 'body', 'body must be an object')]);
+  }
+  const error = setMeasuredNumber(body, 'wheelbase', valueMm, raw, 'body.wheelbase');
+  return error === null ? parseCarModel(raw) : fail([error]);
+}
+
+/** Write `body.mass.total`, stored in grams like every mass in the schema. */
+export function updateMassTotal(
+  model: CarModelDocument,
+  valueG: number,
+): DataResult<CarModelDocument> {
+  if (!Number.isFinite(valueG)) {
+    return fail([dataError('invalidValue', 'body.mass.total', 'value must be finite')]);
+  }
+  const raw = cloneRaw(model);
+  const body = bodyRecord(raw);
+  if (body === null) {
+    return fail([dataError('invalidValue', 'body', 'body must be an object')]);
+  }
+  const mass = ensureRecord(body, 'mass');
+  if (mass === null) {
+    return fail([dataError('invalidValue', 'body.mass', 'mass must be an object')]);
+  }
+  const error = setMeasuredNumber(mass, 'total', valueG, raw, 'body.mass.total');
+  return error === null ? parseCarModel(raw) : fail([error]);
+}
+
+/** Write one axle's unsprung mass in grams; the other axle is untouched. */
+export function updateUnsprungMass(
+  model: CarModelDocument,
+  axle: AxleEdit,
+  valueG: number,
+): DataResult<CarModelDocument> {
+  const key = axle === 'front' ? 'unsprung_front' : 'unsprung_rear';
+  const path = `body.mass.${key}`;
+  if (!Number.isFinite(valueG)) {
+    return fail([dataError('invalidValue', path, 'value must be finite')]);
+  }
+  const raw = cloneRaw(model);
+  const body = bodyRecord(raw);
+  if (body === null) {
+    return fail([dataError('invalidValue', 'body', 'body must be an object')]);
+  }
+  const mass = ensureRecord(body, 'mass');
+  if (mass === null) {
+    return fail([dataError('invalidValue', 'body.mass', 'mass must be an object')]);
+  }
+  const error = setMeasuredNumber(mass, key, valueG, raw, path);
+  return error === null ? parseCarModel(raw) : fail([error]);
+}
+
+/**
+ * Write the stored CG height in the chassis frame (`body.cg.height`). The
+ * derivation route is never rewritten here: it is a property of the stored
+ * provenance and measurement block, not of this number.
+ */
+export function updateCgHeight(
+  model: CarModelDocument,
+  valueMm: number,
+): DataResult<CarModelDocument> {
+  if (!Number.isFinite(valueMm)) {
+    return fail([dataError('invalidValue', 'body.cg.height', 'value must be finite')]);
+  }
+  const raw = cloneRaw(model);
+  const body = bodyRecord(raw);
+  if (body === null) {
+    return fail([dataError('invalidValue', 'body', 'body must be an object')]);
+  }
+  const cg = ensureRecord(body, 'cg');
+  if (cg === null) {
+    return fail([dataError('invalidValue', 'body.cg', 'cg must be an object')]);
+  }
+  const error = setMeasuredNumber(cg, 'height', valueMm, raw, 'body.cg.height');
+  return error === null ? parseCarModel(raw) : fail([error]);
+}
+
+/** Write the front mass share as a percentage, matching the stored schema. */
+export function updateCgFrontMassShare(
+  model: CarModelDocument,
+  valuePercent: number,
+): DataResult<CarModelDocument> {
+  if (!Number.isFinite(valuePercent)) {
+    return fail([
+      dataError('invalidValue', 'body.cg.front_mass_share', 'value must be finite'),
+    ]);
+  }
+  const raw = cloneRaw(model);
+  const body = bodyRecord(raw);
+  if (body === null) {
+    return fail([dataError('invalidValue', 'body', 'body must be an object')]);
+  }
+  const cg = ensureRecord(body, 'cg');
+  if (cg === null) {
+    return fail([dataError('invalidValue', 'body.cg', 'cg must be an object')]);
+  }
+  const error = setMeasuredNumber(
+    cg,
+    'front_mass_share',
+    valuePercent,
+    raw,
+    'body.cg.front_mass_share',
+  );
+  return error === null ? parseCarModel(raw) : fail([error]);
+}
+
+/** Write one axle's track in millimetres; the other axle is untouched. */
+export function updateAxleTrack(
+  model: CarModelDocument,
+  axle: AxleEdit,
+  valueMm: number,
+): DataResult<CarModelDocument> {
+  const path = `axles.${axle}.track`;
+  if (!Number.isFinite(valueMm)) {
+    return fail([dataError('invalidValue', path, 'value must be finite')]);
+  }
+  const raw = cloneRaw(model);
+  const axleNode = axleRecord(raw, axle);
+  if (axleNode === null) {
+    return fail([dataError('missingField', `axles.${axle}`, 'this axle is not in the document')]);
+  }
+  const error = setMeasuredNumber(axleNode, 'track', valueMm, raw, path);
+  return error === null ? parseCarModel(raw) : fail([error]);
+}
+
 export type ChassisValueField =
   | 'ride_height'
   | 'thickness'
