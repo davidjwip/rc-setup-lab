@@ -17,6 +17,13 @@ interface FrontViewSceneProps {
   readonly labels: SceneLabels;
   /** Ground is below the chassis-plate datum: the line is derived, not stored. */
   readonly groundLabel?: string;
+  /**
+   * When false the drawing is a static image: no in-drawing glossary links and
+   * no focusable hardpoint groups. The Analysis pages keep the default because
+   * they use the drawing as an editing surface; a read-only Monitor page does
+   * not need ten dead stops in the tab order.
+   */
+  readonly interactive?: boolean;
 }
 
 const VIEW_WIDTH = 340;
@@ -50,7 +57,12 @@ function reasonText(reason: SceneReason): string {
   return REASON_TEXT[reason] ?? reason;
 }
 
-export function FrontViewScene({ scene, labels, groundLabel = 'ground' }: FrontViewSceneProps) {
+export function FrontViewScene({
+  scene,
+  labels,
+  groundLabel = 'ground',
+  interactive = true,
+}: FrontViewSceneProps) {
   const { clip } = scene;
   const xOf = (x: number): number => ((x - clip.minX) / (clip.maxX - clip.minX)) * VIEW_WIDTH;
   const yOf = (y: number): number => ((clip.maxY - y) / (clip.maxY - clip.minY)) * VIEW_HEIGHT;
@@ -198,7 +210,17 @@ export function FrontViewScene({ scene, labels, groundLabel = 'ground' }: FrontV
                 cy={yOf(scene.instantCentre.y)}
                 r={4}
               />
-              <a href="#glossary/instant-centre" className="scene-glossary-link">
+              {interactive ? (
+                <a href="#glossary/instant-centre" className="scene-glossary-link">
+                  <text
+                    className="scene-label"
+                    x={xOf(scene.instantCentre.x) + 7}
+                    y={yOf(scene.instantCentre.y) - 4}
+                  >
+                    {labels.instantCentre ?? 'instant centre'}
+                  </text>
+                </a>
+              ) : (
                 <text
                   className="scene-label"
                   x={xOf(scene.instantCentre.x) + 7}
@@ -206,7 +228,7 @@ export function FrontViewScene({ scene, labels, groundLabel = 'ground' }: FrontV
                 >
                   {labels.instantCentre ?? 'instant centre'}
                 </text>
-              </a>
+              )}
             </g>
           ) : null}
 
@@ -214,24 +236,45 @@ export function FrontViewScene({ scene, labels, groundLabel = 'ground' }: FrontV
             <g data-field="roll_centre" className="scene-roll-centre">
               <title>Roll centre</title>
               <circle cx={xOf(scene.rollCentre.x)} cy={yOf(scene.rollCentre.y)} r={4} />
-              <a href="#glossary/roll-centre" className="scene-glossary-link">
-                <text
-                  className="scene-label scene-value-label"
-                  x={xOf(scene.rollCentre.x) - 8}
-                  y={yOf(scene.rollCentre.y) - 6}
-                  textAnchor="end"
-                >
-                  {labels.rollCentreValue}
-                </text>
-                <text
-                  className="scene-label scene-band-label"
-                  x={xOf(scene.rollCentre.x) - 8}
-                  y={yOf(scene.rollCentre.y) + 4}
-                  textAnchor="end"
-                >
-                  {labels.rollCentreBand}
-                </text>
-              </a>
+              {interactive ? (
+                <a href="#glossary/roll-centre" className="scene-glossary-link">
+                  <text
+                    className="scene-label scene-value-label"
+                    x={xOf(scene.rollCentre.x) - 8}
+                    y={yOf(scene.rollCentre.y) - 6}
+                    textAnchor="end"
+                  >
+                    {labels.rollCentreValue}
+                  </text>
+                  <text
+                    className="scene-label scene-band-label"
+                    x={xOf(scene.rollCentre.x) - 8}
+                    y={yOf(scene.rollCentre.y) + 4}
+                    textAnchor="end"
+                  >
+                    {labels.rollCentreBand}
+                  </text>
+                </a>
+              ) : (
+                <>
+                  <text
+                    className="scene-label scene-value-label"
+                    x={xOf(scene.rollCentre.x) - 8}
+                    y={yOf(scene.rollCentre.y) - 6}
+                    textAnchor="end"
+                  >
+                    {labels.rollCentreValue}
+                  </text>
+                  <text
+                    className="scene-label scene-band-label"
+                    x={xOf(scene.rollCentre.x) - 8}
+                    y={yOf(scene.rollCentre.y) + 4}
+                    textAnchor="end"
+                  >
+                    {labels.rollCentreBand}
+                  </text>
+                </>
+              )}
             </g>
           ) : null}
 
@@ -246,7 +289,7 @@ export function FrontViewScene({ scene, labels, groundLabel = 'ground' }: FrontV
                   key={hardpoint.id}
                   data-field={hardpoint.id}
                   className="scene-hardpoint scene-contact"
-                  tabIndex={0}
+                  tabIndex={interactive ? 0 : undefined}
                 >
                   <title>{name}</title>
                   <path
@@ -265,7 +308,7 @@ export function FrontViewScene({ scene, labels, groundLabel = 'ground' }: FrontV
                 key={hardpoint.id}
                 data-field={hardpoint.id}
                 className="scene-hardpoint"
-                tabIndex={0}
+                tabIndex={interactive ? 0 : undefined}
               >
                 <title>{name}</title>
                 <circle className="scene-hardpoint-hit" cx={x} cy={y} r={8} />

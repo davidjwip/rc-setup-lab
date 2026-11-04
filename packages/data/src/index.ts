@@ -95,6 +95,7 @@ export {
   updateAxleArbType,
   updateAxleArbValue,
   updateAxleDamperCoefficient,
+  updateAxleLowerInnerShimMm,
   updateAxleSpringRate,
   updateAxleTrack,
   updateBodyWheelbase,

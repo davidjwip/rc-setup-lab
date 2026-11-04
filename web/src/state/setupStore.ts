@@ -6,6 +6,7 @@ import {
   updateAxleArbType,
   updateAxleArbValue,
   updateAxleDamperCoefficient,
+  updateAxleLowerInnerShimMm,
   updateAxleSpringRate,
   updateAxleTrack,
   updateBodyWheelbase,
@@ -78,6 +79,7 @@ export interface SetupStore {
   resetCorner(cornerKey: CornerKey): void;
   commitRateChange(axle: RateAxle, change: RateChange): string | null;
   resetRateAxle(axle: RateAxle): void;
+  commitAxleShim(axle: RateAxle, shimMm: number): string | null;
   revertAll(): void;
   setLateralG(value: number): void;
   setLongitudinalG(value: number): void;
@@ -308,6 +310,7 @@ export function createSetupStore(options: CreateSetupStoreOptions = {}): SetupSt
         publish();
       }
     },
+    commitAxleShim: (axle, shimMm) => apply(updateAxleLowerInnerShimMm(model, axle, shimMm)),
     revertAll: () => {
       model = baseline;
       rateNote = null;

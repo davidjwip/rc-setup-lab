@@ -36,8 +36,9 @@ describe('Setup Lab shell', () => {
     expect(html).not.toContain('Front-view drawing');
   });
 
-  it('routes the future pages to their placeholders', () => {
-    expect(renderWithHash('#geometry')).toContain('coming in the next slice');
+  it('routes Geometry to the real page and the other two to placeholders', () => {
+    expect(renderWithHash('#geometry')).toContain('data-axle="front"');
+    expect(renderWithHash('#geometry')).not.toContain('coming in the next slice');
     expect(renderWithHash('#shock')).toContain('coming in the next slice');
     expect(renderWithHash('#transfer')).toContain('coming in the next slice');
   });
