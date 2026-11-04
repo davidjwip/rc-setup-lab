@@ -37,7 +37,8 @@ export type UndefinedReason =
   | 'ambiguousBranch'
   | 'zeroLateral'
   | 'outOfDomain'
-  | 'noBumpSteerSolution';
+  | 'noBumpSteerSolution'
+  | 'noSteeringAxis';
 
 export type Flag =
   | 'parallelLinks'

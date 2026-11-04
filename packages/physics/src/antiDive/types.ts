@@ -63,7 +63,22 @@ export interface AntiDiveAxleResult {
   readonly tanTheta: Solved<number>;
   readonly dynamicAxleLoad_N: Solved<number>;
   readonly axleLoadPerMass_mps2: Solved<number>;
+  readonly contributions: AntiDiveContributions;
   readonly working: AntiDiveAxleWorking;
+}
+
+/**
+ * The split the card shows. `links` is the side-view construction. The steering
+ * axis is deliberately `null`: a double-wishbone's kingpin axis is not a
+ * chassis force path (the ball joints are carried by the arms), so a separate
+ * steering-axis term would be a strut model and would double-count the upper
+ * link's x. The existing side-view solve already consumes that x, so caster
+ * enters anti-dive through the upper link, not as a second term.
+ */
+export interface AntiDiveContributions {
+  readonly links: Solved<number>;
+  readonly steeringAxis: Solved<number> | null;
+  readonly total: Solved<number>;
 }
 
 export interface AntiDiveWorking {

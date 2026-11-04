@@ -80,6 +80,7 @@ export {
   buildAntiDiveInput,
   buildAntiRollBarInput,
   buildAxleRates,
+  buildCasterInput,
   buildDampingRatioInput,
   buildFrontViewInput,
   buildLoadTransferInput,

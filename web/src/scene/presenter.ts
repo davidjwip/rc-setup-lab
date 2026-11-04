@@ -1,4 +1,9 @@
-import type { AntiDiveCurve, CamberSeries, ToeSeries } from '@setuplab/physics';
+import type {
+  AntiDiveCurve,
+  CamberInSteerSeries,
+  CamberSeries,
+  ToeSeries,
+} from '@setuplab/physics';
 import {
   formatAngleDegrees,
   formatAntiDivePercent,
@@ -183,6 +188,86 @@ export function buildToeChart(series: ToeSeries): ToeChartView {
  * Anti-dive on the braking side (negative a_x) and anti-squat on the
  * acceleration side (positive a_x), as one curve against longitudinal g.
  */
+export interface CamberSteerLine {
+  readonly label: string;
+  readonly role: 'inside' | 'outside';
+  readonly points: readonly ChartPoint[];
+}
+
+export interface CamberSteerChartView {
+  readonly lines: readonly CamberSteerLine[];
+  readonly xTicks: readonly ChartTick[];
+  readonly yTicks: readonly ChartTick[];
+  readonly domain: ChartDomain;
+  readonly xAxisLabel: string;
+  readonly yAxisLabel: string;
+  readonly description: string;
+  readonly atTwentyLabel: string;
+}
+
+/**
+ * Two wheels on one plot. At a positive steer angle the car turns left, so the
+ * left wheel is inside and the right wheel is outside; the series themselves
+ * are per-wheel and keep their sign convention.
+ */
+export function buildCamberSteerChart(
+  left: CamberInSteerSeries,
+  right: CamberInSteerSeries,
+): CamberSteerChartView {
+  const lines: CamberSteerLine[] = [
+    {
+      label: 'inside (LF)',
+      role: 'inside',
+      points: left.samples.map((sample) => ({ x: sample.steer_rad, y: sample.camber_rad })),
+    },
+    {
+      label: 'outside (RF)',
+      role: 'outside',
+      points: right.samples.map((sample) => ({ x: sample.steer_rad, y: sample.camber_rad })),
+    },
+  ];
+  const values = lines.flatMap((line) => line.points.map((point) => point.y));
+  const rawMin = Math.min(...values);
+  const rawMax = Math.max(...values);
+  const padding = Math.max((rawMax - rawMin) * 0.12, 0.002);
+  const minY = rawMin - padding;
+  const maxY = rawMax + padding;
+  const middleY = (minY + maxY) / 2;
+  const minX = left.samples[0]?.steer_rad ?? 0;
+  const last = left.samples[left.samples.length - 1];
+  const maxX = last?.steer_rad ?? 0;
+
+  const at = (series: CamberInSteerSeries, degrees: number): CamberInSteerSeries['samples'][number] | undefined =>
+    series.samples.find(
+      (sample) => Math.abs((sample.steer_rad * 180) / Math.PI - degrees) < 1e-9,
+    );
+  const leftTwenty = at(left, 20);
+  const rightTwenty = at(right, 20);
+  const atTwentyLabel =
+    leftTwenty === undefined || rightTwenty === undefined
+      ? '20° steer not sampled'
+      : `at 20°: inside ${formatAngleDegrees(leftTwenty.camber_rad)}, outside ${formatAngleDegrees(
+          rightTwenty.camber_rad,
+        )}`;
+
+  return {
+    lines,
+    xTicks: [0, 10, 20, 30].map((degrees) => ({
+      value: (degrees * Math.PI) / 180,
+      label: `${degrees}°`,
+    })),
+    yTicks: [minY, middleY, maxY].map((value) => ({
+      value,
+      label: formatAngleDegrees(value, 1),
+    })),
+    domain: { minX, maxX, minY, maxY },
+    xAxisLabel: 'steer (°, + = left)',
+    yAxisLabel: 'camber change (°)',
+    description: `Camber change against steer for both front wheels, from 0 to 30 degrees. Positive steer turns the car left, so LF is the inside wheel and RF is outside. Positive camber is top outboard. ${atTwentyLabel}.`,
+    atTwentyLabel,
+  };
+}
+
 export function buildAntiDiveChart(curve: AntiDiveCurve): AntiDiveChartView {
   const antiDivePoints: ChartPoint[] = [];
   const antiSquatPoints: ChartPoint[] = [];
@@ -228,6 +313,6 @@ export function buildAntiDiveChart(curve: AntiDiveCurve): AntiDiveChartView {
     xAxisLabel: 'longitudinal acceleration (g, + = accelerating)',
     yAxisLabel: 'anti-dive / anti-squat (%)',
     description:
-      'Anti-dive on the braking side and anti-squat on the acceleration side, plotted against longitudinal acceleration. Evaluated at the traction limit; caster is not modelled.',
+      'Anti-dive on the braking side and anti-squat on the acceleration side, plotted against longitudinal acceleration. Evaluated at the traction limit; caster enters through the upper link, not as a separate axis term.',
   };
 }

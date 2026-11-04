@@ -16,6 +16,7 @@ import {
 import type {
   AntiDiveAxleResult,
   AntiDiveAxleWorking,
+  AntiDiveContributions,
   AntiDiveCurve,
   AntiDiveInput,
   AntiDiveResult,
@@ -190,6 +191,14 @@ function percentage(
   return tanTheta * (wheelbase_m / cgHeight_m) * weightShare(dynamicLoad_N, mass_kg, gravity_mps2) * 100;
 }
 
+function contributionsFor(links: Solved<number>): AntiDiveContributions {
+  return {
+    links,
+    steeringAxis: null,
+    total: links,
+  };
+}
+
 function buildAxleResult(
   input: AntiDiveInput,
   axle: SideViewAxleInput,
@@ -228,11 +237,13 @@ function buildAxleResult(
   ];
   const zero = (): AntiDiveAxleResult => {
     const band: Band = { low: 0, high: 0 };
+    const links = defined(0, optionsFor(sources, band));
     return {
-      percent: defined(0, optionsFor(sources, band)),
+      percent: links,
       tanTheta: defined(0, optionsFor(sources, null)),
       dynamicAxleLoad_N: defined(dynamicAxleLoad_N, optionsFor(sources, null)),
       axleLoadPerMass_mps2: defined(working.axleLoadPerMass_mps2 ?? 0, optionsFor(sources, null)),
+      contributions: contributionsFor(links),
       working,
     };
   };
@@ -252,6 +263,7 @@ function buildAxleResult(
       tanTheta: failure,
       dynamicAxleLoad_N: failure,
       axleLoadPerMass_mps2: failure,
+      contributions: contributionsFor(failure),
       working,
     };
   }
@@ -276,6 +288,7 @@ function buildAxleResult(
       tanTheta: failure,
       dynamicAxleLoad_N: failure,
       axleLoadPerMass_mps2: failure,
+      contributions: contributionsFor(failure),
       working,
     };
   }
@@ -306,11 +319,13 @@ function buildAxleResult(
   const band: Band | null =
     cgBand === null ? null : { low: Math.min(...bands), high: Math.max(...bands) };
 
+  const links = defined(value, optionsFor(sources, band));
   return {
-    percent: defined(value, optionsFor(sources, band)),
+    percent: links,
     tanTheta: defined(tanTheta, optionsFor(sources, null)),
     dynamicAxleLoad_N: defined(dynamicAxleLoad_N, optionsFor(sources, null)),
     axleLoadPerMass_mps2: defined(working.axleLoadPerMass_mps2 ?? 0, optionsFor(sources, null)),
+    contributions: contributionsFor(links),
     working,
   };
 }
@@ -365,6 +380,7 @@ export function solveAntiDive(input: AntiDiveInput): AntiDiveResult {
       tanTheta: failure,
       dynamicAxleLoad_N: failure,
       axleLoadPerMass_mps2: failure,
+      contributions: contributionsFor(failure),
       working: emptyAxleWorking(),
     };
     return { front: empty, rear: empty, working };

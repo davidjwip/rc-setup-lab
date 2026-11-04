@@ -6,6 +6,7 @@ import {
   type AntiDiveInput,
   type AntiRollBarInput,
   type Band,
+  type CasterInput,
   type CgComponentInput,
   type Confidence,
   type FrontViewInput,
@@ -619,6 +620,60 @@ export function buildToeInput(
     },
     bumpLimit_m: millimetresToMetres(bumpLimit.value),
     droopLimit_m: millimetresToMetres(droopLimit.value),
+  });
+}
+
+/**
+ * Build the steering-axis input for one front corner. The two ball joints and
+ * the derived wheel centre are composed into the ground frame at this one
+ * boundary (D-25); the physics package never sees a stored wheel centre or a
+ * stored caster. Rear corners are refused explicitly: a rear upright has no
+ * steering axis, and the module must not be handed one.
+ */
+export function buildCasterInput(
+  model: CarModelDocument,
+  cornerKey: CornerKey,
+): DataResult<CasterInput> {
+  const corner = cornerFor(model, cornerKey);
+  if (!corner.ok) return corner;
+
+  if (cornerKey === 'LR' || cornerKey === 'RR') {
+    return fail([
+      dataError(
+        'missingField',
+        `corners.${cornerKey}.caster`,
+        'rear corners have no steering axis; caster, KPI, scrub and trail are front-only',
+      ),
+    ]);
+  }
+
+  const offsetMm = datumOffsetMm(model);
+  if (offsetMm === null) return fail(missingDatumErrors());
+
+  const lower = point3(model, cornerKey, 'lca_out', offsetMm);
+  const upper = point3(model, cornerKey, 'uca_out', offsetMm);
+  const wheelCentre = point3(model, cornerKey, 'wc', offsetMm);
+
+  const errors: DataError[] = [];
+  if (lower === null) {
+    errors.push(dataError('missingField', `corners.${cornerKey}.points.lca_out`, 'required for caster'));
+  }
+  if (upper === null) {
+    errors.push(dataError('missingField', `corners.${cornerKey}.points.uca_out`, 'required for caster'));
+  }
+  if (wheelCentre === null) {
+    errors.push(dataError('missingField', `corners.${cornerKey}.points.wc`, 'required for caster'));
+  }
+  if (errors.length > 0 || lower === null || upper === null || wheelCentre === null) {
+    return fail(errors);
+  }
+
+  return ok({
+    corner: cornerKey,
+    side: SIDE_SIGN[cornerKey],
+    lowerBallJoint_m: lower,
+    upperBallJoint_m: upper,
+    wheelCentre_m: wheelCentre,
   });
 }
 

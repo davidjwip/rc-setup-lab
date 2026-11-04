@@ -58,6 +58,11 @@
     "roll_stiffness",
     "load_transfer_split",
     "anti_dive",
-    "anti_squat"
+    "anti_squat",
+    "caster",
+    "kpi",
+    "scrub_radius",
+    "trail",
+    "camber_in_steer"
   ]
 }

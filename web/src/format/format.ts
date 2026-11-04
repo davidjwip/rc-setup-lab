@@ -165,6 +165,11 @@ export function formatAngleDegrees(radians: number, digits = 2): string {
   return `${((radians * 180) / Math.PI).toFixed(digits)} ${ANGLE_UNIT}`;
 }
 
+export function formatAngleBand(band: Band, digits = 1): string {
+  const halfWidth = (band.high - band.low) / 2;
+  return `±${formatAngleDegrees(halfWidth, digits)}`;
+}
+
 export function formatLateralG(value: number, digits = 1): string {
   return `${value.toFixed(digits)} ${LATERAL_G_UNIT}`;
 }

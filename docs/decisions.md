@@ -291,9 +291,48 @@ anti-dive %  = tan θ_f · (L/h) · (Fz_front(a)/m) · 100
 anti-squat % = tan θ_r · (L/h) · (Fz_rear(a)/m)  · 100
 ```
 
-`h` is the **derived** whole-car CG height above ground (`cg.z − z_ground`, D-26), so ride height moves it. The percentages are signed (negative is pro-dive / pro-squat) and are plotted as a curve against signed `a_x`, labelled **evaluated at the traction limit**. The sign is set by which side of the contact patch the instant centre lies on, not by the raw quotient, so a wrong-side IC below the ground plane still reads negative rather than flipping through a double negative. A missing CG height refuses the output with `incompleteModel` naming `body.cg.height`; no default is substituted inside this module. Caster is **not modelled yet**, so the figure reads conservative and every value carries `modelledGeometry` and `diagnosticOnly`.
+`h` is the **derived** whole-car CG height above ground (`cg.z − z_ground`, D-26), so ride height moves it. The percentages are signed (negative is pro-dive / pro-squat) and are plotted as a curve against signed `a_x`, labelled **evaluated at the traction limit**. The sign is set by which side of the contact patch the instant centre lies on, not by the raw quotient, so a wrong-side IC below the ground plane still reads negative rather than flipping through a double negative. A missing CG height refuses the output with `incompleteModel` naming `body.cg.height`; no default is substituted inside this module. Caster **is** modelled since D-28, but its **contribution to anti-dive is not yet included** (TODO in physics/04 §3.7), so the figure still reads conservative; every value carries `modelledGeometry` and `diagnosticOnly`.
 
 Forecloses: asking the user for a bias or split that the car does not have; reintroducing a single shared inner-pivot height; treating a level hinge axis as a refusal; and any handling verdict derived from the anti percentages.
+
+**D-28 — Caster is derived from the two ball joints, with a stated sign convention.** Ruled
+2026-11-04 (slice 24). Caster needs no new measurement: it is the line through the lower and upper
+ball joints the model already stores. The outboard points are hub offsets (D-25), so the adapter
+composes them into the ground frame once and the physics package consumes only absolute points.
+
+```text
+caster = atan2(−(Uₒ.x − Lₒ.x), Uₒ.z − Lₒ.z)     positive = axis top leans rearward
+KPI    = s · atan2(−(Uₒ.y − Lₒ.y), Uₒ.z − Lₒ.z) positive = axis top leans inboard (per wheel)
+trail  = x_g − x_cp                              positive = axis meets the road ahead of the patch
+scrub  = s · (y_cp − y_g)                        positive = axis meets the road inboard
+```
+
+The reference car reproduces **caster 7.70°, KPI 8.00°, scrub +7.02 mm, trail +2.95 mm** from its
+`lca_out`, `uca_out` and derived wheel centre.
+
+**Camber in steer** is a rigid rotation of the upright about the real 3-D kingpin axis — the same
+carrier idea as module 04, extended out of the front-view plane. It is not a `caster · sin δ`
+approximation. The card reports the change attributable to caster: the actual rotated upright minus
+the same upright with its caster zeroed (same y and z), so **caster = 0 is exactly 0 at every steer
+angle** even when KPI is non-zero. Positive steer = the car turns left; positive camber = top
+outboard; at a positive steer angle the left wheel is inside and the right wheel is outside.
+
+**Anti-dive** gains no separate steering-axis term. A double-wishbone's kingpin axis is not a chassis
+force path — its ends are carried by the lower arm and the upper link, not by a strut — so a
+steering-axis percentage would be a strut model and would double-count the upper link's x. Caster
+therefore enters anti-dive through the existing side-view `uca_in → uca_out` line. The card reports
+`links · steering axis: not modelled (TODO) · total`, and the total is the link term.
+
+**Hub invariance (D-25).** Caster and KPI are angles of the axis, built from the stored offsets, so
+they are bit-identical across ride-height and wheel-diameter changes. Scrub and trail are the axis's
+intersection with the road: a ride-height change leaves every outboard ground-frame point where it
+was and is bit-identical for all four; a wheel-diameter change translates the upright vertically, so
+the angles stay bit-identical while scrub and trail follow the ground the car now has. Freezing them
+would report a ground point the car no longer has.
+
+Forecloses: a stored caster input driving the derived numbers; a `caster · sin δ` camber
+approximation; a strut-style steering-axis anti-dive term on this linkage; and drawing the rear
+corner a steering axis it does not have.
 
 ## Proposals awaiting a decision
 
