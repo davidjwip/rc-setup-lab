@@ -2,6 +2,7 @@ import type { Band } from '@setuplab/physics';
 
 export const LENGTH_UNIT = 'mm';
 export const CAMBER_GAIN_UNIT = '°/mm';
+export const TOE_GAIN_UNIT = '°/mm';
 export const WHEEL_RATE_UNIT = 'N/mm';
 export const RIDE_FREQUENCY_UNIT = 'Hz';
 export const ROLL_STIFFNESS_UNIT = 'N·m/deg';
@@ -36,6 +37,23 @@ export function formatBandFromMetres(band: Band): string {
 export function formatCamberGain(radiansPerMetre: number): string {
   const degreesPerMillimetre = (radiansPerMetre * 180) / Math.PI / 1000;
   return `${degreesPerMillimetre.toFixed(2)} ${CAMBER_GAIN_UNIT}`;
+}
+
+/** Per-wheel toe, radians in the solver, degrees on screen. Positive = toe-in. */
+export function formatToe(radians: number, digits = 2): string {
+  return formatAngleDegrees(radians, digits);
+}
+
+/** Toe gain: rad/m in the solver, °/mm on screen. */
+export function formatToeGain(radiansPerMetre: number, digits = 3): string {
+  const degreesPerMillimetre = (radiansPerMetre * 180) / Math.PI / 1000;
+  const sign = degreesPerMillimetre > 0 ? '+' : '';
+  return `${sign}${degreesPerMillimetre.toFixed(digits)} ${TOE_GAIN_UNIT}`;
+}
+
+/** Total toe change across the drawing's ±5 mm, in degrees. */
+export function formatToeChange(radians: number, digits = 3): string {
+  return formatAngleDegrees(radians, digits);
 }
 
 export function formatSlope(value: number): string {

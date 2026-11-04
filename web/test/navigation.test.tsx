@@ -98,6 +98,7 @@ describe('view mode navigation', () => {
     expect(front.strip.map((entry) => entry.id)).toEqual([
       'roll-centre',
       'camber-gain',
+      'toe-gain',
       'wheel-rate',
       'ride-frequency',
     ]);

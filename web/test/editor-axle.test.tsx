@@ -35,21 +35,20 @@ describe('hardpoint editor follows the selected axle', () => {
     expect(html).toContain('Hardpoints · rear-left');
   });
 
-  it('renders the front tie-rod rows but not the rear', () => {
+  it('renders the tie-rod rows at both ends', () => {
     const front = renderToStaticMarkup(createElement(AnalysisView));
     const rear = renderToStaticMarkup(createElement(AnalysisView, { initialAxle: 'rear' }));
 
     expect(inputTag(front, 'Tie rod inner y in mm')).not.toBe('');
     expect(inputTag(front, 'Tie rod outer z in mm')).not.toBe('');
-    expect(rear).not.toContain('Tie rod inner');
-    expect(rear).not.toContain('Tie rod outer');
-    expect(inputTag(rear, 'Tie rod inner y in mm')).toBe('');
+    expect(inputTag(rear, 'Tie rod inner y in mm')).toContain('value="32"');
+    expect(inputTag(rear, 'Tie rod outer z in mm')).toContain('value="31"');
   });
 
   it('maps the axle selection onto the corner that receives an edit', () => {
     expect(cornerKeyForAxle('front')).toBe('LF');
     expect(cornerKeyForAxle('rear')).toBe('LR');
-    expect(hardpointRowsForAxle('rear').some((row) => row.key === 'tie_in')).toBe(false);
+    expect(hardpointRowsForAxle('rear').some((row) => row.key === 'tie_in')).toBe(true);
     expect(hardpointRowsForAxle('front').some((row) => row.key === 'tie_in')).toBe(true);
   });
 

@@ -4,6 +4,7 @@ import {
   buildFrontViewInput,
   buildLoadTransferInput,
   buildRollStiffnessInput,
+  buildToeInput,
   chassisDatum,
   gravitiesToMetresPerSecondSquared,
   parseCarModel,
@@ -24,6 +25,7 @@ import {
 import {
   buildCamberSeries,
   buildFrontViewScene,
+  buildToeSeries,
   solveFrontView,
   solveLoadTransfer,
   solveRollStiffness,
@@ -35,12 +37,13 @@ import { RatesEditor } from './editor/RatesEditor.js';
 import { describeRateChange, rateSnapshot, type RateChange } from './editor/rates.js';
 import { CamberGainChart } from './scene/CamberGainChart.js';
 import { FrontViewScene } from './scene/FrontViewScene.js';
+import { ToeGainChart } from './scene/ToeGainChart.js';
 import {
   readInstantCentrePreference,
   toggleInstantCentre,
   writeInstantCentrePreference,
 } from './scene/instantCentrePreference.js';
-import { buildCamberChart } from './scene/presenter.js';
+import { buildCamberChart, buildToeChart } from './scene/presenter.js';
 import {
   ANGLE_UNIT,
   CAMBER_GAIN_UNIT,
@@ -74,6 +77,8 @@ import {
   formatSlope,
   formatSpringRateFromNpm,
   formatTorsionalStiffness,
+  formatToeChange,
+  formatToeGain,
   formatWheelRateFromNpm,
 } from './format/format.js';
 import { GlossaryView } from './glossary/GlossaryView.js';
@@ -230,6 +235,18 @@ export function AnalysisView({
         ? buildCamberChart(camberSeries)
         : null,
     [camberSeries],
+  );
+  const toeInputResult = useMemo(
+    () => (model === null ? null : buildToeInput(model, cornerKey)),
+    [model, cornerKey],
+  );
+  const toeSeries = useMemo(
+    () => (toeInputResult !== null && toeInputResult.ok ? buildToeSeries(toeInputResult.value) : null),
+    [toeInputResult],
+  );
+  const toeChart = useMemo(
+    () => (toeSeries !== null && toeSeries.kind === 'series' ? buildToeChart(toeSeries) : null),
+    [toeSeries],
   );
   const sceneLabels = useMemo(
     () =>
@@ -499,6 +516,13 @@ export function AnalysisView({
               ) : (
                 <p className="no-answer">The camber curve needs a solved corner.</p>
               )}
+              {toeChart !== null ? (
+                <ToeGainChart view={toeChart} />
+              ) : (
+                <p className="no-answer">
+                  The toe curve needs a solved tie-rod geometry and the stored static toe.
+                </p>
+              )}
               <p className="footnote">
                 The drawing renders the solver's numbers. It does not re-solve the geometry: the
                 roll-centre marker is the value in the card below, and the dashed lines are the
@@ -549,6 +573,58 @@ export function AnalysisView({
                 ? formatCamberGain(result.camberGainGlobal.value)
                 : stateLabel(result.camberGainGlobal)}
               .
+            </p>
+          </article>
+
+          <article className="card result-card">
+            <div className="card-heading">
+              <h2>Toe gain · {axle}</h2>
+              <span className="pill">
+                {toeSeries === null
+                  ? 'not computable'
+                  : toeSeries.kind === 'series'
+                    ? stateLabel(toeSeries.gain_radPerM)
+                    : `undefined · ${toeSeries.reason}`}
+              </span>
+            </div>
+            {toeSeries !== null && toeSeries.kind === 'series' ? (
+              toeSeries.gain_radPerM.kind === 'defined' ? (
+                <>
+                  <div className="value-row">
+                    <span className="value">{formatToeGain(toeSeries.gain_radPerM.value)}</span>
+                    <span className="band">per wheel · positive = toe-in</span>
+                  </div>
+                  <p className="hint">
+                    Total across the drawing&apos;s ±5 mm:{' '}
+                    {toeSeries.totalAcrossRange_rad.kind === 'defined'
+                      ? formatToeChange(toeSeries.totalAcrossRange_rad.value)
+                      : stateLabel(toeSeries.totalAcrossRange_rad)}{' '}
+                    ·{' '}
+                    {toeSeries.direction === 'toe-in'
+                      ? 'toe-in in compression'
+                      : toeSeries.direction === 'toe-out'
+                        ? 'toe-out in compression'
+                        : 'no change across travel'}
+                    . Positive toe is toe-in. The rear toe link is solved the same way as the
+                    front tie rod; there is no rack input.
+                  </p>
+                </>
+              ) : (
+                <p className="no-answer">{stateLabel(toeSeries.gain_radPerM)}</p>
+              )
+            ) : (
+              <p className="no-answer">
+                {toeSeries === null
+                  ? toeInputResult !== null && !toeInputResult.ok
+                    ? toeInputResult.errors.map((error) => error.path).join(', ')
+                    : 'no model'
+                  : `${toeSeries.reason}; the geometry has no tie-rod solution.`}
+              </p>
+            )}
+            <p className="footnote">
+              Standard rigid-upright solve: the lower ball joint rides the arm, the upper ball joint
+              is held by its link length, and the tie-rod length fixes the steer angle. Positive toe
+              is toe-in (D-17).
             </p>
           </article>
 
