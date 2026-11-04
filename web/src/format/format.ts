@@ -58,6 +58,11 @@ export function formatLengthFromMetres(metres: number, digits = 2): string {
   return formatLengthMm(metres * 1000, digits);
 }
 
+/** The value slot only; lengths are metres inside the solver. */
+export function formatLengthFromMetresValue(metres: number, digits = 2): string {
+  return (metres * 1000).toFixed(digits);
+}
+
 export function formatRollCentreHeight(metres: number): string {
   return formatLengthFromMetres(metres, 2);
 }
@@ -230,7 +235,12 @@ export function formatPercentagePointBand(band: Band, digits = 2): string {
 
 /** The solver stores the roll angle in radians; the UI reads degrees. */
 export function formatAngleDegrees(radians: number, digits = 2): string {
-  return `${((radians * 180) / Math.PI).toFixed(digits)} ${ANGLE_UNIT}`;
+  return `${formatAngleRadiansValue(radians, digits)} ${ANGLE_UNIT}`;
+}
+
+/** The value slot only; the solver stores radians, the page shows degrees. */
+export function formatAngleRadiansValue(radians: number, digits = 2): string {
+  return ((radians * 180) / Math.PI).toFixed(digits);
 }
 
 export function formatAngleBand(band: Band, digits = 1): string {
@@ -251,6 +261,6 @@ export function formatCgRoute(
     case 'component_mass_moment':
       return 'estimated · component-mass';
     case 'stated_default':
-      return 'stated default (D-18)';
+      return 'stated default';
   }
 }

@@ -66,7 +66,7 @@ describe('page shell routes', () => {
     expect(renderWithHash('#home')).toContain('<h1>Home</h1>');
     expect(renderWithHash('#geometry')).toMatch(/<h1[^>]*>Geometry<\/h1>/);
     expect(renderWithHash('#shock')).toMatch(/<h1[^>]*>Shock<\/h1>/);
-    expect(renderWithHash('#transfer')).toContain('<h1>Transfer</h1>');
+    expect(renderWithHash('#transfer')).toMatch(/<h1[^>]*>Transfer<\/h1>/);
   });
 
   it('has a keyboard-operable top nav with aria-current on the current page', () => {
@@ -136,15 +136,12 @@ describe('page shell routes', () => {
     }
   });
 
-  it('renders the real Geometry and Shock pages and keeps Transfer a placeholder', () => {
-    for (const Page of [GeometryPage, ShockPage]) {
+  it('renders the real Geometry, Shock and Transfer pages', () => {
+    for (const Page of [GeometryPage, ShockPage, TransferPage]) {
       const html = renderToStaticMarkup(createElement(Page, { store: store() }));
       expect(html).not.toContain('coming in the next slice');
       expect(html).toContain('data-axle="front"');
       expect(html).toContain('data-axle="rear"');
     }
-
-    const transfer = renderToStaticMarkup(createElement(TransferPage, { store: store() }));
-    expect(transfer).toContain('coming in the next slice');
   });
 });
