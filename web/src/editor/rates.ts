@@ -201,7 +201,7 @@ function direction(label: string, before: number | null, after: number | null): 
 }
 
 function number(value: number | null, digits: number): string {
-  return value === null ? '—' : value.toFixed(digits);
+  return value === null ? 'not available' : value.toFixed(digits);
 }
 
 /**

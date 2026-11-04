@@ -36,7 +36,7 @@ describe('interpreter panel', () => {
     expect(html).toContain('roll sensitivity');
     expect(html).toContain('from baseline');
     expect(html).toContain('mid');
-    expect(html).toContain('reliable');
+    expect(html).toContain('mechanism');
     expect(html).toContain('front share of roll resistance');
     expect(html).toContain('4.00');
     expect(html).toContain('Grip is inferred');

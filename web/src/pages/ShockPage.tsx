@@ -13,6 +13,7 @@ import {
 import { LENGTH_UNIT, formatSignedNumber } from '../format/format.js';
 import { FrontViewScene } from '../scene/FrontViewScene.js';
 import { useSetupStore, type DamperMountShim, type SetupStore } from '../state/setupStore.js';
+import { attachDeltas } from '../view/delta.js';
 import { InstantCentreToggle } from '../view/EndPanels.js';
 import { Value } from '../view/Value.js';
 import type { PageProps } from './PageShell.js';
@@ -39,6 +40,7 @@ function ShockReading({ reading }: { readonly reading: ShockValue }) {
       accessibleName={reading.accessibleName}
       size={reading.size}
       {...(reading.reason === undefined ? {} : { reason: reading.reason })}
+      {...(reading.delta === undefined || reading.delta === null ? {} : { delta: reading.delta })}
     />
   );
 }
@@ -240,7 +242,7 @@ function ShockColumnView({
           />
         ) : (
           <p className="no-answer">
-            {column.refusal ?? 'The drawing needs a solved corner.'}
+            {column.refusal ?? 'The drawing needs a complete corner. Measure the missing points on Geometry.'}
           </p>
         )}
         <InstantCentreToggle value={includeInstantCentre} onToggle={store.toggleInstantCentre} />
@@ -268,9 +270,9 @@ function ShockColumnView({
           <ShockReading reading={column.dampingRatio} />
         </div>
         <p className="shock-note">
-          <strong>estimate</strong> — the wheel-level coefficient carries a ±50 % band
-          (D-13). Heavier oil → more damping; standing the shock up → more wheel-level
-          damping.
+          <strong>estimate</strong> — the wheel-level coefficient carries a ±50 % band.
+          Heavier oil gives more damping; standing the shock up gives more damping at the
+          wheel.
         </p>
       </section>
 
@@ -300,8 +302,8 @@ function ShockColumnView({
           ariaLabel="Damper coefficient in N·s/m"
           help={
             settings.damperCoefficientIsStatedDefault
-              ? 'The model stores no coefficient, so the stated default is shown. Editing it makes it a session estimate, never measured.'
-              : 'A higher coefficient is more damping at the wheel.'
+              ? 'No coefficient is stored, so the stated default is shown. Change it and it becomes your estimate for this session.'
+              : 'A higher coefficient means more damping at the wheel.'
           }
           onCommit={(valueNsPerM) => commit({ kind: 'damper', valueNsPerM })}
         />
@@ -417,13 +419,25 @@ function ShockColumnView({
 
 export function ShockPage({ store }: PageProps) {
   const snapshot = useSetupStore(store);
-  const data = buildShockPage(
+  const current = buildShockPage(
     snapshot.model,
     snapshot.baseline,
     snapshot.includeInstantCentre,
     snapshot.editedCorners,
     snapshot.editedRateAxles,
   );
+  const data = snapshot.edited
+    ? attachDeltas(
+        current,
+        buildShockPage(
+          snapshot.baseline,
+          snapshot.baseline,
+          snapshot.includeInstantCentre,
+          new Set(),
+          new Set(),
+        ),
+      )
+    : current;
 
   return (
     <main className="shell geometry-page shock-page" data-page="shock">

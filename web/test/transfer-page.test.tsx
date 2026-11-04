@@ -182,7 +182,7 @@ describe('Transfer page', () => {
     const sensitivity = valueTag(html, 'Chassis roll sensitivity');
     const arm = valueTag(html, 'Roll moment arm');
 
-    expect(valueText(html, 'Chassis roll sensitivity')).toBe('0.1601');
+    expect(valueText(html, 'Chassis roll sensitivity')).toBe('0.2');
     expect(valueText(html, 'Roll moment arm')).toBe('15.397');
     expect(sensitivity).toContain('data-has-band="true"');
     expect(attr(sensitivity, 'data-band')).toMatch(/±.*°\/g/);

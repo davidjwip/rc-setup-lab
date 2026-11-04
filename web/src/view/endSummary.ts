@@ -29,6 +29,7 @@ import {
   formatWheelRateFromNpm,
 } from '../format/format.js';
 import type { SceneLabels } from '../scene/FrontViewScene.js';
+import { missingAdvice, missingCopy } from './refusal.js';
 
 export interface EndStripEntry {
   readonly id: 'roll-centre' | 'camber-gain' | 'toe-gain' | 'wheel-rate' | 'ride-frequency';
@@ -60,11 +61,11 @@ export function buildSceneLabels(
   const rollCentreValue =
     rollCentre.kind === 'defined' && reportedRollCentre !== null
       ? formatRollCentreHeight(reportedRollCentre)
-      : 'not defined';
+      : 'not available';
   const rollCentreBand =
     rollCentre.kind === 'defined' && rollCentre.band !== null
       ? formatBandFromMetres(rollCentre.band)
-      : 'no band';
+      : 'not available · complete the hardpoint set on Geometry';
   const instantCentreText =
     instantCentre.kind === 'defined' && scene.instantCentre.kind === 'visible'
       ? `y ${formatLengthFromMetres(instantCentre.value.y)}, z ${formatLengthFromMetres(
@@ -140,33 +141,56 @@ export function buildEndStrip(
       value:
         rollCentre.kind === 'defined' && reportedRollCentre !== null
           ? formatRollCentreHeight(reportedRollCentre)
-          : '—',
-      band: bandFor(rollCentre, formatBandFromMetres),
+          : 'not available',
+      band:
+        rollCentre.kind === 'defined'
+          ? bandFor(rollCentre, formatBandFromMetres)
+          : 'not available · complete the hardpoint set on Geometry',
     },
     {
       id: 'camber-gain',
       label: 'Camber gain',
-      value: camberGain.kind === 'defined' ? formatCamberGain(camberGain.value) : '—',
-      band: bandFor(camberGain, camberBand),
+      value: camberGain.kind === 'defined' ? formatCamberGain(camberGain.value) : 'not available',
+      band:
+        camberGain.kind === 'defined'
+          ? bandFor(camberGain, camberBand)
+          : 'not available · complete the hardpoint set on Geometry',
     },
     {
       id: 'toe-gain',
       label: 'Toe gain',
-      value: toeGain !== null && toeGain.kind === 'defined' ? formatToeGain(toeGain.value) : '—',
-      band: 'no band',
+      value:
+        toeGain !== null && toeGain.kind === 'defined'
+          ? formatToeGain(toeGain.value)
+          : 'not available',
+      band:
+        toeGain !== null && toeGain.kind === 'defined'
+          ? 'no band'
+          : 'not available · add the tie rod on Geometry',
     },
     {
       id: 'wheel-rate',
       label: 'Wheel rate',
-      value: wheelRate?.kind === 'defined' ? formatWheelRateFromNpm(wheelRate.value) : '—',
-      band: wheelRate === undefined ? 'no band' : bandFor(wheelRate, formatBandFromNpm),
+      value:
+        wheelRate?.kind === 'defined'
+          ? formatWheelRateFromNpm(wheelRate.value)
+          : 'not available',
+      band:
+        wheelRate === undefined
+          ? 'not available · set the spring rate on Shock'
+          : bandFor(wheelRate, formatBandFromNpm),
     },
     {
       id: 'ride-frequency',
       label: 'Ride frequency',
-      value: rideFrequency?.kind === 'defined' ? formatRideFrequency(rideFrequency.value) : '—',
+      value:
+        rideFrequency?.kind === 'defined'
+          ? formatRideFrequency(rideFrequency.value)
+          : 'not available',
       band:
-        rideFrequency === undefined ? 'no band' : bandFor(rideFrequency, frequencyBand),
+        rideFrequency === undefined
+          ? 'not available · set the spring rate on Shock'
+          : bandFor(rideFrequency, frequencyBand),
     },
   ];
 }
@@ -186,7 +210,10 @@ export function buildEndPanel(
       scene: null,
       labels: null,
       strip: [],
-      error: inputResult.errors.map((error) => `${error.path}: ${error.message}`).join('; '),
+      error: (() => {
+        const refs = inputResult.errors.map((error) => error.path);
+        return `The ${axle} drawing needs ${missingCopy(refs)}. ${missingAdvice(refs)}`;
+      })(),
     };
   }
 

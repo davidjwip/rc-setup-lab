@@ -84,7 +84,7 @@ export function formatCamberGainValue(radiansPerMetre: number, digits = 2): stri
 }
 
 /** The value slot only, signed. */
-export function formatToeGainValue(radiansPerMetre: number, digits = 3): string {
+export function formatToeGainValue(radiansPerMetre: number, digits = 2): string {
   const degreesPerMillimetre = (radiansPerMetre * 180) / Math.PI / 1000;
   const sign = degreesPerMillimetre > 0 ? '+' : '';
   return `${sign}${degreesPerMillimetre.toFixed(digits)}`;
@@ -106,7 +106,7 @@ export function formatToe(radians: number, digits = 2): string {
 }
 
 /** Toe gain: rad/m in the solver, °/mm on screen. */
-export function formatToeGain(radiansPerMetre: number, digits = 3): string {
+export function formatToeGain(radiansPerMetre: number, digits = 2): string {
   const degreesPerMillimetre = (radiansPerMetre * 180) / Math.PI / 1000;
   const sign = degreesPerMillimetre > 0 ? '+' : '';
   return `${sign}${degreesPerMillimetre.toFixed(digits)} ${TOE_GAIN_UNIT}`;
@@ -215,11 +215,11 @@ export function formatMomentBand(band: Band, digits = 3): string {
   return `±${halfWidth.toFixed(digits)} ${MOMENT_UNIT}`;
 }
 
-export function formatRollSensitivity(degreesPerG: number, digits = 2): string {
+export function formatRollSensitivity(degreesPerG: number, digits = 1): string {
   return `${degreesPerG.toFixed(digits)} ${ROLL_SENSITIVITY_UNIT}`;
 }
 
-export function formatRollSensitivityBand(band: Band, digits = 2): string {
+export function formatRollSensitivityBand(band: Band, digits = 1): string {
   const halfWidth = (band.high - band.low) / 2;
   return `±${halfWidth.toFixed(digits)} ${ROLL_SENSITIVITY_UNIT}`;
 }

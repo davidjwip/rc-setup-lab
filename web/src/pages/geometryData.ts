@@ -49,6 +49,12 @@ import {
   provenanceForConfidences,
   provenanceForSolved,
 } from '../view/provenance.js';
+import {
+  missingAdvice,
+  missingCopy,
+  missingRefusal,
+  undefinedRefusal,
+} from '../view/refusal.js';
 
 export interface GeometryValue {
   readonly id: string;
@@ -61,6 +67,7 @@ export interface GeometryValue {
   readonly reason?: string;
   readonly accessibleName: string;
   readonly size: 'large' | 'medium';
+  readonly delta?: string | null;
 }
 
 export interface GeometryHardpointAxis {
@@ -111,60 +118,6 @@ export interface GeometryColumn {
   readonly refusal: string | null;
 }
 
-const REASON_COPY: Readonly<Record<string, string>> = {
-  parallelLinks: 'the upper and lower links are parallel in this view',
-  degenerateGeometry: 'two points coincide or a link has zero length',
-  coincidentPoints: 'two points coincide',
-  outOfTravel: 'the wheel is outside its modelled travel',
-  incompleteModel: 'a required measurement is missing',
-  noIntersection: 'the links do not meet in a usable instant centre',
-  outOfDomain: 'the geometry has no finite answer',
-  noBumpSteerSolution: 'the toe link has no usable solution at this travel',
-  noSteeringAxis: 'the corner has no steering axis',
-  zeroLateral: 'there is no lateral load to solve',
-  noRollStiffness: 'the roll stiffness is not available',
-  noAntiGeometry: 'the anti-dive geometry is not available',
-  noSideViewConstruction: 'the side-view construction is not available',
-  noMotionRatio: 'the motion ratio is not available',
-  ambiguousBranch: 'the linkage has more than one assembly branch',
-  outOfRackTravel: 'the rack is outside its travel',
-};
-
-export function undefinedReasonCopy(reason: string): string {
-  return REASON_COPY[reason] ?? 'the geometry has no answer';
-}
-
-function missingTerm(ref: string): string {
-  if (ref.includes('lca_in')) return 'the lower arm inner screw heights';
-  if (ref.includes('lca_out')) return 'the lower ball joint';
-  if (ref.includes('uca_out')) return 'the upper ball stud';
-  if (ref.includes('uca_in')) return 'the upper link inner point';
-  if (ref.includes('tie_')) return 'the tie rod';
-  if (ref.includes('damper_lo') || ref.includes('damper_up')) return 'the damper mount points';
-  if (ref.includes('spring.rate')) return 'the spring rate';
-  if (ref.includes('sprung_')) return 'the sprung mass';
-  if (ref.includes('rate_at_link')) return "the blade's rate at the link";
-  if (ref.includes('arb.blades')) return 'the blade count';
-  if (ref.includes('bar_diameter')) return 'the bar diameter';
-  if (ref.includes('arb.span')) return 'the bar span';
-  if (ref.includes('arm_length')) return 'the bar arm length';
-  if (ref.includes('arb.')) return 'the anti-roll bar geometry';
-  if (ref.includes('bump_limit')) return 'the bump limit';
-  if (ref.includes('droop_limit')) return 'the droop limit';
-  if (ref.includes('thickness')) return 'the chassis plate thickness';
-  if (ref.includes('ride_height')) return 'the ride height';
-  if (ref.includes('wheelbase')) return 'the wheelbase';
-  if (ref.includes('tyre_radius')) return 'the tyre radius';
-  return 'a required measurement';
-}
-
-export function missingCopy(refs: readonly string[]): string {
-  const terms = [...new Set(refs.map(missingTerm))];
-  if (terms.length === 0) return 'a required measurement';
-  if (terms.length === 1) return terms[0] ?? 'a required measurement';
-  return `${terms.slice(0, -1).join(', ')} and ${terms[terms.length - 1]}`;
-}
-
 function missingValue(
   id: string,
   label: string,
@@ -179,7 +132,7 @@ function missingValue(
     unit,
     provenance: 'missing',
     band: null,
-    bandReason: 'not a number',
+    bandReason: 'there is no number to compare',
     reason,
     accessibleName,
     size: 'large',
@@ -200,7 +153,7 @@ function undefinedValue(
     unit,
     provenance: 'undefined',
     band: null,
-    bandReason: 'not a number',
+    bandReason: 'there is no number to compare',
     reason,
     accessibleName,
     size: 'large',
@@ -226,7 +179,7 @@ function solvedHeadline(
           label,
           unit,
           accessibleName,
-          `${label} is undefined because ${undefinedReasonCopy(solved.reason)}.`,
+          undefinedRefusal(label, solved.reason),
         );
   }
   return {
@@ -249,7 +202,7 @@ function toeSeriesRefusal(toeSeries: ToeSeriesResult | null, axleLabel: string):
       'Toe gain',
       TOE_GAIN_UNIT,
       `${axleLabel} toe gain`,
-      `The ${axleLabel.toLowerCase()} toe gain needs the tie rod and its endpoints.`,
+      missingRefusal(`${axleLabel} toe gain`, ['corners.tie_in', 'corners.tie_out']),
     );
   }
   if (toeSeries.kind === 'unavailable') {
@@ -258,9 +211,7 @@ function toeSeriesRefusal(toeSeries: ToeSeriesResult | null, axleLabel: string):
       'Toe gain',
       TOE_GAIN_UNIT,
       `${axleLabel} toe gain`,
-      `The ${axleLabel.toLowerCase()} toe gain is undefined because ${undefinedReasonCopy(
-        toeSeries.reason,
-      )}.`,
+      undefinedRefusal(`${axleLabel} toe gain`, toeSeries.reason),
     );
   }
   return solvedHeadline(
@@ -272,7 +223,7 @@ function toeSeriesRefusal(toeSeries: ToeSeriesResult | null, axleLabel: string):
     (value) => formatToeGainValue(value),
     null,
     'the toe solve stores no tolerance',
-    `The ${axleLabel.toLowerCase()} toe gain needs the tie rod and its endpoints.`,
+    missingRefusal(`${axleLabel} toe gain`, ['corners.tie_in', 'corners.tie_out']),
   );
 }
 
@@ -358,7 +309,7 @@ function buildHardpointRow(
           : 'the model stores the hardpoint, not a tolerance',
         entryName,
         editValueMm === null
-          ? `The ${definition.label.toLowerCase()} is not in the model.`
+          ? `Missing: the ${definition.label.toLowerCase()} point. Measure it on Geometry.`
           : undefined,
       ),
       absolute: hardpointReading(
@@ -370,7 +321,7 @@ function buildHardpointRow(
         'the composed point stores no tolerance',
         absoluteName,
         absoluteMm === null
-          ? `The ${definition.label.toLowerCase()} is not computable.`
+          ? `Missing: the ${definition.label.toLowerCase()} composed point. Measure the hardpoint on Geometry.`
           : undefined,
       ),
       direction: shim ? shimDirection(definition.key, axisName) : '',
@@ -391,7 +342,7 @@ function buildHub(model: CarModelDocument, axleLabel: string, cornerKey: CornerK
   const hub = hubCentreMeasured(model, cornerKey);
   const provenance = hub === null ? 'missing' : provenanceForConfidence(hub.confidence);
   const reason =
-    'The wheel centre needs the ride height, plate thickness and wheel diameter.';
+    'Missing: the wheel centre. Measure the ride height, plate thickness and wheel diameter on Home.';
   return {
     y: hardpointReading(
       'hub-y',
@@ -444,9 +395,10 @@ export function buildGeometryColumn(
   toeGain = toeSeriesRefusal(toeSeries, axleLabel);
 
   if (!inputResult.ok) {
-    refusal = `The ${axleLabel.toLowerCase()} drawing needs ${missingCopy(
-      inputResult.errors.map((error) => error.path),
-    )}.`;
+    const refs = inputResult.errors.map((error) => error.path);
+    refusal = `The ${axleLabel.toLowerCase()} drawing needs ${missingCopy(refs)}. ${missingAdvice(
+      refs,
+    )}`;
     rollCentre = missingValue(
       'roll-centre',
       'Roll-centre height',
@@ -478,7 +430,7 @@ export function buildGeometryColumn(
         ? formatBandFromMetres(result.rollCentreHeight.band)
         : null,
       'the model stores no roll-centre tolerance',
-      `The ${axleLabel.toLowerCase()} roll centre needs a complete hardpoint set.`,
+      `The ${axleLabel.toLowerCase()} roll centre needs a complete hardpoint set. Measure the missing point on Geometry.`,
     );
     camberGain = solvedHeadline(
       'camber-gain',
@@ -489,7 +441,7 @@ export function buildGeometryColumn(
       (value) => formatCamberGainValue(value),
       null,
       'the camber-gain solve stores no tolerance',
-      `The ${axleLabel.toLowerCase()} camber gain needs a complete hardpoint set.`,
+      `The ${axleLabel.toLowerCase()} camber gain needs a complete hardpoint set. Measure the missing point on Geometry.`,
     );
 
     const camberSeries = buildCamberSeries(inputResult.value);
@@ -506,7 +458,7 @@ export function buildGeometryColumn(
   let span: GeometryValue;
 
   if (fore === null || aft === null) {
-    const reason = `The ${axleLabel.toLowerCase()} hinge needs both inner pivot screws.`;
+    const reason = `The ${axleLabel.toLowerCase()} hinge needs both inner pivot screws. Measure them on Geometry.`;
     span = {
       id: 'span',
       label: 'Span between the screws',
@@ -514,7 +466,7 @@ export function buildGeometryColumn(
       unit: LENGTH_UNIT,
       provenance: 'missing',
       band: null,
-      bandReason: 'not a number',
+      bandReason: 'there is no number to compare',
       reason,
       accessibleName: `${axleLabel} lower-arm inner screw span`,
       size: 'medium',
@@ -544,8 +496,8 @@ export function buildGeometryColumn(
             unit: LENGTH_UNIT,
             provenance: 'undefined',
             band: null,
-            bandReason: 'not a number',
-            reason: 'The two inner screws share the same fore-aft position, so there is no span to divide.',
+            bandReason: 'there is no number to compare',
+            reason: 'The two inner screws share the same fore-aft position, so there is no span to divide. Separate them on Geometry.',
             accessibleName: `${axleLabel} lower-arm inner screw span`,
             size: 'medium',
           };
@@ -560,8 +512,8 @@ export function buildGeometryColumn(
           unit: LENGTH_UNIT,
           provenance: 'missing',
           band: null,
-          bandReason: 'not a number',
-          reason: `The ${axleLabel.toLowerCase()} shim needs both inner pivot screws.`,
+          bandReason: 'there is no number to compare',
+          reason: `The ${axleLabel.toLowerCase()} shim needs both inner pivot screws. Measure them on Geometry.`,
           accessibleName: `${axleLabel} lower-arm inner shim`,
           size: 'medium',
         }
@@ -586,8 +538,8 @@ export function buildGeometryColumn(
       unit: '°',
       provenance: 'missing',
       band: null,
-      bandReason: 'not a number',
-      reason: `The ${axleLabel.toLowerCase()} hinge angle needs both inner pivot screws.`,
+      bandReason: 'there is no number to compare',
+      reason: `The ${axleLabel.toLowerCase()} hinge angle needs both inner pivot screws. Measure them on Geometry.`,
       accessibleName: `${axleLabel} lower-arm hinge angle`,
       size: 'medium',
     };
@@ -599,8 +551,8 @@ export function buildGeometryColumn(
       unit: '°',
       provenance: 'undefined',
       band: null,
-      bandReason: 'not a number',
-      reason: 'The two inner screws share the same fore-aft position, so there is no hinge axis to tilt.',
+      bandReason: 'there is no number to compare',
+      reason: 'The two inner screws share the same fore-aft position, so there is no hinge axis to tilt. Separate them on Geometry.',
       accessibleName: `${axleLabel} lower-arm hinge angle`,
       size: 'medium',
     };
@@ -616,8 +568,8 @@ export function buildGeometryColumn(
             unit: '°',
             provenance: 'undefined',
             band: null,
-            bandReason: 'not a number',
-            reason: 'The hinge angle has no finite answer for this span.',
+            bandReason: 'there is no number to compare',
+            reason: 'The hinge angle has no finite answer for this span. Check the two inner screws on Geometry.',
             accessibleName: `${axleLabel} lower-arm hinge angle`,
             size: 'medium',
           }

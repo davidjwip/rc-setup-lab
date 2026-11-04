@@ -730,6 +730,13 @@ summary:focus-visible,
   padding: 18px;
 }
 
+.glossary-count {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
 .glossary-search {
   display: flex;
   flex-wrap: wrap;
@@ -1131,6 +1138,10 @@ summary:focus-visible,
 }
 
 .interpreter-line-direction {
+  border-style: dotted;
+}
+
+.interpreter-line-illustrative {
   border-style: dashed;
 }
 
@@ -1558,6 +1569,21 @@ summary:focus-visible,
 .value-band {
   color: var(--muted);
   font-size: 0.75rem;
+}
+
+.value-delta {
+  color: var(--ink);
+  font-size: 0.75rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.value-reason {
+  flex-basis: 100%;
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.45;
 }
 
 .value-ring {

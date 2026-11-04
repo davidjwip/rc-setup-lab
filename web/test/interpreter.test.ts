@@ -86,22 +86,22 @@ describe('change interpreter', () => {
 
   it('fires one mid-corner line for each spring rate change', () => {
     const front = resultOf((base) => mustEdit(updateAxleSpringRate(base, 'front', 4.0)));
-    expect(signatures(front.lines)).toEqual(['mid|front share of roll resistance|reliable']);
+    expect(signatures(front.lines)).toEqual(['mid|front share of roll resistance|mechanism']);
 
     const rear = resultOf((base) => mustEdit(updateAxleSpringRate(base, 'rear', 3.0)));
-    expect(signatures(rear.lines)).toEqual(['mid|rear share of roll resistance|reliable']);
+    expect(signatures(rear.lines)).toEqual(['mid|rear share of roll resistance|mechanism']);
   });
 
   it('fires the roll-share line for an anti-roll bar change', () => {
     const front = resultOf((base) =>
       mustEdit(updateAxleArbValue(base, 'front', 'bar_diameter', 1.6)),
     );
-    expect(signatures(front.lines)).toEqual(['mid|front share of roll resistance|reliable']);
+    expect(signatures(front.lines)).toEqual(['mid|front share of roll resistance|mechanism']);
 
     const rear = resultOf((base) =>
       mustEdit(updateAxleArbValue(base, 'rear', 'bar_diameter', 1.3)),
     );
-    expect(signatures(rear.lines)).toEqual(['mid|rear share of roll resistance|reliable']);
+    expect(signatures(rear.lines)).toEqual(['mid|rear share of roll resistance|mechanism']);
   });
 
   it('puts the rear ARB roll-share and motion-ratio lines next to each other', () => {
@@ -111,7 +111,7 @@ describe('change interpreter', () => {
     const result = interpret(base, edited);
 
     expect(signatures(result.lines)).toEqual([
-      'mid|rear share of roll resistance|reliable',
+      'mid|rear share of roll resistance|mechanism',
       'mid|rear ARB motion ratio|direction',
     ]);
     expect(result.lines[0]?.says).toMatch(/rear ARB/i);
@@ -123,8 +123,8 @@ describe('change interpreter', () => {
       mustEdit(updateAxleDamperCoefficient(base, 'front', 14.0)),
     );
     expect(signatures(result.lines)).toEqual([
-      'entry|rate at which load transfer arrives|direction',
-      'exit|rate at which load transfer arrives|direction',
+      'entry|rate at which load transfer arrives|illustrative',
+      'exit|rate at which load transfer arrives|illustrative',
     ]);
     expect(result.lines[0]?.effect).toMatch(/amount/i);
   });
@@ -134,7 +134,7 @@ describe('change interpreter', () => {
       mustEdit(updateCornerPointMm(base, 'LF', 'uca_in', 2, 39)),
     );
     expect(signatures(result.lines)).toEqual([
-      'mid|front roll-centre height and the roll-moment arm|reliable',
+      'mid|front roll-centre height and the roll-moment arm|mechanism',
       'mid|front wheel rate and damping ratio|direction',
     ]);
   });
@@ -144,7 +144,7 @@ describe('change interpreter', () => {
       mustEdit(updateCornerPointMm(base, 'LF', 'lca_in_a', 2, 6)),
     );
     expect(signatures(front.lines)).toEqual([
-      'mid|front roll-centre height and the roll-moment arm|reliable',
+      'mid|front roll-centre height and the roll-moment arm|mechanism',
       'mid|front wheel rate and damping ratio|direction',
       'entry|front transfer path through the links|direction',
     ]);
@@ -153,9 +153,9 @@ describe('change interpreter', () => {
       mustEdit(updateCornerPointMm(base, 'LR', 'lca_in_a', 2, 10)),
     );
     expect(signatures(rear.lines)).toEqual([
-      'mid|rear share of roll resistance|reliable',
+      'mid|rear share of roll resistance|mechanism',
       'mid|rear ARB motion ratio|direction',
-      'mid|rear roll-centre height and the roll-moment arm|reliable',
+      'mid|rear roll-centre height and the roll-moment arm|mechanism',
       'mid|rear wheel rate and damping ratio|direction',
       'exit|rear transfer path through the links|direction',
     ]);
@@ -166,7 +166,7 @@ describe('change interpreter', () => {
       mustEdit(updateCornerPointMm(base, 'LF', 'uca_out', 2, 13)),
     );
     expect(signatures(result.lines)).toEqual([
-      'mid|front roll-centre height and the roll-moment arm|reliable',
+      'mid|front roll-centre height and the roll-moment arm|mechanism',
       'mid|front wheel rate and damping ratio|direction',
       'entry|steer-axis camber gain and steering weight|direction',
       'mid|steer-axis camber gain and steering weight|direction',
@@ -206,9 +206,9 @@ describe('change interpreter', () => {
       return edited.value;
     });
     expect(signatures(result.lines)).toEqual([
-      'entry|CG height and both roll-centre heights, hence the roll-moment arm|reliable',
-      'mid|CG height and both roll-centre heights, hence the roll-moment arm|reliable',
-      'exit|CG height and both roll-centre heights, hence the roll-moment arm|reliable',
+      'entry|CG height and both roll-centre heights, hence the roll-moment arm|mechanism',
+      'mid|CG height and both roll-centre heights, hence the roll-moment arm|mechanism',
+      'exit|CG height and both roll-centre heights, hence the roll-moment arm|mechanism',
     ]);
   });
 
@@ -253,7 +253,7 @@ describe('change interpreter', () => {
 
   it('worked example: a front spring change prints its exact line', () => {
     const result = resultOf((base) => mustEdit(updateAxleSpringRate(base, 'front', 4.0)));
-    expect(signatures(result.lines)).toEqual(['mid|front share of roll resistance|reliable']);
+    expect(signatures(result.lines)).toEqual(['mid|front share of roll resistance|mechanism']);
     expect(result.lines[0]?.says).toBe(
       'front spring rate 0.50 N/mm stiffer (3.50 → 4.00 N/mm)',
     );

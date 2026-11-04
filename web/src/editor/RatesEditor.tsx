@@ -55,7 +55,6 @@ export function RatesEditor({
   const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const snapshot = rateSnapshot(model, axle, lateralG);
   const arbType = snapshot.arbType;
-  const cornerField = axle === 'front' ? 'LF' : 'LR';
   const geometryDisabled = arbType !== 'torsion_bar';
 
   useEffect(() => {
@@ -308,8 +307,8 @@ export function RatesEditor({
       ) : null}
       {arbType === 'blade' ? (
         <p className="edit-note">
-          A blade bar uses `arb.rate_at_link`, which this slice does not edit. Its geometry rows
-          are disabled; roll stiffness refuses until that rate is present.
+          A blade bar uses its rate at the link, which this page does not edit. Its geometry rows
+          are disabled; roll stiffness stays unavailable until that rate is present.
         </p>
       ) : null}
 
@@ -368,10 +367,8 @@ export function RatesEditor({
         {changeNote ?? 'Change a rate to see which outputs moved and which way.'}
       </p>
       <p className="footnote damping-note">
-        The wheel-level damper coefficient is stored at{' '}
-        <code>corners.{cornerField}.damper.c_post</code>. The damping ratio is an estimate: the
-        coefficient carries a ±50 % band (D-13) and the direction between two edits is the reliable
-        part. It is never marked measured.
+        The damping ratio is an estimate: the wheel-level coefficient carries a ±50 % band, and the
+        direction between two edits is the reliable part. It is never marked measured.
       </p>
 
       {error === null ? null : (

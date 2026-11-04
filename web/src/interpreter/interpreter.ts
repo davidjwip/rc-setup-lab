@@ -25,7 +25,14 @@ import {
 } from '@setuplab/physics';
 
 export type Phase = 'entry' | 'mid' | 'exit';
-export type RuleConfidence = 'reliable' | 'direction';
+
+/**
+ * The v1 tier contract: mechanism is arithmetic from the measured model,
+ * direction is steady-state reasoning, illustrative is a transient effect that
+ * v1 can only describe. Keep this list equal to the contract document.
+ */
+export const RULE_TIERS = ['mechanism', 'direction', 'illustrative'] as const;
+export type RuleConfidence = (typeof RULE_TIERS)[number];
 
 export interface InterpreterLine {
   readonly ruleId: string;
@@ -396,7 +403,7 @@ const RULES: readonly Rule[] = [
         d.before.front.rollShare,
         d.after.front.rollShare,
       )}`,
-    confidence: 'reliable',
+    confidence: 'mechanism',
   },
   {
     id: 'rear-spring',
@@ -415,7 +422,7 @@ const RULES: readonly Rule[] = [
         d.before.rear.rollShare,
         d.after.rear.rollShare,
       )}`,
-    confidence: 'reliable',
+    confidence: 'mechanism',
   },
   {
     id: 'front-arb',
@@ -436,7 +443,7 @@ const RULES: readonly Rule[] = [
         d.before.front.rollShare,
         d.after.front.rollShare,
       )}`,
-    confidence: 'reliable',
+    confidence: 'mechanism',
   },
   {
     id: 'front-arb-motion-ratio',
@@ -474,7 +481,7 @@ const RULES: readonly Rule[] = [
         d.before.rear.rollShare,
         d.after.rear.rollShare,
       )}`,
-    confidence: 'reliable',
+    confidence: 'mechanism',
   },
   {
     id: 'rear-arb-motion-ratio',
@@ -509,7 +516,7 @@ const RULES: readonly Rule[] = [
         d.before.front.rollShare,
         d.after.front.rollShare,
       )}`,
-    confidence: 'reliable',
+    confidence: 'mechanism',
   },
   {
     id: 'rear-roll-centre',
@@ -527,7 +534,7 @@ const RULES: readonly Rule[] = [
         d.before.rear.rollShare,
         d.after.rear.rollShare,
       )}`,
-    confidence: 'reliable',
+    confidence: 'mechanism',
   },
   {
     id: 'front-damper-coefficient',
@@ -545,7 +552,7 @@ const RULES: readonly Rule[] = [
       )} N·s/m)`,
     effect:
       'the rate at which load transfer arrives changes at entry and exit; the amount of load transfer is unchanged',
-    confidence: 'direction',
+    confidence: 'illustrative',
   },
   {
     id: 'rear-damper-coefficient',
@@ -563,7 +570,7 @@ const RULES: readonly Rule[] = [
       )} N·s/m)`,
     effect:
       'the rate at which load transfer arrives changes at entry and exit; the amount of load transfer is unchanged',
-    confidence: 'direction',
+    confidence: 'illustrative',
   },
   {
     id: 'front-damper-motion-ratio',
@@ -697,12 +704,12 @@ const RULES: readonly Rule[] = [
     phases: ['exit'],
     mechanism: 'rear toe gain in compression',
     says: (d) =>
-      `rear toe gain ${Math.abs(d.rear.toeGain_degPerMm).toFixed(4)} °/mm ${
+      `rear toe gain ${Math.abs(d.rear.toeGain_degPerMm).toFixed(2)} °/mm ${
         d.rear.toeGain_degPerMm > 0 ? 'more toe-in' : 'more toe-out'
       } in compression (${pair(
         d.before.rear.toeGain_degPerMm,
         d.after.rear.toeGain_degPerMm,
-        4,
+        2,
       )} °/mm)`,
     effect: (d) =>
       d.rear.toeGain_degPerMm > 0
@@ -725,7 +732,7 @@ const RULES: readonly Rule[] = [
       } together; the roll-moment arm ${
         d.rollMomentArm_mm > 0 ? 'grows' : 'shrinks'
       } and roll sensitivity ${d.rollSensitivity_degPerG > 0 ? 'rises' : 'falls'}`,
-    confidence: 'reliable',
+    confidence: 'mechanism',
   },
 ];
 

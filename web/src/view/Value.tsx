@@ -24,6 +24,8 @@ export interface ValueProps {
   readonly size?: ValueSize;
   /** Human copy for a missing or undefined value; never a solver code. */
   readonly reason?: string;
+  /** A signed change from baseline, with its unit; null or absent when unchanged. */
+  readonly delta?: string | null;
 }
 
 const CLAIM: Readonly<Record<'missing' | 'undefined', string>> = {
@@ -52,13 +54,14 @@ export function Value({
   accessibleName,
   size = 'medium',
   reason,
+  delta = null,
 }: ValueProps) {
   const noNumeral = provenance === 'missing' || provenance === 'undefined';
   const numeral = value ?? (provenance === 'missing' ? CLAIM.missing : CLAIM.undefined);
   const bandText = band === null ? `no band${bandReason === undefined ? '' : ` · ${bandReason}`}` : band;
   const spoken = noNumeral
     ? `${accessibleName}, ${numeral}${reason === undefined ? '' : `, ${reason}`}, ${provenance}, ${validationWords(validation)}`
-    : `${accessibleName}, ${numeral} ${unit}, ${bandText}, ${provenance}, ${validationWords(validation)}`;
+    : `${accessibleName}, ${numeral} ${unit}, ${bandText}${delta === null ? '' : `, ${delta}`}, ${provenance}, ${validationWords(validation)}`;
 
   return (
     <span
@@ -73,6 +76,7 @@ export function Value({
       data-validation={validation}
       data-accessible-name={accessibleName}
       data-size={size}
+      {...(delta === null ? {} : { 'data-delta': delta })}
     >
       <span
         className={noNumeral ? 'value-number value-number--claim' : 'value-number'}
@@ -85,6 +89,11 @@ export function Value({
           {unit}
         </span>
       )}
+      {delta === null ? null : (
+        <span className="value-delta" aria-hidden="true">
+          {delta}
+        </span>
+      )}
       <span
         className={`value-provenance value-provenance--${provenance}`}
         aria-hidden="true"
@@ -94,6 +103,9 @@ export function Value({
       <span className="value-band" aria-hidden="true">
         {bandText}
       </span>
+      {noNumeral && reason !== undefined ? (
+        <span className="value-reason">{reason}</span>
+      ) : null}
       <span
         className={`value-ring value-ring--${validation}`}
         aria-hidden="true"
