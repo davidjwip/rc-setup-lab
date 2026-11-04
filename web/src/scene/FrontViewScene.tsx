@@ -329,18 +329,23 @@ export function FrontViewScene({
             </li>
           ))}
         </ul>
-        {interactive ? (
-          <span className="scene-glossary-links">
-            {showInstantCentre ? (
-              <a className="text-link" href="#glossary/instant-centre">
-                Instant centre
-              </a>
-            ) : null}
-            <a className="text-link" href="#glossary/roll-centre">
-              Roll centre
+        {/*
+          The glossary links live outside the SVG on purpose: the drawing is a
+          picture, so anything focusable inside it becomes a dead tab stop for a
+          keyboard user. They are ordinary text links here, always present, and
+          they do not depend on `interactive` - which now only governs whether
+          hardpoints carry hover/focus affordances.
+        */}
+        <span className="scene-glossary-links">
+          {showInstantCentre ? (
+            <a className="text-link" href="#glossary/instant-centre">
+              Instant centre
             </a>
-          </span>
-        ) : null}
+          ) : null}
+          <a className="text-link" href="#glossary/roll-centre">
+            Roll centre
+          </a>
+        </span>
         {geometryNotice === null ? null : (
           <span className="scene-derived-note">{geometryNotice}</span>
         )}

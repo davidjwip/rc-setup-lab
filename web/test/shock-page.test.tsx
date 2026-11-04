@@ -76,7 +76,11 @@ describe('Shock page', () => {
       expect(section).not.toMatch(/\b(left|right|LF|RF)\b/i);
     }
 
-    expect(html).not.toContain('href="#glossary/');
+    // M10: nothing focusable inside the drawing. The glossary links beside it are ordinary
+    // text links on purpose - the picture stays a picture, and the terms stay reachable.
+    const svgMarkup = html.slice(html.indexOf('<svg'), html.indexOf('</svg>'));
+    expect(svgMarkup).not.toContain('href="#glossary/');
+    expect(html).toContain('href="#glossary/roll-centre"');
     expect(html).not.toContain('tabindex="0"');
     expect(html).toContain('aria-label="Instant centre overlay"');
     expect(html).toContain('aria-pressed="false"');
