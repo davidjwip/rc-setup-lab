@@ -1,9 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { solveDampingRatio, solveLoadTransfer, solveRollStiffness } from '@setuplab/physics';
+import {
+  solveDampingRatio,
+  solveFrontView,
+  solveLoadTransfer,
+  solveRollStiffness,
+} from '@setuplab/physics';
 import rawModel from '../../../assets/models/reference-touring-car.json';
 import {
   buildAxleRates,
   buildDampingRatioInput,
+  buildFrontViewInput,
   buildLoadTransferInput,
   buildRollStiffnessInput,
   parseCarModel,
@@ -12,6 +18,7 @@ import {
   updateAxleArbValue,
   updateAxleDamperCoefficient,
   updateAxleSpringRate,
+  updateCornerPointMm,
   type CarModelDocument,
 } from '../src/index.js';
 
@@ -169,8 +176,8 @@ describe('rates editor edits the model document per axle', () => {
       1,
     );
     expect(values(snapshot(model, 'rear').rates.wheelRate)).toBeCloseTo(
-      3.0 * 0.7071 ** 2 * 1000,
-      6,
+      3.0 * 0.689205 ** 2 * 1000,
+      0,
     );
   });
 
@@ -191,5 +198,124 @@ describe('rates editor edits the model document per axle', () => {
       JSON.stringify(baseline.corners.LF?.points),
     );
     expect(snapshot(reset, 'front').rates).toEqual(snapshot(baseline, 'front').rates);
+  });
+});
+
+describe('damper motion ratio is geometry, not a lookup', () => {
+
+  function frontView(model: CarModelDocument, corner: 'LF' | 'LR') {
+    const input = buildFrontViewInput(model, corner);
+    if (!input.ok) throw new Error(JSON.stringify(input.errors));
+    return input.value;
+  }
+
+  function numbers(model: CarModelDocument, axle: 'front' | 'rear') {
+    const s = snapshot(model, axle);
+    return {
+      ir: values(s.rates.installationRatio),
+      wheelRate: values(s.rates.wheelRate),
+      frequency: values(s.rates.rideFrequency),
+      critical: values(s.rates.criticalDamping),
+      damping: values(s.damping.dampingRatio),
+    };
+  }
+
+  it('derives each end from its own damper mounts: rear 0.6892, not the old stated 0.7071', () => {
+    const model = parseReference();
+    const front = numbers(model, 'front');
+    const rear = numbers(model, 'rear');
+
+    expect(front.ir).toBeCloseTo(0.565308, 4);
+    expect(rear.ir).toBeCloseTo(0.689205, 4);
+    expect(rear.ir).not.toBeCloseTo(0.7071, 3);
+
+    // Old stated IR -> derived IR, with the rates that followed it.
+    expect(rear.wheelRate).toBeCloseTo(2600 * 0.689205 ** 2, 0);
+    expect(rear.frequency).toBeCloseTo(10.0256, 4);
+    expect(rear.critical).toBeCloseTo(39.2122, 3);
+
+    const rearRates = buildAxleRates(model, 'rear');
+    expect(rearRates.ok).toBe(true);
+    if (!rearRates.ok) return;
+    expect(rearRates.value.installationRatio.kind).toBe('defined');
+    if (rearRates.value.installationRatio.kind !== 'defined') return;
+    expect(rearRates.value.installationRatio.flags.has('assumedInput')).toBe(false);
+    // The rear hardpoints are modelled, so the derived ratio is inferred, not firm.
+    expect(rearRates.value.installationRatio.tier).toBe('inferred');
+  });
+
+  it('standing the damper up raises MR, k_w by IR² and f by √IR, and lowers ζ; roll centre and camber are bit-identical', () => {
+    const baseline = parseReference();
+    const before = numbers(baseline, 'front');
+    const beforeView = solveFrontView(frontView(baseline, 'LF'));
+
+    // On this left corner the lower eye is outboard of the upper eye, so
+    // standing the damper up means moving damper_up.y outboard (44 -> 49 mm).
+    const moved = edited(
+      baseline,
+      updateCornerPointMm(baseline, 'LF', 'damper_up', 1, 49),
+    );
+    const after = numbers(moved, 'front');
+    const afterView = solveFrontView(frontView(moved, 'LF'));
+
+    expect(after.ir).toBeGreaterThan(before.ir as number);
+    expect(before.ir).toBeCloseTo(0.565308, 4);
+    expect(after.ir).toBeCloseTo(0.586537, 4);
+
+    expect((after.wheelRate as number) / (before.wheelRate as number)).toBeCloseTo(
+      ((after.ir as number) / (before.ir as number)) ** 2,
+      12,
+    );
+    expect((after.frequency as number) / (before.frequency as number)).toBeCloseTo(
+      (after.ir as number) / (before.ir as number),
+      12,
+    );
+    expect(after.damping).toBeLessThan(before.damping as number);
+
+    expect(afterView.rollCentreHeight).toEqual(beforeView.rollCentreHeight);
+    expect(afterView.camberGain).toEqual(beforeView.camberGain);
+  });
+
+  it('leaning the same upper eye inboard lowers the motion ratio', () => {
+    const baseline = parseReference();
+    const before = numbers(baseline, 'front');
+    const moved = edited(
+      baseline,
+      updateCornerPointMm(baseline, 'LF', 'damper_up', 1, 39),
+    );
+    const after = numbers(moved, 'front');
+    expect(after.ir).toBeLessThan(before.ir as number);
+    expect(after.ir).toBeCloseTo(0.540681, 4);
+    expect(after.wheelRate).toBeLessThan(before.wheelRate as number);
+  });
+
+  it('moving the lower eye outboard lengthens the lever and raises the motion ratio', () => {
+    const baseline = parseReference();
+    const before = numbers(baseline, 'front');
+    const moved = edited(
+      baseline,
+      updateCornerPointMm(baseline, 'LF', 'damper_lo', 1, 63),
+    );
+    const after = numbers(moved, 'front');
+    expect(after.ir).toBeGreaterThan(before.ir as number);
+    expect(after.ir).toBeCloseTo(0.608253, 4);
+    expect(after.wheelRate).toBeCloseTo(
+      (before.wheelRate as number) * ((after.ir as number) / (before.ir as number)) ** 2,
+      6,
+    );
+  });
+
+  it('keeps the two ends independent: moving the front damper leaves the rear bit-identical', () => {
+    const baseline = parseReference();
+    const rearBefore = snapshot(baseline, 'rear');
+    const moved = edited(
+      baseline,
+      updateCornerPointMm(baseline, 'LF', 'damper_up', 1, 49),
+    );
+    const rearAfter = snapshot(moved, 'rear');
+
+    expect(rearAfter.rates).toEqual(rearBefore.rates);
+    expect(rearAfter.damping).toEqual(rearBefore.damping);
+    expect(rearAfter.roll.rear).toEqual(rearBefore.roll.rear);
   });
 });

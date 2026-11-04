@@ -12,6 +12,8 @@ const BASE_ROWS: readonly HardpointRow[] = [
   { key: 'lca_out', label: 'Lower ball joint' },
   { key: 'uca_in', label: 'Upper link inner' },
   { key: 'uca_out', label: 'Upper ball stud' },
+  { key: 'damper_lo', label: 'Lower damper eye' },
+  { key: 'damper_up', label: 'Upper damper eye' },
   { key: 'wc', label: 'Wheel centre' },
 ];
 

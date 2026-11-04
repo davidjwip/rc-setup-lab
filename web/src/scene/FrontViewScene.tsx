@@ -32,6 +32,8 @@ const HARDPOINT_LABELS: Record<HardpointId, string> = {
   uca_out: 'Upper link outer',
   tie_in: 'Tie rod inner',
   tie_out: 'Tie rod outer',
+  damper_lo: 'Lower damper eye',
+  damper_up: 'Upper damper eye',
   wheel_centre: 'Wheel centre',
   contact_patch: 'Contact patch',
 };
@@ -177,6 +179,17 @@ export function FrontViewScene({ scene, labels, groundLabel = 'ground' }: FrontV
             />
           )}
 
+          {scene.damper === null ? null : (
+            <line
+              className="scene-damper"
+              data-field="damper"
+              x1={xOf(scene.damper.from.x)}
+              y1={yOf(scene.damper.from.y)}
+              x2={xOf(scene.damper.to.x)}
+              y2={yOf(scene.damper.to.y)}
+            />
+          )}
+
           {scene.instantCentre.kind === 'visible' ? (
             <g data-field="instant_centre" className="scene-instant">
               <title>Instant centre</title>
@@ -277,6 +290,7 @@ export function FrontViewScene({ scene, labels, groundLabel = 'ground' }: FrontV
         )}
         <span>Solid lines — lower arm and upper link.</span>
         <span>Dash-dot line — tie rod (front rack or rear toe link).</span>
+        <span>Short-dash line — Damper, lower eye to upper eye.</span>
         <span>
           {showInstantCentre
             ? 'Dashed lines — construction lines to the instant centre and roll centre.'

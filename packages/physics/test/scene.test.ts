@@ -205,6 +205,53 @@ describe('front-view scene geometry', () => {
     }
   });
 
+  it('draws the damper between its lower and upper eyes at both ends', () => {
+    for (const [input, lo, up] of [
+      [
+        referenceCorner(),
+        { y: mm(60), z: mm(8.875) },
+        { y: mm(44), z: mm(58) },
+      ],
+      [
+        { ...referenceCorner(), corner: 'LR' as const },
+        { y: mm(59), z: mm(9) },
+        { y: mm(47), z: mm(56) },
+      ],
+    ] as const) {
+      const withDamper: FrontViewInput = {
+        ...input,
+        damperLo_m: source('damper_lo', lo),
+        damperUp_m: source('damper_up', up),
+      };
+      const result = solveFrontView(withDamper);
+      const scene = buildFrontViewScene(withDamper, result);
+
+      expect(scene.damper).not.toBeNull();
+      if (scene.damper === null) return;
+      expect(scene.damper.role).toBe('damper');
+      expect(scene.damper.from.x).toBeCloseTo(lo.y, 12);
+      expect(scene.damper.from.y).toBeCloseTo(lo.z, 12);
+      expect(scene.damper.to.x).toBeCloseTo(up.y, 12);
+      expect(scene.damper.to.y).toBeCloseTo(up.z, 12);
+      expect(hardpoint(scene, 'damper_lo').point).toEqual(scene.damper.from);
+      expect(hardpoint(scene, 'damper_up').point).toEqual(scene.damper.to);
+
+      const clip = scene.clip;
+      expect(scene.damper.from.x).toBeGreaterThanOrEqual(clip.minX);
+      expect(scene.damper.from.y).toBeGreaterThanOrEqual(clip.minY);
+      expect(scene.damper.to.x).toBeLessThanOrEqual(clip.maxX);
+      expect(scene.damper.to.y).toBeLessThanOrEqual(clip.maxY);
+    }
+  });
+
+  it('leaves the damper out when the corner carries no damper mounts', () => {
+    const input = referenceCorner();
+    const scene = buildFrontViewScene(input, solveFrontView(input));
+    expect(scene.damper).toBeNull();
+    expect(scene.hardpoints.some((item) => item.id === 'damper_lo')).toBe(false);
+    expect(scene.hardpoints.some((item) => item.id === 'damper_up')).toBe(false);
+  });
+
   it('hides the instant centre and its rays by default, and frames only the geometry', () => {
     const input = referenceCorner();
     const result = solveFrontView(input);

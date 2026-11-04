@@ -28,6 +28,8 @@ export type HardpointId =
   | 'uca_out'
   | 'tie_in'
   | 'tie_out'
+  | 'damper_lo'
+  | 'damper_up'
   | 'wheel_centre'
   | 'contact_patch';
 
@@ -39,7 +41,7 @@ export interface SceneHardpoint {
   readonly source: string;
 }
 
-export type SegmentRole = 'arm' | 'link' | 'tie' | 'construction';
+export type SegmentRole = 'arm' | 'link' | 'tie' | 'damper' | 'construction';
 
 export interface SceneSegment {
   readonly kind: 'segment';
@@ -119,6 +121,8 @@ export interface FrontViewScene {
   readonly upperLink: SceneSegment;
   /** Tie rod in front view, or null when the corner has no tie link. */
   readonly tieRod: SceneSegment | null;
+  /** Damper body between its lower and upper eyes, or null when it is not stored. */
+  readonly damper: SceneSegment | null;
   readonly carrier: SceneCarrier;
   readonly wheel: SceneWheel;
   readonly instantCentre: SceneInstantCentre;

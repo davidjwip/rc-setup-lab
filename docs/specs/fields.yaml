@@ -667,7 +667,7 @@ fields:
       on_absence: REFUSE
       plausible: null
       consumed_by: [motion_ratio, wheel_rate]
-      notes: "Selects which pair of points defines the spring axis."
+      notes: "Selects which pair of points defines the spring axis. Only `coilover_at_damper` is implemented: the spring installation ratio is derived from `corners.<corner>.points.damper_lo`/`damper_up` by rotating the lower arm about its hinge, so it is geometry, never a stored lookup. Absent is treated as `coilover_at_damper`; a `separate_seat` or `inboard_rocker` model is refused until its own spring mounts exist in the schema."
 
     - path: axles.<axle>.spring.rate
       type: value
@@ -952,7 +952,7 @@ fields:
       on_absence: REFUSE
       plausible: null
       consumed_by: [motion_ratio, wheel_rate, ride_frequency, damping_ratio]
-      notes: "Lower damper eye (or spring seat). On the lower arm, not on the carrier."
+      notes: "Lower damper eye (or spring seat). On the lower arm, not on the carrier. On a coilover this is also the spring's lower seat; the motion ratio is derived from this point and `damper_up` by rotating the lower arm about its hinge (the coaxial rule), never read from a stored ratio."
 
     - path: corners.<corner>.points.damper_up
       type: point
@@ -961,7 +961,7 @@ fields:
       on_absence: REFUSE
       plausible: null
       consumed_by: [motion_ratio, wheel_rate, ride_frequency, damping_ratio]
-      notes: "Upper damper eye on the chassis."
+      notes: "Upper damper eye on the chassis. With `damper_lo` it defines the damper and, on a coilover, the spring axis; the motion ratio is derived from the pair, not stored."
 
     - path: corners.<corner>.points.arb_drop
       type: point

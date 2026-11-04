@@ -6,6 +6,8 @@ export type SourceType = Confidence;
 export interface SourceRecord {
   readonly type: SourceType;
   readonly method?: string;
+  /** Free-text provenance note, e.g. why a modelled value was placed where it is. */
+  readonly note?: string;
   readonly by?: string;
 }
 
@@ -63,6 +65,8 @@ export interface CornerDocument {
 
 export type AxleDerivedFrom = 'front';
 
+export type SpringLocation = 'coilover_at_damper' | 'separate_seat' | 'inboard_rocker';
+
 export type ArbTypeDocument = 'torsion_bar' | 'blade' | 'fixed' | 'none';
 
 export interface ArbDocument {
@@ -82,6 +86,8 @@ export interface AxleDocument {
   readonly tyreRadius: MeasuredValue<number> | null;
   readonly bumpLimit: MeasuredValue<number> | null;
   readonly droopLimit: MeasuredValue<number> | null;
+  /** Coaxial spring is the default because only `damper_lo`/`damper_up` are stored. */
+  readonly springLocation: SpringLocation | null;
   readonly springRate: MeasuredValue<number> | null;
   readonly arb: ArbDocument | null;
 }

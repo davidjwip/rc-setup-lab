@@ -116,6 +116,27 @@ describe('FrontViewScene', () => {
     expect(html).toContain('Dashed lines');
     expect(html).toContain('Contact patch');
     expect(html).toContain('Instant centre');
+    expect(html).toContain('Damper');
+    expect(html).toContain('lower eye to upper eye');
+  });
+
+  it('draws the damper at both ends and exposes both eyes', () => {
+    for (const corner of ['LF', 'LR'] as const) {
+      const html = renderToStaticMarkup(
+        createElement(FrontViewScene, {
+          scene: sceneFor(corner),
+          labels: {
+            rollCentreValue: '9.97 mm',
+            rollCentreBand: '±1.0 mm',
+            instantCentre: null,
+            description: `${corner} elevation.`,
+          },
+        }),
+      );
+      expect(html).toContain('data-field="damper"');
+      expect(html).toContain('data-field="damper_lo"');
+      expect(html).toContain('data-field="damper_up"');
+    }
   });
 });
 

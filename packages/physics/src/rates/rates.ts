@@ -1,10 +1,12 @@
 import { distance, type Vec2 } from '../geometry/vec2.js';
+import { K_COINCIDENT_TOL_M } from '../geometry/tolerances.js';
 import { solveFrontViewAtBump } from '../frontView/kinematics.js';
 import type { FrontViewInput, Sourced } from '../frontView/types.js';
 import {
   defined,
   notMeasured,
   undefinedResult,
+  type Band,
   type Flag,
   type Solved,
   type Tier,
@@ -12,13 +14,33 @@ import {
 import type { RatesFromRatioInput, RatesInput, RatesResult, RatesWorking } from './types.js';
 
 /**
- * Half-width of the central difference on wheel travel.
- * 05 §3.1's reviewer check uses ±0.5 mm of wheel travel; the shipped θ-step value
- * (0.565308) and this wheel-step value agree inside G05.1's 1e-5 tolerance.
- * The step is fixed so the number is comparable between corners; a model with less
- * than 0.5 mm of bump or droop returns `outOfTravel` rather than silently shrinking it.
+ * Motion ratio is differentiated numerically, not with the closed form `(a/b)·cos θ`.
+ *
+ * The lower arm is rotated about the hinge axis (`lca_in_a` → `lca_in_b`) by the
+ * crank-angle change that corresponds to a ±0.5 mm wheel step, and both the damper
+ * length and the wheel-centre height are measured at the two states:
+ *
+ *     MR = −(L(+h) − L(−h)) / (z_w(+h) − z_w(−h)),   h = 0.5 mm of wheel travel
+ *
+ * This sees the hinge-axis tilt that a two-arm closed form cannot. The derivative is
+ * checked for convergence by repeating it at h/2: if the two ratios differ by more
+ * than `INSTALLATION_RATIO_CONVERGENCE_TOL`, the geometry is refused as
+ * `degenerateGeometry` rather than shipping a step-dependent number. The reference
+ * front converges to 4.1e-6 and the rear to 2.6e-6, both inside the 1e-5 check.
+ *
+ * The step is fixed rather than scaled to the carriage, so the number is comparable
+ * between corners; a model with less than 0.5 mm of bump or droop returns
+ * `outOfTravel` instead of silently shrinking it.
  */
 const INSTALLATION_RATIO_STEP_M = 0.0005;
+const INSTALLATION_RATIO_CONVERGENCE_TOL = 1e-5;
+
+/**
+ * The motion-ratio band is the ratio evaluated at ±5 mm of wheel travel, the window
+ * physics/05 §3.1 uses to report how much IR changes with travel (±1.3 % on the
+ * reference front). It is a computed interval, not a stored tolerance.
+ */
+const INSTALLATION_RATIO_BAND_STEP_M = 0.005;
 
 /**
  * A ratio this close to zero is the spec's `noMotionRatio` case (05 §5): the damper
@@ -32,6 +54,7 @@ type RatioOutcome =
   | {
       readonly ok: true;
       readonly ratio: number;
+      readonly band: Band | null;
       readonly damperLengthLow_m: number | null;
       readonly damperLengthHigh_m: number | null;
     }
@@ -84,10 +107,59 @@ function rotateAbout(point: Vec2, hinge: Vec2, angle_rad: number): Vec2 {
   };
 }
 
+type RatioSample =
+  | {
+      readonly ok: true;
+      readonly ratio: number;
+      readonly damperLengthLow_m: number;
+      readonly damperLengthHigh_m: number;
+    }
+  | {
+      readonly ok: false;
+      readonly solved: Solved<number>;
+    };
+
 /**
- * 05 (5.1)–(5.2): IR = −dL_damper/dz_wheel, central-differenced over ±0.5 mm of wheel travel.
- * `damper_lo` is on the lower arm, so it rotates about the lower-arm inner point by
- * (θ − θ₀) — the arm transform, not the carrier transform (02 §3.2.3).
+ * One central-difference evaluation at `step_m` of wheel travel. `damper_lo` is on
+ * the lower arm, so it rotates about the lower-arm inner point by (θ − θ₀) — the arm
+ * transform, not the carrier transform (02 §3.2.3).
+ */
+function sampleInstallationRatio(
+  frontView: FrontViewInput,
+  damperLo: Sourced<Vec2>,
+  damperUp: Sourced<Vec2>,
+  step_m: number,
+  centreBump_m = 0,
+): RatioSample {
+  const hinge = frontView.lcaIn_m.value;
+  const theta0 = Math.atan2(
+    frontView.lcaOut_m.value.z - hinge.z,
+    frontView.lcaOut_m.value.y - hinge.y,
+  );
+
+  const high = solveFrontViewAtBump(frontView, centreBump_m + step_m);
+  const low = solveFrontViewAtBump(frontView, centreBump_m - step_m);
+  if (high.kind !== 'defined' || low.kind !== 'defined') {
+    return { ok: false, solved: failureOf(high.kind !== 'defined' ? high : low) };
+  }
+
+  const damperLow = rotateAbout(damperLo.value, hinge, low.value.crankAngle_rad - theta0);
+  const damperHigh = rotateAbout(damperLo.value, hinge, high.value.crankAngle_rad - theta0);
+  const damperLengthLow_m = distance(damperUp.value, damperLow);
+  const damperLengthHigh_m = distance(damperUp.value, damperHigh);
+  const ratio = -(damperLengthHigh_m - damperLengthLow_m) / (2 * step_m);
+
+  if (!Number.isFinite(ratio)) {
+    return { ok: false, solved: undefinedResult('degenerateGeometry', [damperLo.ref, damperUp.ref]) };
+  }
+
+  return { ok: true, ratio, damperLengthLow_m, damperLengthHigh_m };
+}
+
+/**
+ * 05 (5.1)–(5.2): IR = −dL_damper/dz_wheel, central-differenced by rotating the lower
+ * arm about its hinge. The step size and the h vs h/2 convergence check are stated on
+ * `INSTALLATION_RATIO_STEP_M`. The returned band is the ratio at ±5 mm of travel.
  */
 function installationRatioFromGeometry(
   frontView: FrontViewInput,
@@ -95,55 +167,87 @@ function installationRatioFromGeometry(
   damperUp: Sourced<Vec2>,
 ): RatioOutcome {
   const refs = [damperLo.ref, damperUp.ref];
-  const hinge = frontView.lcaIn_m.value;
-  const theta0 = Math.atan2(
-    frontView.lcaOut_m.value.z - hinge.z,
-    frontView.lcaOut_m.value.y - hinge.y,
-  );
+  const staticLength = distance(damperUp.value, damperLo.value);
 
-  const high = solveFrontViewAtBump(frontView, INSTALLATION_RATIO_STEP_M);
-  const low = solveFrontViewAtBump(frontView, -INSTALLATION_RATIO_STEP_M);
-  if (high.kind !== 'defined' || low.kind !== 'defined') {
-    const failed = high.kind !== 'defined' ? high : low;
-    return { ok: false, solved: failureOf(failed), damperLengthLow_m: null, damperLengthHigh_m: null };
+  if (staticLength <= K_COINCIDENT_TOL_M) {
+    return {
+      ok: false,
+      solved: undefinedResult('coincidentPoints', refs),
+      damperLengthLow_m: 0,
+      damperLengthHigh_m: 0,
+    };
   }
 
-  const damperLow = rotateAbout(
-    damperLo.value,
-    hinge,
-    low.value.crankAngle_rad - theta0,
+  const sample = sampleInstallationRatio(
+    frontView,
+    damperLo,
+    damperUp,
+    INSTALLATION_RATIO_STEP_M,
   );
-  const damperHigh = rotateAbout(
-    damperLo.value,
-    hinge,
-    high.value.crankAngle_rad - theta0,
-  );
-  const lengthLow = distance(damperUp.value, damperLow);
-  const lengthHigh = distance(damperUp.value, damperHigh);
-  const ratio = -(lengthHigh - lengthLow) / (2 * INSTALLATION_RATIO_STEP_M);
+  if (!sample.ok) {
+    return { ok: false, solved: sample.solved, damperLengthLow_m: null, damperLengthHigh_m: null };
+  }
 
-  if (!Number.isFinite(ratio)) {
+  const halfStep = sampleInstallationRatio(
+    frontView,
+    damperLo,
+    damperUp,
+    INSTALLATION_RATIO_STEP_M / 2,
+  );
+  if (!halfStep.ok) {
+    return {
+      ok: false,
+      solved: halfStep.solved,
+      damperLengthLow_m: sample.damperLengthLow_m,
+      damperLengthHigh_m: sample.damperLengthHigh_m,
+    };
+  }
+  if (Math.abs(sample.ratio - halfStep.ratio) > INSTALLATION_RATIO_CONVERGENCE_TOL) {
     return {
       ok: false,
       solved: undefinedResult('degenerateGeometry', refs),
-      damperLengthLow_m: lengthLow,
-      damperLengthHigh_m: lengthHigh,
-    };
-  }
-  if (Math.abs(ratio) <= K_MOTION_RATIO_TOL) {
-    return {
-      ok: false,
-      solved: undefinedResult('noMotionRatio', refs),
-      damperLengthLow_m: lengthLow,
-      damperLengthHigh_m: lengthHigh,
+      damperLengthLow_m: sample.damperLengthLow_m,
+      damperLengthHigh_m: sample.damperLengthHigh_m,
     };
   }
 
+  if (Math.abs(sample.ratio) <= K_MOTION_RATIO_TOL) {
+    return {
+      ok: false,
+      solved: undefinedResult('noMotionRatio', refs),
+      damperLengthLow_m: sample.damperLengthLow_m,
+      damperLengthHigh_m: sample.damperLengthHigh_m,
+    };
+  }
+
+  const bumpSample = sampleInstallationRatio(
+    frontView,
+    damperLo,
+    damperUp,
+    INSTALLATION_RATIO_STEP_M,
+    INSTALLATION_RATIO_BAND_STEP_M,
+  );
+  const droopSample = sampleInstallationRatio(
+    frontView,
+    damperLo,
+    damperUp,
+    INSTALLATION_RATIO_STEP_M,
+    -INSTALLATION_RATIO_BAND_STEP_M,
+  );
+  const band: Band | null =
+    bumpSample.ok && droopSample.ok
+      ? {
+          low: Math.min(bumpSample.ratio, droopSample.ratio),
+          high: Math.max(bumpSample.ratio, droopSample.ratio),
+        }
+      : null;
+
   return {
     ok: true,
-    ratio,
-    damperLengthLow_m: lengthLow,
-    damperLengthHigh_m: lengthHigh,
+    ratio: sample.ratio,
+    band,
+    damperLengthLow_m: sample.damperLengthLow_m,
+    damperLengthHigh_m: sample.damperLengthHigh_m,
   };
 }
 
@@ -168,6 +272,7 @@ function ratioFromInput(installationRatio: Sourced<number>): RatioOutcome {
   return {
     ok: true,
     ratio,
+    band: null,
     damperLengthLow_m: null,
     damperLengthHigh_m: null,
   };
@@ -215,7 +320,12 @@ function assemble(
   // 05 §5: a negative ratio is a real geometric inversion, reported, not refused.
   if (ratioOutcome.ratio < 0) flags.add('lowConfidence');
 
-  const installationRatio = defined(ratioOutcome.ratio, { tier, provenance, flags });
+  const installationRatio = defined(ratioOutcome.ratio, {
+    tier,
+    provenance,
+    flags,
+    band: ratioOutcome.band,
+  });
 
   if (!Number.isFinite(springRate.value) || springRate.value <= 0) {
     const refusal = undefinedResult('outOfDomain', [springRate.ref]);

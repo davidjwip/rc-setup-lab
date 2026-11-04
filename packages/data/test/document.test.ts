@@ -63,17 +63,23 @@ describe('document model', () => {
     expect(input.value.sprungMass_kg?.ref).toBe('body.mass.sprung_front');
   });
 
-  it('keeps rear rates out of this geometry slice', () => {
-    // The rear geometry is modelled now, but the rates path still reads the
-    // front spring and front sprung mass. Rear rates are the spring/damper
-    // slice; the roll builder derives the rear ARB ratio meanwhile.
+  it('builds rear rates from the rear geometry, not the front axle', () => {
     const parsed = parseCarModel(rawModel);
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
     const input = buildRatesInput(parsed.value, 'LR');
-    expect(input.ok).toBe(false);
-    if (input.ok) return;
-    expect(input.errors.some((error) => error.path === 'axles.rear')).toBe(true);
+    expect(input.ok).toBe(true);
+    if (!input.ok) return;
+    expect(input.value.corner).toBe('LR');
+    expect(input.value.frontView.corner).toBe('LR');
+    expect(input.value.springRate_Npm.value).toBeCloseTo(2600, 9);
+    expect(input.value.springRate_Npm.ref).toBe('axles.rear.spring.rate');
+    expect(input.value.damperLo_m.value.y).toBeCloseTo(0.068, 12);
+    expect(input.value.damperLo_m.value.z).toBeCloseTo(0.009, 12);
+    expect(input.value.damperUp_m.value.y).toBeCloseTo(0.056, 12);
+    expect(input.value.damperUp_m.value.z).toBeCloseTo(0.063, 12);
+    expect(input.value.sprungMass_kg?.value).toBeCloseTo(0.311245, 12);
+    expect(input.value.sprungMass_kg?.ref).toBe('body.mass.sprung_rear');
   });
 
   it('builds the mirrored right-hand corner with the correct side sign', () => {

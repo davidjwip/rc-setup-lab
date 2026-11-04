@@ -105,9 +105,9 @@ For each corner (`LF`, `RF`, `LR`, `RR`) record x, y, z of:
 | `arb.material` | steel, titanium, or "unknown" | unknown = the default is flagged in the file |
 | `arb.rate_at_link` | only if you have a bench measurement | overrides the geometry path entirely — prefer it if you have it |
 
-Repeat stages 3–4 for the **rear axle** if you have time (another 30 min). Rear hardpoints also
-replace three assumptions in the reference car — rear installation ratio, rear roll-centre height and
-rear balance — which currently carry a ±1.5 percentage-point band on the balance number.
+Repeat stages 3–4 for the **rear axle** if you have time (another 30 min). The reference rear corner
+is modelled, so a measured session replaces the modelled damper mount and the modelled roll-centre
+height, and turns the rear installation ratio from derived-from-a-model into measured.
 
 ---
 
@@ -162,6 +162,7 @@ community models requires them.
 4. Bring it back here; the golden cases get re-derived against a real car and the reference-car
    assumptions get replaced one at a time.
 
-**The three assumptions this session is meant to kill:** the rear installation ratio (assumed 0.7071),
-the rear roll-centre height (assumed 6.0 mm), and CG height (assumed 28.0 mm against a component
-estimate of 18.7 mm). Any one of them measured properly is worth more than another review round.
+**The assumptions this session is meant to kill:** the modelled rear damper mount (the derived 0.689
+installation ratio), the modelled rear roll-centre height (17.9 mm), and CG height (assumed 28.0 mm
+against a component estimate of 18.7 mm). Any one of them measured properly is worth more than
+another review round.

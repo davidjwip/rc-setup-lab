@@ -36,6 +36,22 @@ function referenceFrontView(side: 1 | -1 = 1): FrontViewInput {
   };
 }
 
+function referenceRearView(): FrontViewInput {
+  return {
+    corner: 'LR',
+    side: 1,
+    lowerArmType: 'hinge',
+    upperArmType: 'single_link',
+    lcaIn_m: sourced('lca_in_a', { y: mm(30), z: mm(16) }),
+    lcaOut_m: sourced('lca_out', { y: mm(80), z: mm(7) }),
+    ucaIn_m: sourced('uca_in', { y: mm(44), z: mm(52) }),
+    ucaOut_m: sourced('uca_out', { y: mm(73.5), z: mm(53) }),
+    wheelCentre_m: sourced('wc', { y: mm(87), z: mm(32) }),
+    bumpLimit_m: mm(6),
+    droopLimit_m: mm(6),
+  };
+}
+
 function referenceRatesInput(overrides: Partial<RatesInput> = {}): RatesInput {
   return {
     corner: 'LF',
@@ -87,7 +103,7 @@ describe('rates goldens (docs/specs/physics/05-rates.md §7)', () => {
     }
   });
 
-  it('G05.6 rear, §6.5 data: f = 10.286 Hz, c_crit = 40.230 N·s/m (IR_r is an assumed input)', () => {
+  it('a stated installation ratio still solves: IR = 0.7071 gives f = 10.286 Hz, c_crit = 40.230 N·s/m', () => {
     const result = solveRatesFromRatio({
       corner: 'LR',
       installationRatio: { value: 0.7071, ref: 'assumed.IR_rear', confidence: 'assumed' },
@@ -142,6 +158,54 @@ describe('rates goldens (docs/specs/physics/05-rates.md §7)', () => {
     expect(result.installationRatio.value).toBeLessThan(0);
     expect(result.installationRatio.flags.has('lowConfidence')).toBe(true);
     expect(result.wheelRate.kind).toBe('defined');
+  });
+
+  it('G05.13 coincident damper mounts: Undefined(coincidentPoints), never Infinity or NaN', () => {
+    const result = solveRates(
+      referenceRatesInput({
+        damperUp_m: sourced('damper_up', { y: mm(60), z: mm(8.875) }),
+      }),
+    );
+    expect(result.installationRatio.kind).toBe('undefined');
+    if (result.installationRatio.kind === 'undefined') {
+      expect(result.installationRatio.reason).toBe('coincidentPoints');
+      expect(result.installationRatio.inputs).toContain('damper_lo');
+      expect(result.installationRatio.inputs).toContain('damper_up');
+    }
+    expect(result.wheelRate.kind).toBe('undefined');
+    if (result.wheelRate.kind === 'undefined') {
+      expect(result.wheelRate.reason).toBe('coincidentPoints');
+    }
+    expect(result.working.installationRatio).toBeNull();
+    expect(result.working.wheelRate_Npm).toBeNull();
+    expect(Number.isFinite(result.working.damperLengthLow_m ?? Number.NaN)).toBe(true);
+  });
+
+  it('G05.6 reference rear damper geometry: IR = 0.689205, f = 10.026 Hz, c_crit = 39.212 N·s/m', () => {
+    const rear = referenceRatesInput({
+      corner: 'LR',
+      frontView: referenceRearView(),
+      damperLo_m: sourced('damper_lo', { y: mm(68), z: mm(9) }),
+      damperUp_m: sourced('damper_up', { y: mm(56), z: mm(63) }),
+      springRate_Npm: { value: 2600, ref: 'axles.rear.spring.rate', confidence: 'measured' },
+      sprungMass_kg: { value: 0.311245, ref: 'body.mass.sprung_rear', confidence: 'derived' },
+    });
+    const result = solveRates(rear);
+    expect(result.installationRatio.kind).toBe('defined');
+    if (result.installationRatio.kind !== 'defined') return;
+    // Independent 2-D four-bar hand check, hθ = 1e-3 rad about lca_in_a:
+    // IR = 0.689205; the shipped ±0.5 mm wheel step agrees inside 1e-5.
+    expect(Math.abs(result.installationRatio.value - 0.689205)).toBeLessThanOrEqual(1e-5);
+    expect(result.installationRatio.flags.has('assumedInput')).toBe(false);
+    expect(result.wheelRate.kind).toBe('defined');
+    if (result.wheelRate.kind !== 'defined') return;
+    expect(relativeError(result.wheelRate.value, 1235.0109)).toBeLessThanOrEqual(1e-4);
+    expect(result.rideFrequency.kind).toBe('defined');
+    if (result.rideFrequency.kind !== 'defined') return;
+    expect(relativeError(result.rideFrequency.value, 10.02546)).toBeLessThanOrEqual(1e-4);
+    expect(result.criticalDamping.kind).toBe('defined');
+    if (result.criticalDamping.kind !== 'defined') return;
+    expect(relativeError(result.criticalDamping.value, 39.21178)).toBeLessThanOrEqual(1e-4);
   });
 
   it('G05.9 mass budget: 2·m_s,f + 2·m_s,r + m_u = m_total = 1.350 kg to 1e-9', () => {

@@ -7,6 +7,7 @@ import {
 } from '@setuplab/physics';
 import rawModel from '../../../assets/models/reference-touring-car.json';
 import {
+  buildAxleRates,
   buildFrontViewInput,
   buildLoadTransferInput,
   buildRollStiffnessInput,
@@ -38,6 +39,8 @@ describe('rear corner modelled geometry', () => {
     const source = model.sources['s_modelled'];
     expect(source?.type).toBe('modelled');
     expect(source?.method).toBe('modelled rear geometry — not measured');
+    expect(source?.note).toContain('motion ratio of about 0.70');
+    expect(source?.note).toContain('earlier placement gave 0.51 and a 7.4 Hz rear');
 
     expect(model.axles.rear?.derivedFrom).toBeNull();
     expect(rawModel.axles.rear).not.toHaveProperty('derived_from');
@@ -259,7 +262,7 @@ describe('rear corner modelled geometry', () => {
     expect(movedBalance.value).not.toBeCloseTo(baseBalance.value, 6);
   });
 
-  it('does not leave balance unchanged when the rear corners are absent', () => {
+  it('refuses rear rates and the balance when the rear corners are absent instead of assuming a ratio', () => {
     const withRearCorners = parseReference();
 
     const withoutRear = clone(rawModel) as { corners: Record<string, unknown> };
@@ -269,30 +272,28 @@ describe('rear corner modelled geometry', () => {
     expect(withoutRearCorners.ok).toBe(true);
     if (!withoutRearCorners.ok) return;
 
-    const rollWith = buildRollStiffnessInput(withRearCorners);
+    const ratesWithout = buildAxleRates(withoutRearCorners.value, 'rear');
+    expect(ratesWithout.ok).toBe(false);
+    if (!ratesWithout.ok) {
+      expect(ratesWithout.errors.some((error) => error.path.startsWith('corners.'))).toBe(true);
+    }
+
     const rollWithout = buildRollStiffnessInput(withoutRearCorners.value);
-    expect(rollWith.ok).toBe(true);
-    expect(rollWithout.ok).toBe(true);
-    if (!rollWith.ok || !rollWithout.ok) return;
+    expect(rollWithout.ok).toBe(false);
+    if (!rollWithout.ok) {
+      expect(rollWithout.errors.some((error) => error.path.startsWith('corners.'))).toBe(true);
+    }
 
-    const withShare = solveRollStiffness(rollWith.value).frontShare;
-    const withoutShare = solveRollStiffness(rollWithout.value).frontShare;
-    expect(withShare.kind).toBe('defined');
-    expect(withoutShare.kind).toBe('defined');
-    if (withShare.kind !== 'defined' || withoutShare.kind !== 'defined') return;
-    expect(withShare.value).not.toBeCloseTo(withoutShare.value, 6);
-
-    const transferWith = buildLoadTransferInput(withRearCorners, 9.81);
     const transferWithout = buildLoadTransferInput(withoutRearCorners.value, 9.81);
-    expect(transferWith.ok).toBe(true);
-    expect(transferWithout.ok).toBe(true);
-    if (!transferWith.ok || !transferWithout.ok) return;
+    expect(transferWithout.ok).toBe(false);
 
-    const balanceWith = solveLoadTransfer(transferWith.value).balance;
-    const balanceWithout = solveLoadTransfer(transferWithout.value).balance;
-    expect(balanceWith.kind).toBe('defined');
-    expect(balanceWithout.kind).toBe('defined');
-    if (balanceWith.kind !== 'defined' || balanceWithout.kind !== 'defined') return;
-    expect(balanceWith.value).not.toBeCloseTo(balanceWithout.value, 6);
+    // With the rear corners present both the rear rates and the balance exist,
+    // so the refusal above is the absence, not a permanent refusal of the path.
+    const rearRates = buildAxleRates(withRearCorners, 'rear');
+    expect(rearRates.ok).toBe(true);
+    const rollWith = buildRollStiffnessInput(withRearCorners);
+    expect(rollWith.ok).toBe(true);
+    const transferWith = buildLoadTransferInput(withRearCorners, 9.81);
+    expect(transferWith.ok).toBe(true);
   });
 });

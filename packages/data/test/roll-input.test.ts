@@ -62,7 +62,7 @@ describe('anti-roll bar and roll-stiffness data', () => {
     const rearWheelRate = input.value.rear.springWheelRate_Npm;
     expect(rearWheelRate.kind).toBe('defined');
     if (rearWheelRate.kind === 'defined') {
-      expect(relativeError(rearWheelRate.value, 1299.98)).toBeLessThanOrEqual(1e-4);
+      expect(relativeError(rearWheelRate.value, 1235.01)).toBeLessThanOrEqual(1e-4);
     }
 
     const result = solveRollStiffness(input.value);
@@ -77,8 +77,8 @@ describe('anti-roll bar and roll-stiffness data', () => {
       return;
     }
     expect(relativeError(result.front.rollStiffness.value, 37.274)).toBeLessThanOrEqual(1e-4);
-    expect(relativeError(result.rear.rollStiffness.value, 23.7223)).toBeLessThanOrEqual(1e-4);
-    expect(relativeError(result.frontShare.value * 100, 61.10864)).toBeLessThanOrEqual(1e-4);
+    expect(relativeError(result.rear.rollStiffness.value, 22.7393)).toBeLessThanOrEqual(1e-4);
+    expect(relativeError(result.frontShare.value * 100, 62.1096)).toBeLessThanOrEqual(1e-4);
 
     expect(input.value.front.antiRollBar.motionRatio?.value).toBeCloseTo(0.8, 12);
     expect(input.value.front.antiRollBar.motionRatio?.confidence).toBe('assumed');

@@ -107,8 +107,8 @@ describe("chassis datum", () => {
     expect(defined(rear.camberGain) * DEG_PER_MM).toBeCloseTo(-0.2568, 4);
     expect(defined(frontRates.wheelRate) / 1000).toBeCloseTo(1.11851, 4);
     expect(defined(frontRates.rideFrequency)).toBeCloseTo(10.781, 3);
-    expect(defined(roll.frontShare) * 100).toBeCloseTo(61.11, 2);
-    expect(defined(transfer.balance) * 100).toBeCloseTo(47.01, 2);
+    expect(defined(roll.frontShare) * 100).toBeCloseTo(62.11, 2);
+    expect(defined(transfer.balance) * 100).toBeCloseTo(47.46, 2);
   });
 
   it("migrates a v1 document once and round-trips its numbers through export and reload", () => {

@@ -790,22 +790,27 @@ Carrier frame at static (for §6.3):
 These four numbers are what makes module 2's carrier transform computable; round 1 stored none of
 them and left the formula to two documents that each pointed at the other.
 
-### 8.4 Rear corner — not measured, and that is a debt
+### 8.4 Rear corner — modelled, not measured, and still a debt
 
-The reference car has **no rear hardpoints**. Modules 5 and 6 need a rear installation ratio, a rear
-bar rate, a rear roll-centre height and a rear track. In this revision they are **inputs with a
-range, labelled `assumed`**, not computed values:
+The reference car carries a **modelled** rear corner (source `s_modelled`), not measured rear
+hardpoints. Modules 5 and 6 now compute the rear installation ratio, bar ratio, roll-centre height
+and track from that geometry, but the geometry itself is a debt: it is a plausible touring-car
+placement, not a measurement.
 
-| Rear input | Value used in examples | Range | Where |
+| Rear input | Value used | Range | Where |
 |---|---|---|---|
-| `IR_r` | 0.7071 | 0.60 – 0.80 | 05 §6.5 |
-| rear bar rate k_bar,r (d = 1.20 mm, same geometry) | 0.2870 N/mm | 0.15 – 0.45 | 05 §6.3 |
-| rear roll-centre height z_rc,r | 6.000 mm | 0 – 20 | 06 §6.3 |
+| `IR_r` (derived from `damper_lo`/`damper_up`) | 0.689205 | 0.55 – 0.80 (Bob: 0.64 Xray, 0.75 Mugen) | 05 §6.5 |
+| rear bar rate k_bar,r (d = 1.20 mm, `IR_arm` = 0.54572) | 0.13356 N/mm at the wheel | — | 05 §6.3 |
+| rear roll-centre height z_rc,r | 17.899 mm | — | 02/06, from the modelled geometry |
 | rear track | 174.0 mm | measured | 01 §8.1 |
 
-Publishing a rear corner in the same schema is the fix, and it is one measurement session. Until
-then the balance number is a computed function of four assumptions, and `99-validation.md` §7 says
-so in the precision policy.
+The modelled damper mount was placed to give MR ≈ 0.70, consistent with the stated 2.60 N/mm spring
+and Bob Wright's published range; the earlier placement gave 0.51 and a 7.4 Hz rear. The front stays
+at its spec-derived 0.5653 and is not tuned toward that band.
+
+Publishing a rear corner in the same schema was the first fix; the remaining one is a measurement
+session. Until then the balance number is a computed function of modelled geometry, and
+`99-validation.md` §7 says so in the precision policy.
 
 ### 8.5 Buggy corner, same schema
 

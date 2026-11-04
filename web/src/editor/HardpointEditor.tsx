@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CarModelDocument, CornerKey, CornerPointKey } from '@setuplab/data';
-import { LENGTH_UNIT } from '../format/format.js';
+import type { Solved } from '@setuplab/physics';
+import { LENGTH_UNIT, formatInstallationRatio } from '../format/format.js';
 import {
   checkHardpointMm,
   hardpointRowsForAxle,
@@ -15,6 +16,7 @@ export interface HardpointEditorProps {
   readonly cornerKey: CornerKey;
   readonly edited: boolean;
   readonly solverRefusal: string | null;
+  readonly installationRatio?: Solved<number> | null;
   readonly onCommit: (pointKey: CornerPointKey, axis: 1 | 2, valueMm: number) => string | null;
   readonly onReset: () => void;
 }
@@ -32,6 +34,7 @@ export function HardpointEditor({
   cornerKey,
   edited,
   solverRefusal,
+  installationRatio = null,
   onCommit,
   onReset,
 }: HardpointEditorProps) {
@@ -153,6 +156,36 @@ export function HardpointEditor({
           })}
         </tbody>
       </table>
+
+      <div className="motion-ratio" role="status">
+        <span className="motion-ratio-label">Derived damper motion ratio</span>
+        {installationRatio !== null && installationRatio.kind === 'defined' ? (
+          <>
+            <strong className="motion-ratio-value">
+              {formatInstallationRatio(installationRatio.value, 3)}
+            </strong>
+            <span className="motion-ratio-band">
+              {installationRatio.band === null
+                ? 'no band'
+                : `across ±5 mm: ${formatInstallationRatio(
+                    installationRatio.band.low,
+                    3,
+                  )}–${formatInstallationRatio(installationRatio.band.high, 3)}`}
+            </span>
+          </>
+        ) : (
+          <span className="motion-ratio-band">
+            {installationRatio === null
+              ? 'not computable'
+              : installationRatio.kind === 'undefined'
+                ? `undefined · ${installationRatio.reason}`
+                : `not measured · ${installationRatio.missing.join(', ')}`}
+          </span>
+        )}
+        <span className="motion-ratio-note">
+          The damper is rotated about the lower-arm hinge; on a coilover this is also the spring installation ratio. A separately mounted spring would be kept distinct, not conflated.
+        </span>
+      </div>
 
       {error === null ? null : (
         <p className="editor-error" role="alert">

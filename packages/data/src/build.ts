@@ -1,8 +1,6 @@
 import {
-  notMeasured,
   solveFrontView,
   solveRates,
-  solveRatesFromRatio,
   solveRollStiffness,
   type AntiRollBarInput,
   type CgComponentInput,
@@ -36,13 +34,6 @@ import {
   newtonsPerMillimetreToNewtonsPerMetre,
   percentToFraction,
 } from './units.js';
-
-/**
- * 05 §6.5: the reference car has no rear hardpoints, so its rear installation
- * ratio is an assumed input. It is not stored in fields.yaml; the TODO in the
- * PR records the schema gap.
- */
-const REAR_INSTALLATION_RATIO_ASSUMED = 0.7071;
 
 /**
  * 05 §3.2: fallback ARB motion ratio when `points.arb_drop` cannot supply one.
@@ -93,6 +84,10 @@ export const SIDE_SIGN: Readonly<Record<CornerKey, 1 | -1>> = {
   RF: -1,
   RR: -1,
 };
+
+function axleKeyForCorner(cornerKey: CornerKey): 'front' | 'rear' {
+  return cornerKey === 'LF' || cornerKey === 'RF' ? 'front' : 'rear';
+}
 
 /**
  * `thickness + ride_height`: the rigid translation from the document's chassis
@@ -266,6 +261,14 @@ export function buildFrontViewInput(
   const corner = cornerFor(model, cornerKey);
   if (!corner.ok) return corner;
 
+  const axleKey = axleKeyForCorner(cornerKey);
+  const axle = model.axles[axleKey];
+  if (axle === null) {
+    return fail([
+      dataError('missingField', `axles.${axleKey}`, 'the front-view solve needs an axle block'),
+    ]);
+  }
+
   const errors = [];
   const offsetMm = datumOffsetMm(model);
   if (offsetMm === null) {
@@ -280,6 +283,8 @@ export function buildFrontViewInput(
   const wheelCentre = point(corner.value, cornerKey, 'wc', offsetMm);
   const tieIn = point(corner.value, cornerKey, 'tie_in', offsetMm);
   const tieOut = point(corner.value, cornerKey, 'tie_out', offsetMm);
+  const damperLo = point(corner.value, cornerKey, 'damper_lo', offsetMm);
+  const damperUp = point(corner.value, cornerKey, 'damper_up', offsetMm);
 
   if (lcaIn === null) {
     errors.push(dataError('missingField', `corners.${cornerKey}.points.lca_in_a`, 'required'));
@@ -299,13 +304,13 @@ export function buildFrontViewInput(
     errors.push(dataError('missingField', `corners.${cornerKey}.points.wc`, 'required'));
   }
 
-  const bumpLimit = model.axles.front.bumpLimit;
-  const droopLimit = model.axles.front.droopLimit;
+  const bumpLimit = axle.bumpLimit;
+  const droopLimit = axle.droopLimit;
   if (bumpLimit === null) {
     errors.push(
       dataError(
         'missingField',
-        'axles.front.bump_limit_wheel',
+        `axles.${axleKey}.bump_limit_wheel`,
         'the front-view solve needs a bump limit',
       ),
     );
@@ -314,7 +319,7 @@ export function buildFrontViewInput(
     errors.push(
       dataError(
         'missingField',
-        'axles.front.droop_limit_wheel',
+        `axles.${axleKey}.droop_limit_wheel`,
         'the front-view solve needs a droop limit',
       ),
     );
@@ -345,6 +350,8 @@ export function buildFrontViewInput(
     wheelCentre_m: wheelCentre,
     ...(tieIn === null ? {} : { tieIn_m: tieIn }),
     ...(tieOut === null ? {} : { tieOut_m: tieOut }),
+    ...(damperLo === null ? {} : { damperLo_m: damperLo }),
+    ...(damperUp === null ? {} : { damperUp_m: damperUp }),
     bumpLimit_m: millimetresToMetres(bumpLimit.value),
     droopLimit_m: millimetresToMetres(droopLimit.value),
   });
@@ -473,24 +480,33 @@ export function buildToeInput(
 }
 
 /**
- * Build the per-corner rates input: the front-view geometry, the damper mounts, the
- * spring rate (N/mm on disk → N/m in SI) and the sprung mass (g per axle on disk →
- * kg per corner in SI). Absent sprung mass is carried as null so the wheel rate can
- * still be solved and the frequency alone reports `notMeasured`.
+ * Build the per-corner rates input: the axle's front-view geometry, the damper
+ * mounts, the spring rate (N/mm on disk → N/m in SI) and the sprung mass (g per
+ * axle on disk → kg per corner in SI). The spring's installation ratio is derived
+ * from the damper geometry on a coilover: on a touring car the spring is coaxial
+ * with the damper, so the stated rear ratio (0.7071) is superseded. A model that
+ * declares a separate seat or rocker is refused rather than silently conflated —
+ * the schema has no separate spring-mount points to derive from yet.
  */
 export function buildRatesInput(
   model: CarModelDocument,
   cornerKey: CornerKey = 'LF',
 ): DataResult<RatesInput> {
-  if (cornerKey === 'LR' || cornerKey === 'RR') {
-    // TODO(spec 05 §6.5): the rear geometry is modelled now, but this path still
-    // reads the front spring and front sprung mass. Wiring rear rates is the
-    // spring/damper slice; the roll builder derives the rear ARB ratio meanwhile.
+  const axleKey = axleKeyForCorner(cornerKey);
+  const axle = model.axles[axleKey];
+  if (axle === null) {
+    return fail([
+      dataError('missingField', `axles.${axleKey}`, 'rates need this axle block'),
+    ]);
+  }
+
+  const springLocation = axle.springLocation ?? 'coilover_at_damper';
+  if (springLocation !== 'coilover_at_damper') {
     return fail([
       dataError(
         'missingField',
-        'axles.rear',
-        'rear rates are not built in this slice; use the roll builder for the rear axle',
+        `axles.${axleKey}.spring.location`,
+        `this slice derives the spring installation ratio from the coaxial damper; a ${springLocation} spring mount needs its own measured points and is not modelled`,
       ),
     ]);
   }
@@ -505,7 +521,7 @@ export function buildRatesInput(
   if (offsetMm === null) return fail(missingDatumErrors());
   const damperLo = point(corner.value, cornerKey, 'damper_lo', offsetMm);
   const damperUp = point(corner.value, cornerKey, 'damper_up', offsetMm);
-  const springRate = model.axles.front.springRate;
+  const springRate = axle.springRate;
 
   if (damperLo === null) {
     errors.push(
@@ -527,26 +543,27 @@ export function buildRatesInput(
   }
   if (springRate === null) {
     errors.push(
-      dataError('missingField', 'axles.front.spring.rate', 'required for the wheel rate'),
+      dataError(
+        'missingField',
+        `axles.${axleKey}.spring.rate`,
+        'required for the wheel rate',
+      ),
     );
   }
 
-  if (
-    errors.length > 0 ||
-    damperLo === null ||
-    damperUp === null ||
-    springRate === null
-  ) {
+  if (errors.length > 0 || damperLo === null || damperUp === null || springRate === null) {
     return fail(errors);
   }
 
-  const sprung = model.mass.sprungFront;
+  const sprung = axleKey === 'front' ? model.mass.sprungFront : model.mass.sprungRear;
+  const sprungMassRef =
+    axleKey === 'front' ? 'body.mass.sprung_front' : 'body.mass.sprung_rear';
   const sprungMass =
     sprung === null
       ? null
       : {
           value: gramsToKilograms(sprung.value / 2),
-          ref: 'body.mass.sprung_front',
+          ref: sprungMassRef,
           confidence: sprung.confidence,
         };
 
@@ -557,7 +574,7 @@ export function buildRatesInput(
     damperUp_m: damperUp,
     springRate_Npm: {
       value: newtonsPerMillimetreToNewtonsPerMetre(springRate.value),
-      ref: 'axles.front.spring.rate',
+      ref: `axles.${axleKey}.spring.rate`,
       confidence: springRate.confidence,
     },
     sprungMass_kg: sprungMass,
@@ -565,60 +582,15 @@ export function buildRatesInput(
 }
 
 /**
- * 05 §6.5: the rear spring path still uses its stated installation ratio until
- * the rear damper hardpoints replace it. The rear ARB ratio is derived from the
- * modelled rear geometry; only the spring side is the stated input.
- */
-function buildRearRates(model: CarModelDocument): DataResult<RatesResult> {
-  const rear = model.axles.rear;
-  if (rear === null) {
-    return fail([dataError('missingField', 'axles.rear', 'rear rates need a rear axle block')]);
-  }
-  const springRate = rear.springRate;
-  if (springRate === null) {
-    return fail([
-      dataError('missingField', 'axles.rear.spring.rate', 'required for the wheel rate'),
-    ]);
-  }
-  const sprung = model.mass.sprungRear;
-  const sprungMass =
-    sprung === null
-      ? null
-      : {
-          value: gramsToKilograms(sprung.value / 2),
-          ref: 'body.mass.sprung_rear',
-          confidence: sprung.confidence,
-        };
-
-  return ok(
-    solveRatesFromRatio({
-      corner: 'LR',
-      installationRatio: {
-        value: REAR_INSTALLATION_RATIO_ASSUMED,
-        ref: 'assumed.IR_rear',
-        confidence: 'assumed',
-      },
-      springRate_Npm: {
-        value: newtonsPerMillimetreToNewtonsPerMetre(springRate.value),
-        ref: 'axles.rear.spring.rate',
-        confidence: springRate.confidence,
-      },
-      sprungMass_kg: sprungMass,
-    }),
-  );
-}
-
-/**
- * Solve one axle's rates for the editor: the front from its measured geometry,
- * the rear from 05 §6.5's stated installation ratio. Editing either axle's
- * spring rate changes only that axle's result.
+ * Solve one axle's rates for the editor. Both ends now derive the installation
+ * ratio from their own damper hardpoints. Editing either axle's spring rate
+ * changes only that axle's result.
  */
 export function buildAxleRates(
   model: CarModelDocument,
   axle: 'front' | 'rear',
 ): DataResult<RatesResult> {
-  if (axle === 'rear') return buildRearRates(model);
-  const input = buildRatesInput(model, 'LF');
+  const input = buildRatesInput(model, AXLE_CORNER[axle]);
   if (!input.ok) return input;
   return ok(solveRates(input.value));
 }
@@ -738,46 +710,12 @@ export function buildAntiRollBarInput(
   };
 }
 
-function frontSpringWheelRate(model: CarModelDocument): DataResult<Solved<number>> {
-  const ratesInput = buildRatesInput(model, 'LF');
-  if (!ratesInput.ok) return ratesInput;
-  return ok(solveRates(ratesInput.value).wheelRate);
-}
-
 /**
- * 05 §6.5: the rear spring path still uses its stated installation ratio. This
- * slice derives only the rear ARB motion ratio from the new modelled geometry;
- * TODO(spec 05 §6.5) moves the rear spring ratio onto its damper hardpoints.
- */
-function rearSpringWheelRate(model: CarModelDocument): Solved<number> {
-  const rear = model.axles.rear;
-  if (rear === null) return notMeasured(['axles.rear']);
-  const springRate = rear.springRate;
-  if (springRate === null) return notMeasured(['axles.rear.spring.rate']);
-
-  const rates = solveRatesFromRatio({
-    corner: 'LR',
-    installationRatio: {
-      value: REAR_INSTALLATION_RATIO_ASSUMED,
-      ref: 'assumed.IR_rear',
-      confidence: 'assumed',
-    },
-    springRate_Npm: {
-      value: newtonsPerMillimetreToNewtonsPerMetre(springRate.value),
-      ref: 'axles.rear.spring.rate',
-      confidence: springRate.confidence,
-    },
-    sprungMass_kg: null,
-  });
-  return rates.wheelRate;
-}
-
-/**
- * Build the SI roll-stiffness input for both axles. The front wheel rate comes
- * from the measured front-view geometry and keeps 05's stated ARB ratio; the
- * rear spring rate still uses 05 §6.5's stated installation ratio, while its
- * ARB ratio is derived from the modelled rear `arb_drop`. A missing rear axle
- * is a data error, because the front share cannot exist without it.
+ * Build the SI roll-stiffness input for both axles. Both spring wheel rates come
+ * from the axle's own damper geometry; only the front ARB ratio keeps 05's stated
+ * 0.80, because the reference front `arb_drop` is not the one the worked example
+ * uses. The rear ARB ratio is derived from the modelled rear `arb_drop`. A missing
+ * rear axle is a data error, because the front share cannot exist without it.
  */
 export function buildRollStiffnessInput(model: CarModelDocument): DataResult<RollStiffnessInput> {
   const rear = model.axles.rear;
@@ -791,8 +729,10 @@ export function buildRollStiffnessInput(model: CarModelDocument): DataResult<Rol
     ]);
   }
 
-  const frontWheelRate = frontSpringWheelRate(model);
-  if (!frontWheelRate.ok) return frontWheelRate;
+  const frontRates = buildAxleRates(model, 'front');
+  if (!frontRates.ok) return frontRates;
+  const rearRates = buildAxleRates(model, 'rear');
+  if (!rearRates.ok) return rearRates;
 
   const frontTrack = model.axles.front.track;
   const rearTrack = rear.track;
@@ -801,7 +741,7 @@ export function buildRollStiffnessInput(model: CarModelDocument): DataResult<Rol
   return ok({
     front: {
       axle: 'front',
-      springWheelRate_Npm: frontWheelRate.value,
+      springWheelRate_Npm: frontRates.value.wheelRate,
       antiRollBar: buildAntiRollBarInput(model.axles.front, 'front'),
       track_m: {
         value: millimetresToMetres(frontTrack.value),
@@ -811,7 +751,7 @@ export function buildRollStiffnessInput(model: CarModelDocument): DataResult<Rol
     },
     rear: {
       axle: 'rear',
-      springWheelRate_Npm: rearSpringWheelRate(model),
+      springWheelRate_Npm: rearRates.value.wheelRate,
       antiRollBar: buildAntiRollBarInput(rear, 'rear', rearMotionRatio),
       track_m: {
         value: millimetresToMetres(rearTrack.value),
