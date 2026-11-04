@@ -7,8 +7,10 @@ import {
   type AntiRollBarInput,
   type CgComponentInput,
   type FrontViewInput,
+  type DampingRatioInput,
   type LoadTransferInput,
   type RatesInput,
+  type RatesResult,
   type RollStiffnessInput,
   type Solved,
   type Sourced,
@@ -45,6 +47,15 @@ const REAR_INSTALLATION_RATIO_ASSUMED = 0.7071;
  * rear derives IR_arm from its own modelled hardpoints.
  */
 const ARB_MOTION_RATIO_ASSUMED = 0.8;
+
+/** fields.yaml `corners.<corner>.damper.c_post` states ASSUME(12.0 N·s/m). */
+const DEFAULT_DAMPER_COEFFICIENT_NS_PER_M = 12.0;
+
+/** The left corner of each axle is the one the model stores and the editor edits. */
+const AXLE_CORNER: Readonly<Record<'front' | 'rear', 'LF' | 'LR'>> = {
+  front: 'LF',
+  rear: 'LR',
+};
 
 /** fields.yaml `axles.<axle>.arb.shear_modulus`: steel is the stated default. */
 const STEEL_SHEAR_MODULUS_GPA = 79.3;
@@ -147,7 +158,7 @@ function mirrorCorner(corner: CornerDocument): CornerDocument {
       confidence: measured.confidence,
     };
   }
-  return { armType: corner.armType, points };
+  return { armType: corner.armType, points, damper: corner.damper };
 }
 
 export function cornerFor(
@@ -347,6 +358,101 @@ export function buildRatesInput(
     },
     sprungMass_kg: sprungMass,
   });
+}
+
+/**
+ * 05 §6.5: the rear spring path still uses its stated installation ratio until
+ * the rear damper hardpoints replace it. The rear ARB ratio is derived from the
+ * modelled rear geometry; only the spring side is the stated input.
+ */
+function buildRearRates(model: CarModelDocument): DataResult<RatesResult> {
+  const rear = model.axles.rear;
+  if (rear === null) {
+    return fail([dataError('missingField', 'axles.rear', 'rear rates need a rear axle block')]);
+  }
+  const springRate = rear.springRate;
+  if (springRate === null) {
+    return fail([
+      dataError('missingField', 'axles.rear.spring.rate', 'required for the wheel rate'),
+    ]);
+  }
+  const sprung = model.mass.sprungRear;
+  const sprungMass =
+    sprung === null
+      ? null
+      : {
+          value: gramsToKilograms(sprung.value / 2),
+          ref: 'body.mass.sprung_rear',
+          confidence: sprung.confidence,
+        };
+
+  return ok(
+    solveRatesFromRatio({
+      corner: 'LR',
+      installationRatio: {
+        value: REAR_INSTALLATION_RATIO_ASSUMED,
+        ref: 'assumed.IR_rear',
+        confidence: 'assumed',
+      },
+      springRate_Npm: {
+        value: newtonsPerMillimetreToNewtonsPerMetre(springRate.value),
+        ref: 'axles.rear.spring.rate',
+        confidence: springRate.confidence,
+      },
+      sprungMass_kg: sprungMass,
+    }),
+  );
+}
+
+/**
+ * Solve one axle's rates for the editor: the front from its measured geometry,
+ * the rear from 05 §6.5's stated installation ratio. Editing either axle's
+ * spring rate changes only that axle's result.
+ */
+export function buildAxleRates(
+  model: CarModelDocument,
+  axle: 'front' | 'rear',
+): DataResult<RatesResult> {
+  if (axle === 'rear') return buildRearRates(model);
+  const input = buildRatesInput(model, 'LF');
+  if (!input.ok) return input;
+  return ok(solveRates(input.value));
+}
+
+/**
+ * Build the wheel-level damping-ratio input from the canonical damper
+ * coefficient (`corners.<corner>.damper.c_post`) and the solved critical
+ * damping. An absent coefficient uses fields.yaml's stated ASSUME(12.0) and is
+ * flagged `assumedInput`; an edited value keeps the `estimated` confidence the
+ * editor writes, so it never becomes `measured` just because it was typed.
+ *
+ * TODO(spec §4.8): this is the direct wheel-coefficient path, not
+ * `orifice_single_piston_v1`; the full six-input band is a later slice.
+ */
+export function buildDampingRatioInput(
+  model: CarModelDocument,
+  axle: 'front' | 'rear',
+  criticalDamping_NsPerM: Solved<number>,
+): DampingRatioInput {
+  const cornerKey = AXLE_CORNER[axle];
+  const measured = model.corners[cornerKey]?.damper?.cPost ?? null;
+  const coefficient: Sourced<number> =
+    measured === null
+      ? {
+          value: DEFAULT_DAMPER_COEFFICIENT_NS_PER_M,
+          ref: `corners.${cornerKey}.damper.c_post`,
+          confidence: 'assumed',
+        }
+      : {
+          value: measured.value,
+          ref: `corners.${cornerKey}.damper.c_post`,
+          confidence: measured.confidence,
+        };
+
+  return {
+    wheelCoefficient_NsPerM: coefficient,
+    criticalDamping_NsPerM: criticalDamping_NsPerM,
+  };
 }
 
 /**

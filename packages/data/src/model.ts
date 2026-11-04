@@ -44,9 +44,19 @@ export interface ArmTypeDocument {
   readonly upper: 'single_link' | 'wishbone';
 }
 
+/**
+ * The damping coefficient this slice edits. It lives at the canonical
+ * `corners.<corner>.damper.c_post` path; the wheel-level damping ratio consumes
+ * it directly (D-13, physics/07 (7.2)).
+ */
+export interface CornerDamperDocument {
+  readonly cPost: MeasuredValue<number> | null;
+}
+
 export interface CornerDocument {
   readonly armType: ArmTypeDocument;
   readonly points: Partial<Record<CornerPointKey, MeasuredPoint>>;
+  readonly damper: CornerDamperDocument | null;
 }
 
 export type AxleDerivedFrom = 'front';

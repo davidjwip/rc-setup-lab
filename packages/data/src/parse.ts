@@ -363,6 +363,19 @@ function requiredPointKeys(armType: ArmTypeDocument): readonly CornerPointKey[] 
   return [...keys, 'uca_in_a', 'uca_in_b'];
 }
 
+function readDamper(
+  corner: Record<string, unknown>,
+  path: string,
+  errors: DataError[],
+  sources: Readonly<Record<string, SourceRecord>>,
+): CornerDocument['damper'] {
+  const damper = asRecord(corner['damper']);
+  if (damper === null) return null;
+  return {
+    cPost: readOptionalMeasuredNumber(damper, `${path}.damper`, 'c_post', errors, sources),
+  };
+}
+
 function readCorner(
   raw: unknown,
   cornerKey: CornerKey,
@@ -411,7 +424,7 @@ function readCorner(
       );
     }
   }
-  return { armType, points };
+  return { armType, points, damper: readDamper(corner, path, errors, sources) };
 }
 
 function validateMeasuredObjects(
@@ -455,7 +468,7 @@ function mirrorCorner(corner: CornerDocument): CornerDocument {
       confidence: point.confidence,
     };
   }
-  return { armType: corner.armType, points };
+  return { armType: corner.armType, points, damper: corner.damper };
 }
 
 export function parseCarModel(rawInput: unknown): DataResult<CarModelDocument> {

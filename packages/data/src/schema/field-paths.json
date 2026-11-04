@@ -41,7 +41,8 @@
     "corners.<corner>.points.uca_out",
     "corners.<corner>.points.wc",
     "corners.<corner>.points.damper_lo",
-    "corners.<corner>.points.damper_up"
+    "corners.<corner>.points.damper_up",
+    "corners.<corner>.damper.c_post"
   ],
   "outputs": [
     "roll_centre_height",

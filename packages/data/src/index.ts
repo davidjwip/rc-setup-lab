@@ -26,6 +26,7 @@ export type {
   CarModelDocument,
   CgComponentDocument,
   CgDocument,
+  CornerDamperDocument,
   CornerDocument,
   CornerKey,
   CornerPointKey,
@@ -42,10 +43,20 @@ export { parseCarModel, parseCarModelJson } from './parse.js';
 export {
   SIDE_SIGN,
   buildAntiRollBarInput,
+  buildAxleRates,
+  buildDampingRatioInput,
   buildFrontViewInput,
   buildLoadTransferInput,
   buildRatesInput,
   buildRollStiffnessInput,
   cornerFor,
 } from './build.js';
-export { resetCornerPointsMm, updateCornerPointMm } from './edit.js';
+export {
+  resetAxleRates,
+  resetCornerPointsMm,
+  updateAxleArbType,
+  updateAxleArbValue,
+  updateAxleDamperCoefficient,
+  updateAxleSpringRate,
+  updateCornerPointMm,
+} from './edit.js';
