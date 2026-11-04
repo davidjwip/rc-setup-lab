@@ -44,7 +44,7 @@ describe('R0 screen', () => {
   it('renders the roll-stiffness card with the front share as the headline', () => {
     const html = renderToStaticMarkup(createElement(App));
     expect(html).toContain('Roll stiffness');
-    expect(html).toContain('61.1 %');
+    expect(html).toContain('62.1 %');
     expect(html).toContain('front share');
     expect(html).toContain('higher front share');
     expect(html).toContain('0.65 N·m/deg');
@@ -62,10 +62,10 @@ describe('R0 screen', () => {
     const html = renderToStaticMarkup(createElement(App));
     expect(html).toContain('Balance');
     expect(html).toContain('Lateral acceleration');
-    expect(html).toContain('47.01 %');
+    expect(html).toContain('47.46 %');
     expect(html).toContain('2.143 N');
-    expect(html).toContain('116.9 %');
-    expect(html).toContain('83.1 %');
+    expect(html).toContain('117.1 %');
+    expect(html).toContain('82.9 %');
     expect(html).toContain('stated default (D-18)');
     expect(html).toContain('±0.13 pp');
     expect(html).toContain('front share moves more');

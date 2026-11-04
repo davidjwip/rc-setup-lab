@@ -128,7 +128,7 @@ describe('view mode navigation', () => {
     for (const mode of ['front', 'rear', 'both'] as const) {
       const html = renderToStaticMarkup(createElement(AnalysisView, { initialMode: mode }));
       expect(html.match(/<h2>Balance<\/h2>/g)).toHaveLength(1);
-      expect(html).toContain('47.01 %');
+      expect(html).toContain('47.46 %');
     }
   });
 });

@@ -430,6 +430,7 @@ export function AnalysisView({
             cornerKey={cornerKey}
             edited={edited}
             solverRefusal={solverRefusal}
+            installationRatio={ratesResult?.installationRatio ?? null}
             onCommit={commitHardpoint}
             onReset={resetCorner}
           />

@@ -45,6 +45,24 @@ describe('hardpoint editor follows the selected axle', () => {
     expect(inputTag(rear, 'Tie rod outer z in mm')).toContain('value="23"');
   });
 
+  it('edits the damper mounts at both ends and shows the derived motion ratio beside them', () => {
+    const front = renderToStaticMarkup(createElement(AnalysisView));
+    const rear = renderToStaticMarkup(createElement(AnalysisView, { initialAxle: 'rear' }));
+
+    expect(inputTag(front, 'Lower damper eye y in mm')).toContain('value="60"');
+    expect(inputTag(front, 'Upper damper eye y in mm')).toContain('value="44"');
+    expect(inputTag(front, 'Upper damper eye z in mm')).toContain('value="51"');
+    expect(inputTag(rear, 'Lower damper eye y in mm')).toContain('value="68"');
+    expect(inputTag(rear, 'Upper damper eye y in mm')).toContain('value="56"');
+
+    expect(front).toContain('Derived damper motion ratio');
+    expect(front).toContain('0.565');
+    expect(front).toContain('motion-ratio-band');
+    expect(rear).toContain('Derived damper motion ratio');
+    expect(rear).toContain('0.689');
+    expect(rear).toContain('spring installation ratio');
+  });
+
   it('maps the axle selection onto the corner that receives an edit', () => {
     expect(cornerKeyForAxle('front')).toBe('LF');
     expect(cornerKeyForAxle('rear')).toBe('LR');

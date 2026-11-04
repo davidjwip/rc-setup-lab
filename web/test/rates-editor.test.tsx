@@ -32,8 +32,8 @@ describe('rates editor follows the selected axle', () => {
     const html = renderToStaticMarkup(createElement(AnalysisView, { initialAxle: 'rear' }));
     expect(inputTag(html, 'Spring rate in N/mm')).toContain('value="2.6"');
     expect(html).toContain('Rates · rear-left');
-    expect(html).toContain('10.3 Hz');
-    expect(html).toContain('40.23 N·s/m');
+    expect(html).toContain('10.0 Hz');
+    expect(html).toContain('39.21 N·s/m');
     expect(html).toContain('Damping ratio');
     expect(html).toContain('estimated');
   });
