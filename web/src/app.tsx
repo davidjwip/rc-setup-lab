@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import {
   absoluteCornerPointMm,
+  buildAntiDiveInput,
   buildAxleRates,
   buildFrontViewInput,
   buildLoadTransferInput,
@@ -28,6 +29,8 @@ import {
   buildCamberSeries,
   buildFrontViewScene,
   buildToeSeries,
+  solveAntiDive,
+  solveAntiDiveCurve,
   solveFrontView,
   solveLoadTransfer,
   solveRollStiffness,
@@ -38,6 +41,7 @@ import { HardpointEditor } from './editor/HardpointEditor.js';
 import { cornerKeyForAxle, type Axle } from './editor/hardpoints.js';
 import { RatesEditor } from './editor/RatesEditor.js';
 import { describeRateChange, rateSnapshot, type RateChange } from './editor/rates.js';
+import { AntiDiveChart } from './scene/AntiDiveChart.js';
 import { CamberGainChart } from './scene/CamberGainChart.js';
 import { FrontViewScene } from './scene/FrontViewScene.js';
 import { ToeGainChart } from './scene/ToeGainChart.js';
@@ -46,7 +50,7 @@ import {
   toggleInstantCentre,
   writeInstantCentrePreference,
 } from './scene/instantCentrePreference.js';
-import { buildCamberChart, buildToeChart } from './scene/presenter.js';
+import { buildAntiDiveChart, buildCamberChart, buildToeChart } from './scene/presenter.js';
 import {
   ANGLE_UNIT,
   CAMBER_GAIN_UNIT,
@@ -60,6 +64,8 @@ import {
   ROLL_STIFFNESS_UNIT,
   WHEEL_RATE_UNIT,
   formatAngleDegrees,
+  formatAntiDiveBand,
+  formatAntiDivePercent,
   formatBandFromMetres,
   formatBandFromNpm,
   formatCamberGain,
@@ -85,6 +91,7 @@ import {
   formatRollStiffnessSi,
   formatSlope,
   formatSpringRateFromNpm,
+  formatSymmetricG,
   formatTorsionalStiffness,
   formatToeChange,
   formatToeGain,
@@ -128,6 +135,7 @@ export function AnalysisView({
     initialParse.ok ? initialParse.value : null,
   );
   const [lateralG, setLateralG] = useState(1.0);
+  const [longitudinalG, setLongitudinalG] = useState(1.0);
   const [mode, setMode] = useState<AnalysisMode>(initialMode ?? initialAxle);
   const [axle, setAxle] = useState<Axle>(
     initialMode === 'both' ? initialAxle : (initialMode ?? initialAxle),
@@ -224,6 +232,43 @@ export function AnalysisView({
         : null,
     [transferInputResult],
   );
+  const antiDiveInputResult = useMemo(
+    () =>
+      model === null
+        ? null
+        : buildAntiDiveInput(model, -gravitiesToMetresPerSecondSquared(longitudinalG)),
+    [model, longitudinalG],
+  );
+  const antiSquatInputResult = useMemo(
+    () =>
+      model === null
+        ? null
+        : buildAntiDiveInput(model, gravitiesToMetresPerSecondSquared(longitudinalG)),
+    [model, longitudinalG],
+  );
+  const antiDiveResult = useMemo(
+    () =>
+      antiDiveInputResult !== null && antiDiveInputResult.ok
+        ? solveAntiDive(antiDiveInputResult.value)
+        : null,
+    [antiDiveInputResult],
+  );
+  const antiSquatResult = useMemo(
+    () =>
+      antiSquatInputResult !== null && antiSquatInputResult.ok
+        ? solveAntiDive(antiSquatInputResult.value)
+        : null,
+    [antiSquatInputResult],
+  );
+  const antiDiveCurve = useMemo(() => {
+    if (model === null) return null;
+    const curveInput = buildAntiDiveInput(model, 0);
+    return curveInput.ok ? solveAntiDiveCurve(curveInput.value) : null;
+  }, [model]);
+  const antiDiveChart = useMemo(
+    () => (antiDiveCurve === null ? null : buildAntiDiveChart(antiDiveCurve)),
+    [antiDiveCurve],
+  );
   const scene = useMemo(
     () =>
       inputResult !== null && inputResult.ok && result !== null
@@ -274,6 +319,14 @@ export function AnalysisView({
 
   const reportedRollCentre =
     model === null || result === null ? null : reportedRollCentreHeightM(model, result);
+  const antiDivePercent =
+    antiDiveResult !== null && antiDiveResult.front.percent.kind === 'defined'
+      ? antiDiveResult.front.percent
+      : null;
+  const antiSquatPercent =
+    antiSquatResult !== null && antiSquatResult.rear.percent.kind === 'defined'
+      ? antiSquatResult.rear.percent
+      : null;
 
   if (!initialParse.ok) return <ParseErrors errors={initialParse.errors} />;
   if (model === null || inputResult === null || result === null) {
@@ -836,6 +889,81 @@ export function AnalysisView({
               Total transfer is mass × CG height ÷ mean track. Springs and bars do not change it;
               they move it between the axles, and the split is reported as elastic, geometric and
               unsprung contributions.
+            </p>
+          </article>
+
+          <article className="card result-card anti-dive-card">
+            <div className="card-heading">
+              <h2>Anti-dive and anti-squat</h2>
+              <span className="pill">modelled · evaluated at the traction limit</span>
+            </div>
+            <label className="slider-row">
+              <span>Longitudinal acceleration</span>
+              <input
+                aria-label="Longitudinal acceleration in g"
+                type="range"
+                min="0.1"
+                max="2.5"
+                step="0.1"
+                value={longitudinalG}
+                onChange={(event) => setLongitudinalG(Number.parseFloat(event.target.value))}
+              />
+              <output>{formatSymmetricG(longitudinalG)}</output>
+            </label>
+            {antiDivePercent !== null && antiSquatPercent !== null ? (
+              <>
+                <div className="value-row">
+                  <span className="value">{formatAntiDivePercent(antiDivePercent.value)}</span>
+                  <span className="band">
+                    Anti-dive · braking at -{formatSymmetricG(longitudinalG).replace('±', '')}
+                    {antiDivePercent.band === null
+                      ? ''
+                      : ` · band ${formatAntiDiveBand(antiDivePercent.band)}`}
+                  </span>
+                </div>
+                <div className="value-row">
+                  <span className="value">{formatAntiDivePercent(antiSquatPercent.value)}</span>
+                  <span className="band">
+                    Anti-squat · acceleration at +{formatSymmetricG(longitudinalG).replace('±', '')}
+                    {antiSquatPercent.band === null
+                      ? ''
+                      : ` · band ${formatAntiDiveBand(antiSquatPercent.band)}`}
+                  </span>
+                </div>
+              </>
+            ) : (
+              <p className="no-answer">
+                {antiDiveInputResult !== null && !antiDiveInputResult.ok
+                  ? antiDiveInputResult.errors.map((error) => error.path).join(', ')
+                  : antiDiveResult !== null && antiDiveResult.front.percent.kind === 'undefined'
+                    ? `anti-dive: ${antiDiveResult.front.percent.reason}`
+                    : 'anti-dive needs a solved side-view geometry and CG height'}
+                {antiSquatResult !== null && antiSquatResult.rear.percent.kind === 'undefined'
+                  ? ` · anti-squat: ${antiSquatResult.rear.percent.reason}`
+                  : ''}
+              </p>
+            )}
+            <p className="hint">
+              The two inner pivot screws are the input. Raising one end of the hinge axis tilts it
+              and creates the side-view instant centre; the front view uses their midpoint, so a
+              level pair leaves roll centre, camber gain and motion ratio unchanged. The side view
+              uses the difference.
+            </p>
+            <p className="hint">
+              The axle share is the dynamic axle load at the traction limit, not a brake-bias or
+              torque-split control: a single motor drives and brakes all four wheels. These are
+              percentages of longitudinal load transfer carried by the links, not handling
+              verdicts.
+            </p>
+            {antiDiveChart !== null ? (
+              <AntiDiveChart view={antiDiveChart} />
+            ) : (
+              <p className="no-answer">The longitudinal curve needs a solved corner.</p>
+            )}
+            <p className="footnote">
+              Provenance: modelled. Caster is not modelled yet, so the figure reads conservative.
+              The angle comes from a 2D side-view projection of a real 3D linkage; the band is the
+              CG-height uncertainty, not a claim of measured accuracy.
             </p>
           </article>
 

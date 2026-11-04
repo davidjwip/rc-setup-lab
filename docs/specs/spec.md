@@ -628,6 +628,18 @@ opens the steering readout, *then* the Ackermann percentage at a stated steering
 input and the toe at roll −2.0°, 0.0° and +2.0° are displayed with units, and the
 values are golden-tested against a hand calculation. **SHOULD** · **R2**
 
+**E3.19** — *Given* a model with both inner pivot screws and a derived CG height,
+*when* anti-dive is displayed, *then* the two screws are the stated input, the
+front view is stated to use their midpoint, the percentage is evaluated at the
+traction limit and plotted against signed longitudinal acceleration, and equal
+screw heights return exactly 0.0 %. Caster is stated as not modelled, so the
+figure reads conservative. **MUST** · **R2**
+
+**E3.20** — *Given* the same model, *when* anti-squat is displayed, *then* the
+rear uses the same two-screw construction, the axle share is the dynamic rear
+load at the traction limit, and no brake-bias, torque-split or centre-diff input
+exists in `fields.yaml`. **MUST** · **R2**
+
 *E3.10 was removed in round 2 — see §8.3. The numbering of E3.11 onward is kept
 so that cross-references elsewhere survive.*
 
@@ -1618,8 +1630,8 @@ by` lists §4.4's output ids, so a field that feeds nothing says so.
 | `axles.front.steering.rack.travel_per_turn` | value | mm | no | `OMIT` | `ackermann_toe` | Rack travel per steering-wheel turn (mm); display only in v1. |
 | `corners.<corner>.arm_type.lower` | enum: `hinge`, `wishbone` | — | yes | `REFUSE` | `motion_ratio`, `roll_centre_height`, `camber_gain` | `hinge` needs `lca_in_a` + `lca_in_b`; `wishbone` uses the same two points. |
 | `corners.<corner>.arm_type.upper` | enum: `single_link`, `wishbone` | — | yes | `REFUSE` | `motion_ratio`, `roll_centre_height`, `camber_gain` | `aal` is accepted on import as an alias for `wishbone` and rewritten on save (D13). |
-| `corners.<corner>.points.lca_in_a` | point | mm | yes | `REFUSE` | `motion_ratio`, `roll_centre_height`, `camber_gain`, `load_transfer_split` | Front pivot on the lower hinge axis. `[x, y, z]` mm; every coordinate \|c\| ≤ 3000. |
-| `corners.<corner>.points.lca_in_b` | point | mm | yes | `REFUSE` | `motion_ratio`, `roll_centre_height`, `camber_gain` | Rear pivot on the lower hinge axis; `lca_in_a ≠ lca_in_b` or the axis is undefined. |
+| `corners.<corner>.points.lca_in_a` | point | mm | yes | `REFUSE` | `motion_ratio`, `roll_centre_height`, `camber_gain`, `load_transfer_split`, `anti_dive`, `anti_squat` | Front inner pivot screw. `[x, y, z]` mm; its `z` is independent of `lca_in_b.z`. The front view uses the midpoint of the two screws; the side view uses their difference (D-27). |
+| `corners.<corner>.points.lca_in_b` | point | mm | yes | `REFUSE` | `motion_ratio`, `roll_centre_height`, `camber_gain`, `anti_dive`, `anti_squat` | Rear inner pivot screw; `lca_in_a ≠ lca_in_b` or the axis is undefined. Its `z` is independent of `lca_in_a.z`; a level pair is the exact zero-anti-dive limit (D-27). |
 | `corners.<corner>.points.lca_out` | point | mm | yes | `REFUSE` | `motion_ratio`, `roll_centre_height`, `camber_gain`, `bump_steer` | Lower ball joint on the upright, stored as an **offset from the derived hub centre** (`outboard = hub + offset`), not as a chassis-frame point. Shims edit this offset; the composed absolute point is what the solver consumes. Also the carrier's lower reference point — there is no second key for it. |
 | `corners.<corner>.points.uca_in` | point | mm | yes if arm_type.upper is single_link | `REFUSE` | `motion_ratio`, `roll_centre_height`, `camber_gain` | The single camber-link inner ball stud — one point, not two coincident ones. |
 | `corners.<corner>.points.uca_in_a` | point | mm | yes if arm_type.upper is wishbone | `REFUSE` | `motion_ratio`, `roll_centre_height`, `camber_gain` | Front upper pivot (buggy). Mutually exclusive with `uca_in`. |
@@ -1933,6 +1945,8 @@ they are labelled as derived and carry the state from §4.4.1.
 | `bump_steer` | Bump steer | rad/m | mm of toe per 10 mm bump (detail: °/mm) | `points.tie_in`/`tie_out`, lower arm, `axles.front.steering.rack` | E3.5 | R1 |
 | `damping_ratio` | Damping ratio at each stated shaft speed | – | – | `damper.*` (§4.8), sprung mass at the corner, wheel rate, motion ratio | E3.6 | R1 |
 | `ackermann_toe` | Ackermann / toe at roll | rad | ° | tie-rod geometry, `axles.front.steering.rack`, `corners.<corner>.toe` | E3.18 | R2 |
+| `anti_dive` | Anti-dive, front | % | % | `points.lca_in_a`/`lca_in_b` (their difference), `lca_out`, `uca_*`, `body.wheelbase`, derived CG height | E3.19 | R2 |
+| `anti_squat` | Anti-squat, rear | % | % | rear `points.lca_in_a`/`lca_in_b` (their difference), `lca_out`, `uca_*`, wheelbase, derived CG height | E3.20 | R2 |
 
 These ids are what `fields.yaml`'s `consumed_by` refers to and what E4.1's diff
 rows carry, so a new output is a new id here, in the YAML and in an AC — in that
@@ -2772,6 +2786,8 @@ tagged `E` with its protocol and pass rule written into the AC itself.
 | E3.16 | MUST | R0 | I2, I3 | W, U |
 | E3.17 | SHOULD | R2 | I2 | U |
 | E3.18 | SHOULD | R2 | I2 | G |
+| E3.19 | MUST | R2 | I2 | G |
+| E3.20 | MUST | R2 | I2 | G |
 | E4.1 | MUST | R1 | I4 | W |
 | E4.2 | MUST | R2 | I4 | W |
 | E4.3 | MUST | R1 | I4 | W |

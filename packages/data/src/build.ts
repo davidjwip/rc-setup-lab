@@ -3,15 +3,18 @@ import {
   solveRaiseAndWeigh,
   solveRates,
   solveRollStiffness,
+  type AntiDiveInput,
   type AntiRollBarInput,
   type Band,
   type CgComponentInput,
+  type Confidence,
   type FrontViewInput,
   type DampingRatioInput,
   type LoadTransferInput,
   type RatesInput,
   type RatesResult,
   type RollStiffnessInput,
+  type SideViewAxleInput,
   type Solved,
   type Sourced,
   type ToeInput,
@@ -162,6 +165,128 @@ function sourcedPoint3(
   };
 }
 
+const CONFIDENCE_RANK: Readonly<Record<Confidence, number>> = {
+  measured: 6,
+  manufacturer: 5,
+  derived: 4,
+  modelled: 3,
+  estimated: 2,
+  assumed: 1,
+  library: 0,
+};
+
+function weakerConfidence(a: Confidence, b: Confidence): Confidence {
+  return CONFIDENCE_RANK[a] <= CONFIDENCE_RANK[b] ? a : b;
+}
+
+function midpointVec2(ref: string, a: Sourced<Vec2>, b: Sourced<Vec2>): Sourced<Vec2> {
+  return {
+    value: {
+      y: (a.value.y + b.value.y) / 2,
+      z: (a.value.z + b.value.z) / 2,
+    },
+    ref,
+    confidence: weakerConfidence(a.confidence, b.confidence),
+  };
+}
+
+/**
+ * The front view keeps the midpoint of the two inner pivot screws for roll
+ * centre, camber gain and the motion ratio. The side view uses the difference;
+ * this is the one place the two constructions meet.
+ */
+function lowerInnerFrontView(
+  model: CarModelDocument,
+  cornerKey: CornerKey,
+  offsetMm: number,
+): Sourced<Vec2> | null {
+  const a = point(model, cornerKey, 'lca_in_a', offsetMm);
+  const b = point(model, cornerKey, 'lca_in_b', offsetMm);
+  if (a === null || b === null) return null;
+  return midpointVec2(`${cornerKey}.points.lca_in_a+${cornerKey}.points.lca_in_b`, a, b);
+}
+
+function upperInnerKeyFor(corner: CornerDocument): CornerPointKey {
+  return corner.armType.upper === 'single_link' ? 'uca_in' : 'uca_in_a';
+}
+
+function sideViewAxleInput(
+  model: CarModelDocument,
+  cornerKey: CornerKey,
+  offsetMm: number,
+  errors: DataError[],
+): SideViewAxleInput | null {
+  const corner = cornerFor(model, cornerKey);
+  if (!corner.ok) {
+    errors.push(...corner.errors);
+    return null;
+  }
+  const upperInnerKey = upperInnerKeyFor(corner.value);
+  const required: readonly CornerPointKey[] = [
+    'lca_in_a',
+    'lca_in_b',
+    'lca_out',
+    upperInnerKey,
+    'uca_out',
+  ];
+  const values: Partial<Record<CornerPointKey, Sourced<Vec3>>> = {};
+  for (const key of required) {
+    const value = point3(model, cornerKey, key, offsetMm);
+    if (value === null) {
+      errors.push(
+        dataError(
+          'missingField',
+          `corners.${cornerKey}.points.${key}`,
+          'anti-dive needs this side-view hardpoint',
+        ),
+      );
+    } else {
+      values[key] = value;
+    }
+  }
+  const lowerInnerA = values.lca_in_a;
+  const lowerInnerB = values.lca_in_b;
+  const lowerOuter = values.lca_out;
+  const upperInner = values[upperInnerKey];
+  const upperOuter = values.uca_out;
+  if (
+    lowerInnerA === undefined ||
+    lowerInnerB === undefined ||
+    lowerOuter === undefined ||
+    upperInner === undefined ||
+    upperOuter === undefined
+  ) {
+    return null;
+  }
+
+  const axleKey = axleKeyForCorner(cornerKey);
+  const axle = model.axles[axleKey];
+  if (axle === null) {
+    errors.push(dataError('missingField', `axles.${axleKey}`, 'anti-dive needs an axle block'));
+    return null;
+  }
+  const wheelbase = model.wheelbase;
+  if (axleKey === 'front' && wheelbase === null) {
+    errors.push(dataError('missingField', 'body.wheelbase', 'the front contact patch needs the wheelbase'));
+    return null;
+  }
+  const contactX = axleKey === 'front' ? wheelbase?.value : 0;
+  if (contactX === undefined) return null;
+
+  return {
+    lowerInnerA_m: lowerInnerA,
+    lowerInnerB_m: lowerInnerB,
+    lowerOuter_m: lowerOuter,
+    upperInner_m: upperInner,
+    upperOuter_m: upperOuter,
+    contactPatchX_m: {
+      value: millimetresToMetres(contactX),
+      ref: axleKey === 'front' ? 'body.wheelbase' : 'rear.contact_patch_x',
+      confidence: axleKey === 'front' ? (wheelbase?.confidence ?? 'derived') : 'derived',
+    },
+  };
+}
+
 function point3(
   model: CarModelDocument,
   cornerKey: CornerKey,
@@ -284,7 +409,12 @@ export function buildFrontViewInput(
   if (offsetMm === null) {
     return fail(missingDatumErrors());
   }
-  const lcaIn = point(model, cornerKey, 'lca_in_a', offsetMm);
+  const lcaInA = point(model, cornerKey, 'lca_in_a', offsetMm);
+  const lcaInB = point(model, cornerKey, 'lca_in_b', offsetMm);
+  const lcaIn =
+    lcaInA === null || lcaInB === null
+      ? null
+      : lowerInnerFrontView(model, cornerKey, offsetMm);
   const lcaOut = point(model, cornerKey, 'lca_out', offsetMm);
   const upperInnerKey: CornerPointKey =
     corner.value.armType.upper === 'single_link' ? 'uca_in' : 'uca_in_a';
@@ -296,8 +426,11 @@ export function buildFrontViewInput(
   const damperLo = point(model, cornerKey, 'damper_lo', offsetMm);
   const damperUp = point(model, cornerKey, 'damper_up', offsetMm);
 
-  if (lcaIn === null) {
+  if (lcaInA === null) {
     errors.push(dataError('missingField', `corners.${cornerKey}.points.lca_in_a`, 'required'));
+  }
+  if (lcaInB === null) {
+    errors.push(dataError('missingField', `corners.${cornerKey}.points.lca_in_b`, 'required'));
   }
   if (lcaOut === null) {
     errors.push(dataError('missingField', `corners.${cornerKey}.points.lca_out`, 'required'));
@@ -858,6 +991,103 @@ function measuredCg(model: CarModelDocument): MeasuredCg | null {
     },
     band_m: solved.band_m,
   };
+}
+
+/**
+ * Build the side-view anti-dive input. The two inner pivots are passed
+ * independently: the side-view solver uses their difference, while the front
+ * view (built separately) uses their midpoint. `cgHeight_m` is the **derived**
+ * height above ground (`stored z + thickness + ride_height`); a model with no
+ * CG height is refused rather than given an invented default here.
+ *
+ * There is deliberately no brake-bias or torque-split input: a single motor
+ * drives and brakes all four wheels, so the axle share is the dynamic axle load
+ * at the traction limit.
+ */
+export function buildAntiDiveInput(
+  model: CarModelDocument,
+  longitudinalAcceleration_mps2: number,
+): DataResult<AntiDiveInput> {
+  const errors: DataError[] = [];
+  const offsetMm = datumOffsetMm(model);
+  if (offsetMm === null) return fail(missingDatumErrors());
+
+  const mass = model.mass.total;
+  if (mass === null) {
+    errors.push(dataError('missingField', 'body.mass.total', 'anti-dive needs the total mass'));
+  }
+  const frontShare = model.cg.frontMassShare;
+  if (frontShare === null) {
+    errors.push(
+      dataError(
+        'missingField',
+        'body.cg.front_mass_share',
+        'anti-dive needs the front mass share',
+      ),
+    );
+  }
+  const wheelbase = model.wheelbase;
+  if (wheelbase === null) {
+    errors.push(dataError('missingField', 'body.wheelbase', 'anti-dive needs the wheelbase'));
+  }
+
+  const front = sideViewAxleInput(model, 'LF', offsetMm, errors);
+  const rear = sideViewAxleInput(model, 'LR', offsetMm, errors);
+
+  const storedCg = model.cg.height;
+  const measured = measuredCg(model);
+  const cgHeight: Sourced<number> | null =
+    storedCg !== null
+      ? {
+          value: millimetresToMetres(storedCg.value + offsetMm),
+          ref: 'body.cg.height',
+          confidence: storedCg.confidence,
+        }
+      : measured === null
+        ? null
+        : measured.groundHeight_m;
+  const cgBand: Band | null =
+    cgHeight === null
+      ? null
+      : (measured?.band_m ??
+        {
+          low: cgHeight.value - 0.004,
+          high: cgHeight.value + 0.004,
+        });
+
+  if (
+    errors.length > 0 ||
+    mass === null ||
+    frontShare === null ||
+    wheelbase === null ||
+    front === null ||
+    rear === null
+  ) {
+    return fail(errors);
+  }
+
+  return ok({
+    front,
+    rear,
+    wheelbase_m: {
+      value: millimetresToMetres(wheelbase.value),
+      ref: 'body.wheelbase',
+      confidence: wheelbase.confidence,
+    },
+    cgHeight_m: cgHeight,
+    ...(cgBand === null ? {} : { cgHeightBand_m: cgBand }),
+    totalMass_kg: {
+      value: gramsToKilograms(mass.value),
+      ref: 'body.mass.total',
+      confidence: mass.confidence,
+    },
+    frontMassShare: {
+      value: percentToFraction(frontShare.value),
+      ref: 'body.cg.front_mass_share',
+      confidence: frontShare.confidence,
+    },
+    longitudinalAcceleration_mps2,
+  });
 }
 
 /**

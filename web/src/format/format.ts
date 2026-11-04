@@ -19,6 +19,23 @@ export function formatNumber(value: number, digits = 2): string {
   return value.toFixed(digits);
 }
 
+/** Anti-dive / anti-squat: the solver returns percentage points, not a fraction. */
+export function formatAntiDivePercent(value: number, digits = 1): string {
+  const sign = value > 0 ? '+' : '';
+  return `${sign}${value.toFixed(digits)} %`;
+}
+
+export function formatAntiDiveBand(band: Band, digits = 1): string {
+  const low = formatAntiDivePercent(band.low, digits);
+  const high = formatAntiDivePercent(band.high, digits);
+  return `${low} to ${high}`;
+}
+
+/** A pair of g values, e.g. ±1.0 g. */
+export function formatSymmetricG(magnitude: number, digits = 1): string {
+  return `±${magnitude.toFixed(digits)} ${LATERAL_G_UNIT}`;
+}
+
 export function formatLengthMm(millimetres: number, digits = 2): string {
   return `${millimetres.toFixed(digits)} ${LENGTH_UNIT}`;
 }

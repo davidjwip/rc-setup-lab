@@ -24,10 +24,30 @@ for (const id of used.outputs) {
   if (!outputIds.has(id)) missing.push(`output:${id}`);
 }
 
+// D-27 / issue #34: a single motor drives and brakes all four wheels. A brake
+// bias, torque split or centre-diff field would be inventing a control the car
+// does not have, so the gate refuses the schema if one ever appears.
+const FORBIDDEN_FIELDS = [
+  'brake_bias',
+  'brake_force_fraction',
+  'torque_split',
+  'drive_split',
+  'drive_fraction',
+  'centre_diff',
+  'center_diff',
+];
+const invented = [...schemaPaths].filter((path) =>
+  FORBIDDEN_FIELDS.some((token) => path.toLowerCase().includes(token)),
+);
+
 if (missing.length > 0) {
   console.error('field-drift: fields used in code but absent from docs/specs/fields.yaml:');
   for (const path of missing) console.error(`  - ${path}`);
-  process.exit(1);
 }
+if (invented.length > 0) {
+  console.error('field-drift: fields that invent a control the car does not have (D-27):');
+  for (const path of invented) console.error(`  - ${path}`);
+}
+if (missing.length > 0 || invented.length > 0) process.exit(1);
 
 console.log(`field-drift: OK (${used.carModel.length} car_model fields and ${used.outputs.length} outputs checked)`);

@@ -77,6 +77,7 @@ export {
 } from './datum.js';
 export {
   SIDE_SIGN,
+  buildAntiDiveInput,
   buildAntiRollBarInput,
   buildAxleRates,
   buildDampingRatioInput,

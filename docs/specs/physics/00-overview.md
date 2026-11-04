@@ -126,7 +126,7 @@ does not pick a setup for you.
 |---|---|---|---|
 | 1 | `01-coordinates-and-hardpoints.md` | A validated, unit-safe chassis model and the derived quantities every later module indexes | in |
 | 2 | `02-front-view-kinematics.md` | Instant centre, roll centre height/lateral position/migration, camber gain, scrub radius, KPI, caster, trail | in |
-| 3 | `03-side-view-antidive.md` | Anti-dive, anti-squat, side-view swing-arm angle | in, `diagnosticOnly`, suppressed on hinge arms |
+| 3 | `03-side-view-antidive.md` | Anti-dive, anti-squat, side-view swing-arm angle from the two inner pivot screws | in, `diagnosticOnly`, level screws = exact 0 %, caster not modelled (D-27) |
 | 4 | `04-steering.md` | Steering angles, Ackermann, bump steer, toe curve | in |
 | 5 | `05-rates.md` | Installation ratio, wheel rate, ARB rate, roll stiffness, ride frequency | in |
 | 6 | `06-load-transfer.md` | Corner weights, total lateral load transfer, front/rear balance, geometric vs elastic split, roll angle | in |
@@ -239,8 +239,8 @@ table; a spec-audit check enforces it.
 | `outOfRackTravel` | requested rack position is outside the rack's stored travel | "outside the rack's travel" |
 | `incompleteModel` | a required point or field is missing | "model incomplete: <list>" |
 | `degenerateGeometry` | a geometric construction is undefined for this input set (zero-length link, zero link extent, tangent circle pair, `\|d̂_y\|` below tolerance in a construction that divides by it) | "undefined for this geometry: <case>" |
-| `noSideViewConstruction` | the lower arm is a `hinge` whose axis is within 8° of x, so module 3 has no side-view line to draw | "not computable for a transverse hinge arm" |
-| `noAntiGeometry` | the side-view IC is on the wrong side of the contact patch (pro-dive / pro-squat) | "0 %, pro-dive geometry" |
+| `noSideViewConstruction` | reserved for a geometry with no side-view line at all; a level two-screw hinge is **not** this case and returns a defined 0 % (D-27) | "no side-view construction" |
+| `noAntiGeometry` | reserved for a construction with no anti geometry; the two-screw model reports a **signed negative** pro-dive / pro-squat percentage instead (D-27) | "pro-dive / pro-squat geometry" |
 | `noMotionRatio` | `dz_w/dθ` or the damper's velocity is zero | "the spring does nothing in this geometry" |
 | `noRollStiffness` | `k_φ,total = 0` | "no roll stiffness" |
 | `ambiguousBranch` | two solutions are equidistant from the static reference | "two solutions: result not unique" |
@@ -322,7 +322,7 @@ invented citations. What survives is the only part that constrains us:
 | Units on disk | mm, g, deg (R-2) | a racer's instruments; one conversion at the adapter |
 | Front-view model | 2D transverse-plane four-bar, solved by circle intersection + bisection on the crank angle | robust, closed form, testable; a full 3D solve is a v2 upgrade |
 | Plan-view model | vertical steering axis through the axis's ground point, rigid knuckle | the standard hand construction; the 42 % ρ bias it carries is stated in 04 §5.1 |
-| Anti-dive/anti-squat | computed for arms with side-view extent, flagged `diagnosticOnly`, never used in advice, `noSideViewConstruction` for hinge arms | module 3 |
+| Anti-dive/anti-squat | two inner pivot screws: front view uses their midpoint, side view uses their difference; level screws are exactly 0 %; axle share is the traction-limit dynamic load; `diagnosticOnly`, caster not modelled | module 3, D-27 |
 | Tyre model | none | module 8 |
 | Damper model | orifice + linear blow-off, per direction; ζ is an **estimate** with a band, and the direction of change is the deliverable | 07 §0, §9 |
 | Chassis | optional module; mass, CG height and torsional stiffness; balance effect only | module 10, issue #11 |

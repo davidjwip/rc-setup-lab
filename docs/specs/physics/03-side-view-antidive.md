@@ -1,277 +1,207 @@
-# 03 — Side view: anti-dive and anti-squat
+# 03 — Side view: anti-dive and anti-squat from the two inner pivot screws
 
-Build order: 3 of 9. Depends on module 1 only. **Nothing else depends on it**, which is why this
-module is allowed to be honest about being a diagnostic rather than a design tool.
+Build order: 3 of 9. Depends on modules 1 (hardpoints) and 6 (load transfer). The front view
+(module 2) still consumes the **midpoint** of the two inner pivots; this module is the only
+consumer of their **difference**.
+
+**This file supersedes the round-2 refusal for hinge arms.** Round 2 correctly found that a
+single fore-aft hinge axis has no unique side-view line and refused to invent one. The car
+itself supplies the missing information: the inner pivot is **two screws, fore and aft**, and
+shimming one end tilts the hinge axis. That tilt is the input. A level pair is the exact
+zero-anti-dive limit, not a missing construction.
+
+Bob Wright did not model this, and said so three times:
+
+- *"the program is only 2D, so castor, pro/anti dive and squat are not considered at this point"*
+  (2012);
+- *"that version will likely be more 3D … so I can include … dive/squat, castor, akerman,
+  chassis stiffness"* (2012);
+- *"it could be included in the current 2D program but would be best handled with a 3D model"*
+  (Dec 2012).
+
+This slice is the thing RC3 could not do. It is still a **2D side-view projection of a real 3D
+linkage**, so it is `modelled`, `diagnosticOnly`, and never a setup recommendation.
 
 ---
 
 ## 1. Purpose
 
-Compute, from the side-view (x–z) geometry of the front and rear suspensions:
-
 | Output | Unit | Meaning |
 |---|---|---|
-| Side-view swing-arm angle, front | ° | angle of the line from the front contact patch to the front side-view IC |
-| Side-view swing-arm angle, rear | ° | same, rear |
-| Anti-dive, front | % | fraction of the front load transfer carried by the linkage instead of the springs |
-| Anti-squat, rear | % | same, under drive |
-| `diagnosticOnly` flag | — | always true in v1 |
+| Anti-dive, front | % | share of braking load transfer carried by the front links at the traction limit |
+| Anti-squat, rear | % | same under acceleration |
+| Side-view instant centre | mm | intersection of the lower hinge-axis line and the upper link line |
+| tan θ | — | signed, from the contact patch to that instant centre |
 
-Textbook physics: Gillespie ch. 6, Milliken ch. 19. The reason the app computes it at all is that it
-should be able to *say* why the number does not matter at this scale instead of silently omitting it.
-
-**What changed in round 2.** Round 1's worked example was built on a lower-arm point at x = 250 mm
-that the reference car does not have — the car's lower arm is a **hinge whose axis runs fore-aft**,
-and its side-view projection is not a 9 mm inclined line but a degenerate horizontal one. The
-headline number (316.1 %) was an artefact of that invented point, and the module never noticed that
-for the arm type its own reference car uses there is nothing to intersect. The construction is now
-defined per arm type, and the reference car returns `Undefined(noSideViewConstruction)`.
+The percentage is signed. Negative is **pro-dive** at the front and **pro-squat** at the rear.
 
 ---
 
 ## 2. Inputs
 
-| Input | Symbol | Unit | Range (1/10 TC) | Source |
-|---|---|---|---|---|
-| lower arm type | — | `hinge` \| `aal` | hinge | module 1 |
-| lower hinge axis direction (hinge only) | `û` | — | unit | module 1 |
-| lower arm inner pivot x, z (A-arm) | — | mm | — | module 1 |
-| lower ball joint x, z | — | mm | — | module 1 |
-| upper link inner x, z | — | mm | — | module 1 |
-| upper ball stud x, z | — | mm | — | module 1 |
-| front contact patch x | x_cp,f | mm | = wheelbase | module 1 |
-| rear contact patch x | x_cp,r | mm | = 0 | module 1 |
-| wheelbase | l | mm | 150–400 | module 1 |
-| CG height | h | mm | 15–45 (**inferred**, 01 §4.5) | module 1 |
-| front brake fraction | K_bf | — | 0–1 | **user input** |
-| drive fraction to the axle | K_d | — | 0–1 | **user input** |
+| Input | Symbol | Unit | Source |
+|---|---|---|---|
+| lower inner pivot, fore screw | `lca_in_a` | mm, x–z | module 1, chassis-fixed |
+| lower inner pivot, aft screw | `lca_in_b` | mm, x–z | module 1, chassis-fixed |
+| lower ball joint | `lca_out` | mm, x–z | module 1, composed `hub + offset` (D-25) |
+| upper link inner | `uca_in` (or the wishbone midpoint) | mm, x–z | module 1, chassis-fixed |
+| upper ball stud | `uca_out` | mm, x–z | module 1, composed `hub + offset` (D-25) |
+| front contact patch | `x_cp,f = L` | mm | wheelbase; z = 0 in the ground frame |
+| rear contact patch | `x_cp,r = 0` | mm | rear axle; z = 0 |
+| wheelbase | `L` | mm | module 1 |
+| CG height above ground | `h` | mm | **derived**: `cg.z − z_ground`, D-26 |
+| longitudinal acceleration | `a_x` | m/s² | analysis input: braking negative, acceleration positive |
 
-`K_bf` and `K_d` cannot be derived from geometry; they are drivetrain properties. Defaults in v1:
-`K_bf = 0.55`, `K_d = 0.5` (a 4WD touring car), both `assumed`. A 2WD buggy sets `K_d = 1.0` on the
-driven axle and 0.0 on the other. **A golden case that depends on one of them states its value in
-the input column** — round 1's G03.5 asserted a result that needs `K_bf = 1.0` while listing only
-`θ_f`.
+There is **no brake-bias, torque-split or centre-diff input**. A single motor drives and brakes
+all four wheels, so the axle share is derived from the dynamic axle load (§3.3). `fields.yaml`
+has no path for one and the gate's `field-drift` stage fails if one appears.
 
-No physical constants.
+Missing CG height refuses the output (`incompleteModel`, naming `body.cg.height`). It is never
+silently replaced by a default inside this module.
 
 ---
 
 ## 3. Model
 
-### 3.1 Side-view instant centre — defined per arm type
+### 3.1 The two views use the pair differently
 
-Project the corner onto the **x–z plane** and intersect the projections of the two link lines.
-**The lower link's side-view line depends on the arm type**, and this is the rule round 1 lacked:
-
-```
-lower arm line:
-  if arm_type.lower == "aal":     through (x_Li, z_Li) with direction (x_Lo − x_Li, z_Lo − z_Li)
-  if arm_type.lower == "hinge":
-      if |û_x| ≥ 0.99:            no side-view line exists  → Undefined(noSideViewConstruction)
-      else:                       through (x_Li, z_Li) with direction (û_x, û_z)
-upper link line (always):
-                                  through (x_Ui, z_Ui) with direction (x_Uo − x_Ui, z_Uo − z_Ui)
-SVIC = intersection                                                                    (3.1)
+```text
+z_mid = (z_a + z_b)/2              front view: roll centre, camber gain, motion ratio
+slope = (z_b − z_a)/(x_b − x_a)    side view: lower arm line
 ```
 
-Why the hinge case is a refusal, not a detail. The reference car's hinge axis runs along x at
-(y, z) = (30, 12), so its projection on the x–z plane is the horizontal line z = 12 spanning every x.
-There is no inboard point to draw a line from, and there are three defensible readings, which give:
+Raising both screws by 1 mm moves `z_mid` by 1 mm; raising one moves it by 0.5 mm. That is the
+midpoint rule and it is asserted numerically. With `z_a = z_b` every front-view golden is
+unchanged.
 
-| Reading of "the lower link's side-view line" | SVIC (mm) | θ_f | Anti-dive |
-|---|---|---|---|
-| the hinge axis itself (z = 12, horizontal) | (382.0, 12.0) | — | `noAntiGeometry`, x_ic > x_cp |
-| the velocity constraint (the ball joint has zero x-velocity → vertical line at x = 259) | (259.0, 42.75) | — | `noAntiGeometry`, x_ic > x_cp |
-| the hinge-axis midpoint as an "inboard point" (x = 255) | (223.25, 51.69) | 56.86° | **773.1 %** |
-| (round 1's printed x = 250, which is the *upper* link's inner x) | (142.0, 72.0) | 32.05° | 316.1 % |
+### 3.2 Side-view instant centre
 
-A construction whose answer ranges from "no anti-geometry at all" to 773 % depending on an
-unstated choice is not a construction. The module refuses on hinge arms and says why.
+Project the corner onto the x–z plane.
 
-**The 10 mm suppression rule does not catch this.** Round 1 also said the number is suppressed when
-either link's side-view projection is shorter than 10 mm. The reference car's *arm* spans 34 mm in x
-(238 → 272), so the rule would not have fired — while the *link line* does not exist. The rule tests
-projection **length**; the failure is projection **degeneracy**. Both are checked, and the degeneracy
-check comes first.
-
-### 3.2 Swing-arm angle
-
-Front: the line from the **front contact patch** to the SVIC. Anti-dive needs the SVIC *behind* the
-patch:
-
-```
-θ_f = atan( (z_ic − z_cp) / (x_cp − x_ic) )     if x_ic < x_cp, else undefined        (3.2)
+```text
+lower line: through lca_out, direction (x_b − x_a, z_b − z_a)
+upper line: through uca_in and uca_out
+SVIC       = intersection
 ```
 
-Rear: SVIC *ahead* of the patch:
+The lower line passes through the **ball joint**, not through the inner screws: the hinge axis
+gives the direction, the ball joint gives the point the arm actually carries. The upper link is
+the single line `uca_in → uca_out`.
 
-```
-θ_r = atan( (z_ic − z_cp) / (x_ic − x_cp) )     if x_ic > x_cp, else undefined        (3.3)
-```
+### 3.3 Signed swing-arm angle and the percentage
 
-Positive θ means the line rises going away from the contact patch, which is the condition for the
-linkage to carry load.
-
-### 3.3 Anti-dive and anti-squat
-
-```
-%anti-dive (front)  = tan θ_f · (l/h) · K_bf · 100                                     (3.4)
-%anti-squat (rear)  = tan θ_r · (l/h) · K_d  · 100                                     (3.5)
+```text
+front: tan θ_f = (z_ic − z_cp)/(x_cp,f − x_ic)     positive when the SVIC is behind the patch
+rear:  tan θ_r = (z_ic − z_cp)/(x_ic − x_cp,r)     positive when the SVIC is ahead of the patch
 ```
 
-Under braking the load transfer `ΔW = m·a·h/l` has to be reacted; the linkage can react part of it at
-the contact patch if the force line through the links is inclined, and the fraction it can carry is
-`(tan θ)·(l/h)` scaled by how much of the braking is done at that axle. The same argument with
-longitudinal force gives (3.5). Gillespie derives both; the form above is standard and we use it
-without embellishment.
+The **side of the patch sets the sign**, not the raw quotient: an SVIC on the wrong side is
+pro-dive / pro-squat and is reported negative even when it lies below the ground plane (where a
+naive quotient would turn positive through a double negative).
 
-**The 100 % condition** is `tan θ = h/l`. For the reference car, `h/l = 28/257 = 0.109`, i.e.
-`θ = 6.22°`. A full-size car with `l = 2500 mm` and `h = 500 mm` needs 11.3°. Both are within the
-range of real designs, which is why the concept is useful — and why the *number* is so sensitive to a
-small angle.
+Longitudinal transfer and the traction-limit axle share:
+
+```text
+T_long       = m · |a_x| · h / L
+Fz_front(a)  = static_front + T_long      braking, a_x < 0
+Fz_rear(a)   = static_rear  + T_long      acceleration, a_x > 0
+
+anti-dive %  = tan θ_f · (L/h) · (Fz_front(a)/m) · 100
+anti-squat % = tan θ_r · (L/h) · (Fz_rear(a)/m)  · 100
+```
+
+`static_front` and `static_rear` are the same static axle loads module 6 uses. At partial
+braking or acceleration the driveline, not the load, sets the split; the output therefore says
+**evaluated at the traction limit**, and it is plotted as a curve against signed `a_x`.
+
+### 3.4 The zero limit, stated as a choice
+
+A level hinge axis makes the side-view motion of the ball joint vertical and the lower line
+horizontal. The owner's direction is that this is **exactly 0.0 %**, and the implementation
+returns a defined zero rather than a tiny residual from the upper link's inclination. The same
+defined zero is returned for an **exact zero-slope parallel pair**. Any other parallel pair has
+no finite instant centre and is `Undefined(parallelLinks)`.
+
+The discontinuity at exactly level is deliberate and is the price of the owner's "level means
+zero" rule; it is recorded here rather than hidden in a tolerance.
 
 ---
 
-## 4. Why RC cars rarely model it
+## 4. Limits, and why the number is still useful
 
-1. **The number is dominated by l/h, and l/h is 9 at 1/10 scale.** The reference car needs a 6.2°
-   swing-arm angle for 100 % anti-dive; a full-size designer's "mild" arm inclination produces several
-   hundred percent here. Arithmetic from which no usable conclusion follows, because the classical
-   derivation assumes the links are the only load path.
-2. **The dominant compliance is not in the model.** Tyre carcass deflection, chassis flex and damper
-   oil movement account for most of the visible dive on a 1/10 car.
-3. **Electric touring cars have no hydraulic brakes.** Braking comes from the motor, reacted at the
-   motor mounts and belt tension — not at the suspension links in the way (3.4) assumes. `K_bf` has no
-   physical meaning for these cars.
-4. **4WD splits drive torque.** (3.5) assumes one driven axle.
-5. **Travel is ±5 mm.** The whole pitch event is under 0.3° of chassis rotation.
+1. **2D projection of a 3D linkage.** The hinge axis is tilted by shims, and the projection
+   ignores the y component. Provenance is `modelled`.
+2. **Caster is not modelled yet.** It contributes to anti-dive through the steering axis, so the
+   figure reads **conservative**; the UI says so.
+3. **Rigid links, rigid chassis, no compliance.** Tyre carcass, chassis flex and damper oil move
+   most of the visible dive at 1/10 scale.
+4. **Traction-limit assumption.** The split is the dynamic axle load, not a measured brake or
+   drive ratio. That is the honest simplification for a single-motor car with no centre diff.
+5. **No handling verdict.** The percentage says how much longitudinal transfer the links can
+   carry; it does not say the car will be faster.
 
-None of that says anti-dive is unreal on an RC car. It says the *classical estimator* is the wrong
-instrument at this scale, and the honest product decision is to compute it where the construction
-exists, label it, and never build setup advice on it.
+At 1/10 scale `L/h` is about 9, so a small hinge tilt produces a large percentage. The number is
+a direction and a sensitivity, not a target.
 
 ---
 
-## 5. Worked examples
+> **Units.** The percentage multiplies `tan θ · L/h` by the axle's **dimensionless** share of the car's weight at the traction limit, `Fz/(m·g)`. Using `Fz/m` (m/s²) instead inflates every result by exactly g — an early build of this module reported −590 % where the geometry says −60 %. `axleLoadPerMass_mps2` is kept as a reported working quantity and is not an input to the percentage.
 
-### 5.1 A pan car trailing arm (the construction at its best)
+## 5. Worked example (reference car, one front screw +2 mm)
 
-A pan car rear end has a single trailing arm: pivot at (x, z) = (90, 40) mm, axle at (0, 30) mm,
-contact patch at (0, 0). A single link's SVIC **is** its pivot — there is nothing to intersect.
+Reference front corner in the ground frame: `lca_in_a = (238, 12)`, `lca_in_b = (272, 14)`,
+`lca_out = (259, 7)`, `uca_in = (250, 45)`, `uca_out = (254, 44)`, `x_cp = 257`, all mm.
 
-```
-tan θ_r = z_ic/(x_ic − x_cp) = 40/(90 − 0) = 0.4444
-l/h = 257/28 = 9.1786
-%anti-squat = 0.4444 × 9.1786 × 1.0 × 100 = 407.9 %
-```
+```text
+lower slope = (14 − 12)/(272 − 238) = 0.0588235
+upper slope = (44 − 45)/(254 − 250) = −0.25
 
-Four hundred percent. Read literally, the linkage more than cancels squat and the rear should rise
-under power. What happens is that the pivot bushing, the chassis and the tyre absorb it. This is the
-number the app shows, and it is why the module carries `diagnosticOnly`.
-
-Note the arm type here is `aal` (or a single-link type with a real x-extent) — the pan car's trailing
-arm has a side-view line, which the touring car's hinge does not. That difference is the whole point
-of §3.1.
-
-### 5.2 The touring car: the construction does not exist (replaces round 1's 316.1 %)
-
-Reference car front corner, from module 1 §8.2:
-
-```
-lca_in_a = (238, 30, 12)   lca_in_b = (272, 30, 12)   →  hinge axis direction û = (1, 0, 0)
-lca_out  = (259, 78, 7)
-uca_in   = (250, 42, 45)   uca_out  = (254, 72.8, 44)
+lower: z = 7 + 0.0588235·(x − 259)
+upper: z = 45 − 0.25·(x − 250)
+SVIC = (374.76, 13.81) mm
+tan θ_f = 13.81/(257 − 374.76) = −0.1173
 ```
 
-The lower arm's axis is along x (`|û_x| = 1.0 ≥ 0.99`), so the side-view line does not exist:
+At 1.0 g braking, `m = 1.35 kg`, `h = 28 mm`, `L = 257 mm`:
 
-```
-→ Undefined(noSideViewConstruction), flags: [diagnosticOnly]
-```
-
-and the UI says "anti-dive is not computable for a transverse hinge arm". The three alternative
-readings are tabulated in §3.1; the spread from `noAntiGeometry` to 773 % is the argument for
-refusing rather than choosing.
-
-Round 1's §5.2 printed `lower: (250.0, 12.0) → (259.0, 7.0)`, a 9 mm side-view projection that
-produced SVIC = (142, 72), θ_f = 32.05° and 316.1 %. The x = 250 is `uca_in.x`, borrowed from the
-upper link; the reference car has no lower-arm point there. **That case and its perturbation table
-are withdrawn.**
-
-### 5.3 What would make it meaningful: a swept-arm car
-
-A car whose arms *are* swept in plan — a buggy with 20–30° of sweep — has a side-view line tens of
-millimetres long and the construction is well conditioned. Illustrative arithmetic, **not the reference car**:
-a lower arm whose side-view projection runs from x = 100 mm to x = 118 mm while rising 6 mm — an
-18 mm projection, the size that makes the construction well conditioned — an upper link positioned so
-that the two projections meet at
-`(x_ic, z_ic) = (60, 30)` mm, and the contact patch at x_cp = 130 mm:
-
-```
-tan θ_f = 30/(130 − 60) = 0.4286      θ_f = 23.2°
-%anti-dive = 0.4286 × (257/28) × 0.55 × 100 = 216.4 %
+```text
+Fz_front/m = 9.81·0.45 + 9.81·0.028/0.257 = 5.4833 m/s²   (reported as a working quantity)
+share      = (Fz_front/m)/g = 5.4833/9.81 = 0.55895          (dimensionless, used in the percentage)
+anti-dive  = (−0.1173)·(257/28)·(0.55895)·100 = −60.16 %
 ```
 
-Still hundreds of percent — the scale argument in §4 does not go away — but now the number is a
-function of the geometry rather than of a modelling choice, and the app may show it with a
-confidence band derived from the projection length.
+Negative: the rear screw up moved the instant centre to the wrong side of the front patch, so
+this is **pro-dive**, which is the sign test the issue asks for. With both screws level the same
+car returns exactly **0.0 %**.
+
+At the rear, the same construction with `x_cp = 0` and the rear upper link gives the anti-squat
+sign; equal screw heights again return exactly 0.0 %.
 
 ---
 
-## 6. Assumptions, limits and the v1 decision
-
-**Assumptions**
-
-1. Rigid links, rigid chassis, no compliance in the load path.
-2. Longitudinal force is reacted at the contact patch and through the links only.
-3. One driven axle for anti-squat; a defined brake split for anti-dive.
-4. Instantaneous geometry, taken at static ride height and treated as constant over travel.
-
-**Where it breaks:** all four, and badly, at 1/10 scale (§4).
-
-**v1 decision:** compute it where the construction exists, display it behind a "diagnostics — not
-used for setup advice" panel with `flags: [diagnosticOnly]`, suppress the number when either link's
-side-view projection is shorter than 10 mm, and refuse entirely for a hinge arm whose axis is
-within 8° of x. Never let it appear in the setup comparison or in any recommendation.
-
----
-
-## 7. Degenerate cases
+## 6. Degenerate cases
 
 | Condition | Behaviour |
 |---|---|
-| lower arm is a hinge with `\|û_x\| ≥ 0.99` | `Undefined(noSideViewConstruction)` — the normal touring-car case |
-| link projections parallel (`\|d₁×d₂\| < kParallelTol·\|d₁\|\|d₂\|`) | `Undefined(parallelLinks)` — no finite SVIC. (Round 1 tested `\|m₁ − m₂\| < 1e-9` on slopes, which divides by Δx and then says "handle the vertical case explicitly, do not divide by Δx" — the test itself divides by Δx.) |
-| SVIC on the wrong side of the patch (front: `x_ic > x_cp`; rear: `x_ic < x_cp`) | `Undefined(noAntiGeometry)` — report "0 %, pro-dive geometry" |
-| side-view projection of either link < 10 mm | `Defined(value, flags: [lowConfidence, diagnosticOnly])`, value suppressed in the UI |
-| `K_bf` or `K_d` missing | `incompleteModel` — not derivable |
-| `h` provenance is `assumed` | accepted; every output carries `flag cgInferred` |
+| `z_a = z_b` (level hinge axis) | defined **0.0 %** — the zero-anti-dive limit |
+| exact zero-slope parallel links | defined **0.0 %** — same limit |
+| other parallel side-view links | `Undefined(parallelLinks)` |
+| coincident inner screws or upper link points | `Undefined(degenerateGeometry)` |
+| SVIC directly above/below the contact patch | `Undefined(outOfDomain)` |
+| missing `body.cg.height` | `Undefined(incompleteModel)`, field named |
+| braking at the front / acceleration at the rear only | the opposite event is a defined 0 % |
 
 ---
 
-## 8. Golden test cases
+## 7. Golden cases (implemented in `packages/physics/test/anti-dive.test.ts`)
 
 | ID | Input | Expected | Origin |
 |---|---|---|---|
-| G03.1 | pan car trailing arm, pivot (90, 40), l = 257, h = 28, K_d = 1.0 | θ_r = 23.963°, anti-squat = 407.9 % | hand calc §5.1 |
-| **G03.2** | **reference TC front corner, module 1 §8.2 hardpoints, K_bf = 0.55** | **`Undefined(noSideViewConstruction)`, no number, `diagnosticOnly`** | §3.1 — hinge axis `\|û_x\| = 1.0` |
-| G03.3 | reference TC front, hinge axis tilted 11.5° off x (`û = (0.98, 0, −0.199)`) | a finite SVIC **is** produced — (1005, −144) mm — but `x_ic > x_cp`, so `Undefined(noAntiGeometry)`. The construction exists here; that is the difference from G03.2 | hand calc §3.1 (line through (238, 12) with slope −0.20306) |
-| G03.4 | front links parallel in side view (A-arm corner, equal slopes) | `Undefined(parallelLinks)` | §7 |
-| G03.5 | 100 % anti-dive condition, `θ_f = 6.218°`, **`K_bf = 1.0`** | anti-dive = 100.0 % ± 0.1 | hand calc: tan(6.218°) × 9.1786 × 1.0 = 1.000 |
-| **G03.6** | **swept-arm buggy corner, §5.3** | θ_f = 23.2°, anti-dive = 216.4 % | hand calc §5.3 |
-
-G03.2 is the case round 1 needed and did not have: it is an identity between module 1's arm type and
-module 3's answer, and it fails on any implementation that invents an inboard point. G03.5 now states
-`K_bf` in its input column; round 1 asserted 100 % while giving an input set that produces 55 %.
-
----
-
-## 9. One-paragraph summary for the app's teaching copy
-
-Anti-dive and anti-squat describe how much of the load transfer under braking or acceleration the
-suspension *links* carry rather than the springs. They are real and they are in every vehicle
-dynamics textbook, and on a 1/10 car the classical way of estimating them produces numbers in the
-hundreds of percent, because the wheelbase-to-CG-height ratio is twice a full-size car's and the
-dominant compliances are not in the model. Most touring cars cannot be computed at all, because a
-fore-aft hinge arm has no side-view geometry to intersect — and Setup Lab says that instead of
-inventing a point. Change your springs and your shocks.
+| G03.1 | reference screws level, `a_x = −1 g` | anti-dive 0.0 %, anti-squat 0.0 % | §3.4 |
+| G03.2 | front aft screw +2 mm, `a_x = −1 g` | `tan θ_f = −0.1173`; SVIC (374.76, 13.81) mm; anti-dive **−60.16 %** | §5 |
+| G03.3 | front aft screw +1…+5 mm | monotonic decreasing: −42.49 … −112.83 % | §3 |
+| G03.4 | rear screw up, front | anti-dive < 0 (pro-dive) | §3.3 |
+| G03.5 | fixed geometry, `|a_x|` 0.25…2.0 g | monotonic decreasing | §3.3 |
+| G03.6 | front `Fz_front/m` at 1 g | 5.4833 m/s² — a working quantity, **not** the percentage input; the percentage uses `share = 0.55895` | §5 |
+| G03.7 | non-zero-slope parallel links | `Undefined(parallelLinks)` | §3.4 |
+| G03.8 | missing CG height | `Undefined(incompleteModel)` | §2 |

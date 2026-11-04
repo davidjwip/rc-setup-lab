@@ -56,6 +56,8 @@
     "wheel_rate",
     "ride_frequency",
     "roll_stiffness",
-    "load_transfer_split"
+    "load_transfer_split",
+    "anti_dive",
+    "anti_squat"
   ]
 }

@@ -85,6 +85,17 @@ export {
   inferCgHeight,
   solveLoadTransfer,
 } from './transfer/transfer.js';
+export { solveAntiDive, solveAntiDiveCurve } from './antiDive/antiDive.js';
+export type {
+  AntiDiveAxleResult,
+  AntiDiveAxleWorking,
+  AntiDiveCurve,
+  AntiDiveInput,
+  AntiDiveResult,
+  AntiDiveSample,
+  AntiDiveWorking,
+  SideViewAxleInput,
+} from './antiDive/types.js';
 export { solveRaiseAndWeigh } from './cg/cg.js';
 export type {
   RaiseAndWeighInput,

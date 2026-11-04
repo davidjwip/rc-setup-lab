@@ -145,6 +145,11 @@
 #      `(axle_x, ±track/2, wheel_radius - (thickness + ride_height))`, with
 #      axle_x = wheelbase at the front and 0 at the rear. The adapter composes
 #      `outboard = hub + offset`; physics still consumes absolute coordinates.
+#  D20. There is **no brake-bias, torque-split, drive-split or centre-diff
+#      field** (D-27). A single motor drives and brakes all four wheels, so the
+#      anti-dive/anti-squat axle share is derived from the dynamic axle load at
+#      the traction limit. The gate's `field-drift` stage fails if such a path
+#      ever appears here.
 #
 # -----------------------------------------------------------------------------
 # SIGN CONVENTIONS AND MIRRORING (D-17)
@@ -288,6 +293,18 @@ outputs:
     unit_si: rad
     display: "°"
     ac: E3.18
+  - id: anti_dive
+    unit: percentage
+    unit_si: "1"
+    display: "%"
+    note: "Front share of longitudinal load transfer carried by the links under braking, evaluated at the traction limit. Signed: negative is pro-dive. Caster is not modelled (D-27)."
+    ac: E3.19
+  - id: anti_squat
+    unit: percentage
+    unit_si: "1"
+    display: "%"
+    note: "Rear share of longitudinal load transfer carried by the links under acceleration, evaluated at the traction limit. Signed: negative is pro-squat. Caster is not modelled (D-27)."
+    ac: E3.20
 
 # =============================================================================
 # FIELDS — car_model
@@ -919,8 +936,8 @@ fields:
       req: "yes"
       on_absence: REFUSE
       plausible: null
-      consumed_by: [motion_ratio, roll_centre_height, camber_gain, load_transfer_split]
-      notes: "Front pivot on the lower hinge axis. `[x, y, z]` mm; every coordinate |c| ≤ 3000."
+      consumed_by: [motion_ratio, roll_centre_height, camber_gain, load_transfer_split, anti_dive, anti_squat]
+      notes: "Front inner pivot screw. `[x, y, z]` mm; every coordinate |c| ≤ 3000. Its `z` is independent of `lca_in_b.z`: the two screws set the hinge-axis tilt. The front view uses the midpoint `(z_a + z_b)/2`; the side view uses the difference `(z_b − z_a)/(x_b − x_a)`. Shimming here is the anti-dive/anti-squat input (D-27)."
 
     - path: corners.<corner>.points.lca_in_b
       type: point
@@ -928,8 +945,8 @@ fields:
       req: "yes"
       on_absence: REFUSE
       plausible: null
-      consumed_by: [motion_ratio, roll_centre_height, camber_gain]
-      notes: "Rear pivot on the lower hinge axis; `lca_in_a ≠ lca_in_b` or the axis is undefined."
+      consumed_by: [motion_ratio, roll_centre_height, camber_gain, anti_dive, anti_squat]
+      notes: "Rear inner pivot screw; `lca_in_a ≠ lca_in_b` or the axis is undefined. Its `z` is independent of `lca_in_a.z`. Level screws are the exact zero-anti-dive limit; the side-view instant centre comes from this axis's slope and the `uca_in → uca_out` line (D-27)."
 
     - path: corners.<corner>.points.lca_out
       type: point
