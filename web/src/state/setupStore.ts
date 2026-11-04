@@ -3,6 +3,8 @@ import {
   parseCarModel,
   resetAxleRates,
   resetCornerPointsMm,
+  restoreCornerPointMm,
+  updateAxleArbBlades,
   updateAxleArbType,
   updateAxleArbValue,
   updateAxleDamperCoefficient,
@@ -10,6 +12,7 @@ import {
   updateAxleSpringRate,
   updateAxleTrack,
   updateBodyWheelbase,
+  updateDamperMountLateralMm,
   updateCgFrontMassShare,
   updateCgHeight,
   updateChassisValue,
@@ -34,6 +37,9 @@ import {
   toggleInstantCentre,
   writeInstantCentrePreference,
 } from '../scene/instantCentrePreference.js';
+
+/** The two damper eyes, in the page's words. Positive shims move outboard. */
+export type DamperMountShim = 'lo' | 'up';
 
 export const MODEL_STORAGE_KEY = 'setup-lab:model:v1';
 
@@ -78,8 +84,14 @@ export interface SetupStore {
   ): string | null;
   resetCorner(cornerKey: CornerKey): void;
   commitRateChange(axle: RateAxle, change: RateChange): string | null;
+  commitArbBlades(axle: RateAxle, count: number): string | null;
   resetRateAxle(axle: RateAxle): void;
   commitAxleShim(axle: RateAxle, shimMm: number): string | null;
+  commitDamperMountShim(
+    axle: RateAxle,
+    mount: DamperMountShim,
+    offsetMm: number,
+  ): string | null;
   revertAll(): void;
   setLateralG(value: number): void;
   setLongitudinalG(value: number): void;
@@ -301,6 +313,7 @@ export function createSetupStore(options: CreateSetupStoreOptions = {}): SetupSt
       publish();
       return null;
     },
+    commitArbBlades: (axle, count) => apply(updateAxleArbBlades(model, axle, count)),
     resetRateAxle: (axle) => {
       const result = resetAxleRates(model, baseline, axle);
       if (result.ok) {
@@ -311,6 +324,21 @@ export function createSetupStore(options: CreateSetupStoreOptions = {}): SetupSt
       }
     },
     commitAxleShim: (axle, shimMm) => apply(updateAxleLowerInnerShimMm(model, axle, shimMm)),
+    commitDamperMountShim: (axle, mount, offsetMm) => {
+      const cornerKey = axle === 'front' ? 'LF' : 'LR';
+      const pointKey = mount === 'lo' ? 'damper_lo' : 'damper_up';
+      const eyeName = mount === 'lo' ? 'lower damper eye' : 'upper damper eye';
+      if (offsetMm === 0) {
+        return apply(restoreCornerPointMm(model, baseline, cornerKey, pointKey));
+      }
+      const base = baseline.corners[cornerKey]?.points[pointKey];
+      if (base === undefined) {
+        return `The ${axle} ${eyeName} is not in the model, so it cannot be shimmed.`;
+      }
+      return apply(
+        updateDamperMountLateralMm(model, axle, pointKey, base.value[1] + offsetMm),
+      );
+    },
     revertAll: () => {
       model = baseline;
       rateNote = null;

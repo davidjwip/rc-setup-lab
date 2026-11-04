@@ -106,6 +106,15 @@ function missingTerm(ref: string): string {
   if (ref.includes('uca_out')) return 'the upper ball stud';
   if (ref.includes('uca_in')) return 'the upper link inner point';
   if (ref.includes('tie_')) return 'the tie rod';
+  if (ref.includes('damper_lo') || ref.includes('damper_up')) return 'the damper mount points';
+  if (ref.includes('spring.rate')) return 'the spring rate';
+  if (ref.includes('sprung_')) return 'the sprung mass';
+  if (ref.includes('rate_at_link')) return "the blade's rate at the link";
+  if (ref.includes('arb.blades')) return 'the blade count';
+  if (ref.includes('bar_diameter')) return 'the bar diameter';
+  if (ref.includes('arb.span')) return 'the bar span';
+  if (ref.includes('arm_length')) return 'the bar arm length';
+  if (ref.includes('arb.')) return 'the anti-roll bar geometry';
   if (ref.includes('bump_limit')) return 'the bump limit';
   if (ref.includes('droop_limit')) return 'the droop limit';
   if (ref.includes('thickness')) return 'the chassis plate thickness';

@@ -65,7 +65,7 @@ describe('page shell routes', () => {
   it('renders each route on first load', () => {
     expect(renderWithHash('#home')).toContain('<h1>Home</h1>');
     expect(renderWithHash('#geometry')).toMatch(/<h1[^>]*>Geometry<\/h1>/);
-    expect(renderWithHash('#shock')).toContain('<h1>Shock</h1>');
+    expect(renderWithHash('#shock')).toMatch(/<h1[^>]*>Shock<\/h1>/);
     expect(renderWithHash('#transfer')).toContain('<h1>Transfer</h1>');
   });
 
@@ -136,15 +136,15 @@ describe('page shell routes', () => {
     }
   });
 
-  it('renders the real Geometry page and keeps the other two as placeholders', () => {
-    const geometry = renderToStaticMarkup(createElement(GeometryPage, { store: store() }));
-    expect(geometry).not.toContain('coming in the next slice');
-    expect(geometry).toContain('data-axle="front"');
-    expect(geometry).toContain('data-axle="rear"');
-
-    for (const Page of [ShockPage, TransferPage]) {
+  it('renders the real Geometry and Shock pages and keeps Transfer a placeholder', () => {
+    for (const Page of [GeometryPage, ShockPage]) {
       const html = renderToStaticMarkup(createElement(Page, { store: store() }));
-      expect(html).toContain('coming in the next slice');
+      expect(html).not.toContain('coming in the next slice');
+      expect(html).toContain('data-axle="front"');
+      expect(html).toContain('data-axle="rear"');
     }
+
+    const transfer = renderToStaticMarkup(createElement(TransferPage, { store: store() }));
+    expect(transfer).toContain('coming in the next slice');
   });
 });

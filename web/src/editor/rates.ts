@@ -13,6 +13,7 @@ import {
   solveRollStiffness,
   type Solved,
 } from '@setuplab/physics';
+import { HARDPOINT_LIMIT_MM } from './hardpoints.js';
 
 export type RateAxle = 'front' | 'rear';
 export type ArbGeometryField = 'bar_diameter' | 'span' | 'arm_length';
@@ -61,6 +62,39 @@ export function checkRateValue(text: string, range: RateRange): RateCheck {
       ok: false,
       message: `Must be between ${range.min} and ${range.max} ${range.unit}; fields.yaml sets that range.`,
     };
+  }
+  return { ok: true, value };
+}
+
+/**
+ * A damper-eye shim is a signed lateral offset in millimetres, entered to a
+ * tenth and validated on commit. Positive moves the eye outboard on the stored
+ * left corner. The bound is the document's own coordinate limit.
+ */
+export function checkDamperOffsetText(text: string): RateCheck {
+  const trimmed = text.trim();
+  const value = Number(trimmed);
+  if (trimmed === '' || !Number.isFinite(value)) {
+    return { ok: false, message: 'Enter an offset in millimetres.' };
+  }
+  if (Math.abs(value) > HARDPOINT_LIMIT_MM) {
+    return {
+      ok: false,
+      message: `Must be between -${HARDPOINT_LIMIT_MM} and ${HARDPOINT_LIMIT_MM} mm; that is the model's coordinate limit.`,
+    };
+  }
+  return { ok: true, value };
+}
+
+/** fields.yaml `axles.<axle>.arb.blades`: a count from 1 to 4 identical blades. */
+export function checkBladeCount(text: string): RateCheck {
+  const trimmed = text.trim();
+  const value = Number(trimmed);
+  if (trimmed === '' || !Number.isInteger(value)) {
+    return { ok: false, message: 'Enter a whole number of blades.' };
+  }
+  if (value < 1 || value > 4) {
+    return { ok: false, message: 'Blade count must be between 1 and 4; fields.yaml sets that range.' };
   }
   return { ok: true, value };
 }

@@ -52,7 +52,7 @@ export function buildSceneLabels(
   scene: FrontViewScene,
   result: FrontViewResult,
   edited: boolean,
-  options: { readonly axleOnly?: boolean } = {},
+  options: { readonly axleOnly?: boolean; readonly damperMotionRatio?: string | null } = {},
 ): SceneLabels {
   const rollCentre = result.rollCentreHeight;
   const instantCentre = result.instantCentre;
@@ -86,6 +86,11 @@ export function buildSceneLabels(
         : `Instant centre at ${instantCentreText}.`,
     );
   }
+  if (options.damperMotionRatio !== undefined && options.damperMotionRatio !== null) {
+    descriptionParts.push(
+      `Damper drawn between the lower and upper eyes, motion ratio ${options.damperMotionRatio}.`,
+    );
+  }
   if (edited) {
     descriptionParts.push('The hardpoint values are user-edited this session.');
   }
@@ -95,6 +100,10 @@ export function buildSceneLabels(
     rollCentreBand,
     instantCentre: instantCentreText,
     description: descriptionParts.join(' '),
+    damperLabel:
+      options.damperMotionRatio === undefined || options.damperMotionRatio === null
+        ? null
+        : `MR ${options.damperMotionRatio}`,
   };
 }
 

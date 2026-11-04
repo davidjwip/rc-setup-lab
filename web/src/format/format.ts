@@ -5,6 +5,8 @@ export const CAMBER_GAIN_UNIT = '°/mm';
 export const TOE_GAIN_UNIT = '°/mm';
 export const WHEEL_RATE_UNIT = 'N/mm';
 export const RIDE_FREQUENCY_UNIT = 'Hz';
+export const CRITICAL_DAMPING_UNIT = 'N·s/m';
+export const DAMPING_RATIO_UNIT = '';
 export const ROLL_STIFFNESS_UNIT = 'N·m/deg';
 export const FRONT_SHARE_UNIT = '%';
 export const FORCE_UNIT = 'N';
@@ -118,6 +120,24 @@ export function formatWheelRateFromNpm(newtonsPerMetre: number, digits = 2): str
   return `${(newtonsPerMetre / 1000).toFixed(digits)} ${WHEEL_RATE_UNIT}`;
 }
 
+/** The value slot only; the unit is a separate span inside `Value`. */
+export function formatWheelRateValue(newtonsPerMetre: number, digits = 2): string {
+  return (newtonsPerMetre / 1000).toFixed(digits);
+}
+
+/** The value slot only; the unit is a separate span inside `Value`. */
+export function formatRideFrequencyValue(hertz: number, digits = 1): string {
+  return hertz.toFixed(digits);
+}
+
+/** The value slot only; the unit is a separate span inside `Value`. */
+export function formatCriticalDampingValue(
+  newtonSecondsPerMetre: number,
+  digits = 2,
+): string {
+  return newtonSecondsPerMetre.toFixed(digits);
+}
+
 export function formatSpringRateFromNpm(newtonsPerMetre: number, digits = 2): string {
   return `${(newtonsPerMetre / 1000).toFixed(digits)} ${WHEEL_RATE_UNIT}`;
 }
@@ -136,13 +156,21 @@ export function formatInstallationRatio(value: number, digits = 2): string {
 }
 
 export function formatCriticalDamping(newtonSecondsPerMetre: number, digits = 2): string {
-  return `${newtonSecondsPerMetre.toFixed(digits)} N·s/m`;
+  return `${newtonSecondsPerMetre.toFixed(digits)} ${CRITICAL_DAMPING_UNIT}`;
 }
 
 /** fields.yaml `roll_stiffness`: the solver's N·m/rad displayed as N·m/deg. */
 export function formatRollStiffness(newtonMetresPerRadian: number, digits = 2): string {
   const newtonMetresPerDegree = newtonMetresPerRadian * RADIANS_PER_DEGREE;
   return `${newtonMetresPerDegree.toFixed(digits)} ${ROLL_STIFFNESS_UNIT}`;
+}
+
+/** The value slot only; the unit is a separate span inside `Value`. */
+export function formatRollStiffnessValue(
+  newtonMetresPerRadian: number,
+  digits = 2,
+): string {
+  return (newtonMetresPerRadian * RADIANS_PER_DEGREE).toFixed(digits);
 }
 
 /** The solver unit, for the "Show the maths" chain. */
@@ -157,6 +185,11 @@ export function formatTorsionalStiffness(newtonMetresPerRadian: number, digits =
 
 export function formatFrontShare(fraction: number, digits = 1): string {
   return `${(fraction * 100).toFixed(digits)} ${FRONT_SHARE_UNIT}`;
+}
+
+/** The value slot only; the unit is a separate span inside `Value`. */
+export function formatFrontShareValue(fraction: number, digits = 1): string {
+  return (fraction * 100).toFixed(digits);
 }
 
 export function formatForce(newtons: number, digits = 3): string {
