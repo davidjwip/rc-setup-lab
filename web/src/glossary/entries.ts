@@ -15,7 +15,7 @@ export const glossaryEntries: readonly GlossaryEntry[] = [
     racerSentence:
       'The wheel does not travel straight up when it bumps — it swings around that point, and the further away the point sits the flatter that swing, which is why a long-link car gains so little camber and a short one gains a lot. It is instantaneous: it moves as the suspension moves, so the app recomputes it at every bump rather than treating it as a fixed point on the car. The line from the contact patch to the instant centre is what decides the roll centre, which is why moving one camber link changes both at once.',
     where:
-      'the drawing — the crossing point of the two extended links — and behind every roll-centre and camber-gain number. Reference car: 435.7 mm inboard of the wheel and 60.5 mm above the road.',
+      'the drawing — the crossing point of the two extended links — and behind every roll-centre and camber-gain number. On the reference car, measured at the front-left corner: 435.7 mm inboard of the wheel and 60.5 mm above the road.',
     related: ['roll-centre', 'camber-gain'],
   },
   {

@@ -30,7 +30,7 @@ export function GlossaryView({
           </a>
         </div>
         <h1>Glossary</h1>
-        <p className="lede">The quantities the app uses, what each one is, and where it surfaces.</p>
+        <p className="lede">The words this app uses, what each one means, and where you meet it.</p>
       </header>
 
       <section className="glossary-panel" aria-label="Glossary entries">
@@ -51,6 +51,11 @@ export function GlossaryView({
             </button>
           )}
         </div>
+
+        <p className="glossary-count" role="status" aria-live="polite">
+          {filtered.length} {filtered.length === 1 ? 'entry' : 'entries'}
+          {query === '' ? '' : ` matching “${query}”`}
+        </p>
 
         {filtered.length === 0 ? (
           <div className="glossary-empty">

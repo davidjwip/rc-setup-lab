@@ -85,13 +85,13 @@ describe('page shell routes', () => {
 
     expect(html).toContain('Select model');
     expect(html).toContain('Reference touring car — front corner');
-    expect(html).toContain('touring_car_1_10');
+    expect(html).toContain('1/10 touring car');
     expect(html).toMatch(/measured/);
     expect(html).toMatch(/modelled/);
     expect(html).toMatch(/assumed/);
-    expect(html).toContain('Only one model is bundled');
+    expect(html).toContain('This build includes one car');
     expect(html).toContain('Settings — the baseline');
-    expect(html).toContain('The model as loaded');
+    expect(html).toContain('The car as loaded');
     expect(html).toContain('Ride height');
     expect(html).toContain('Plate thickness');
     expect(html).toContain('Wheelbase');

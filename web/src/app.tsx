@@ -22,14 +22,20 @@ function ParseErrors({ errors }: { readonly errors: readonly DataError[] }) {
     <main className="shell">
       <h1>Setup Lab</h1>
       <section className="card error-card">
-        <h2>That model did not load</h2>
-        <ul>
-          {errors.map((error) => (
-            <li key={`${error.code}:${error.path}`}>
-              <code>{error.path || 'document'}</code>: {error.message}
-            </li>
-          ))}
-        </ul>
+        <h2>This car could not be opened</h2>
+        <p className="hint">
+          One of its values is missing or the file is damaged. The rest of your garage is unchanged.
+        </p>
+        <details>
+          <summary>Diagnostics for support</summary>
+          <ul>
+            {errors.map((error) => (
+              <li key={`${error.code}:${error.path}`} data-code={error.code} data-path={error.path}>
+                {error.message}
+              </li>
+            ))}
+          </ul>
+        </details>
       </section>
     </main>
   );

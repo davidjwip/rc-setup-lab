@@ -9,8 +9,10 @@ export interface InterpreterPanelProps {
   readonly interpretation: Interpretation;
 }
 
-function signed(value: number, digits = 2): string {
-  return `${value > 0 ? '+' : ''}${value.toFixed(digits)} ${ROLL_SENSITIVITY_UNIT}`;
+function signed(value: number, digits = 1): string {
+  const rounded = Number(value.toFixed(digits));
+  if (rounded === 0) return 'no change';
+  return `${rounded > 0 ? '+' : '−'}${Math.abs(rounded).toFixed(digits)} ${ROLL_SENSITIVITY_UNIT}`;
 }
 
 export function InterpreterPanel({ interpretation }: InterpreterPanelProps) {

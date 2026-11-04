@@ -1,6 +1,7 @@
 import { AntiDiveChart } from '../scene/AntiDiveChart.js';
 import { TransferLoadDiagram } from '../scene/TransferLoadDiagram.js';
 import { useSetupStore, type SetupStore } from '../state/setupStore.js';
+import { attachDeltas } from '../view/delta.js';
 import { Value } from '../view/Value.js';
 import type { PageProps } from './PageShell.js';
 import { buildTransferPage, type TransferValue } from './transferData.js';
@@ -17,6 +18,7 @@ function TransferReading({ reading }: { readonly reading: TransferValue }) {
       accessibleName={reading.accessibleName}
       size={reading.size}
       {...(reading.reason === undefined ? {} : { reason: reading.reason })}
+      {...(reading.delta === undefined || reading.delta === null ? {} : { delta: reading.delta })}
     />
   );
 }
@@ -151,7 +153,8 @@ function LongitudinalGroup({
       </p>
       {longitudinal.chart === null ? (
         <p className="no-answer">
-          {longitudinal.chartRefusal ?? 'The anti-dive curve is not computable.'}
+          {longitudinal.chartRefusal ??
+            'The anti-dive curve is not computable. Measure the lower-arm inner screws on Geometry.'}
         </p>
       ) : (
         <AntiDiveChart view={longitudinal.chart} />
@@ -199,7 +202,13 @@ function CgGroup({
 
 export function TransferPage({ store }: PageProps) {
   const snapshot = useSetupStore(store);
-  const data = buildTransferPage(snapshot.model, snapshot.lateralG, snapshot.longitudinalG);
+  const current = buildTransferPage(snapshot.model, snapshot.lateralG, snapshot.longitudinalG);
+  const data = snapshot.edited
+    ? attachDeltas(
+        current,
+        buildTransferPage(snapshot.baseline, snapshot.lateralG, snapshot.longitudinalG),
+      )
+    : current;
 
   return (
     <main className="shell geometry-page transfer-page" data-page="transfer">

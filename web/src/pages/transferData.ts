@@ -35,7 +35,12 @@ import type { LoadDiagramAxle, LoadDiagramView } from '../scene/TransferLoadDiag
 import { buildAntiDiveChart, type AntiDiveChartView } from '../scene/presenter.js';
 import type { ValueProvenance } from '../view/Value.js';
 import { provenanceForSolved } from '../view/provenance.js';
-import { missingCopy, undefinedReasonCopy } from './geometryData.js';
+import {
+  missingAdvice,
+  missingCopy,
+  missingRefusal,
+  undefinedRefusal,
+} from '../view/refusal.js';
 
 export type TransferValueSize = 'hero' | 'large' | 'medium';
 
@@ -50,6 +55,7 @@ export interface TransferValue {
   readonly reason?: string;
   readonly accessibleName: string;
   readonly size: TransferValueSize;
+  readonly delta?: string | null;
 }
 
 export interface TransferPageData {
@@ -91,7 +97,7 @@ function missingValue(
     unit,
     provenance: 'missing',
     band: null,
-    bandReason: 'not a number',
+    bandReason: 'there is no number to compare',
     reason,
     accessibleName,
     size,
@@ -113,7 +119,7 @@ function undefinedValue(
     unit,
     provenance: 'undefined',
     band: null,
-    bandReason: 'not a number',
+    bandReason: 'there is no number to compare',
     reason,
     accessibleName,
     size,
@@ -147,7 +153,7 @@ function solvedValue({
       label,
       unit,
       accessibleName,
-      `${label} needs ${missingCopy(solved.missing)}.`,
+      missingRefusal(label, solved.missing),
       size,
     );
   }
@@ -158,7 +164,7 @@ function solvedValue({
         label,
         unit,
         accessibleName,
-        `${label} needs ${missingCopy(solved.inputs)}.`,
+        missingRefusal(label, solved.inputs),
         size,
       );
     }
@@ -167,7 +173,7 @@ function solvedValue({
       label,
       unit,
       accessibleName,
-      `${label} is undefined because ${undefinedReasonCopy(solved.reason)}.`,
+      undefinedRefusal(label, solved.reason),
       size,
     );
   }
@@ -473,8 +479,8 @@ function buildRollValues(
       unit: '°/g',
       accessibleName: 'Chassis roll sensitivity',
       solved: result.rollSensitivity_degPerG,
-      format: (value) => formatFixedNumber(value, 4),
-      band: (band) => formatRollSensitivityBand(band, 2),
+      format: (value) => formatFixedNumber(value, 1),
+      band: (band) => formatRollSensitivityBand(band, 1),
       bandReason: 'the CG-height range moves the sensitivity',
     }),
   ];
@@ -488,9 +494,10 @@ function buildRollValues(
           'Front roll-stiffness share',
           '%',
           'Front roll-stiffness share',
-          `The roll-stiffness share needs ${missingCopy(
+          missingRefusal(
+            'The roll-stiffness share',
             rollInput.ok ? [] : rollInput.errors.map((error) => error.path),
-          )}.`,
+          ),
         )
       : solvedValue({
           id: 'front-roll-stiffness-share',
@@ -530,7 +537,10 @@ function buildLongitudinal(
           'Anti-dive · front',
           '%',
           'Front anti-dive',
-          `Anti-dive needs ${missingCopy(antiDiveInput.errors.map((error) => error.path))}.`,
+          missingRefusal(
+            'Anti-dive',
+            antiDiveInput.errors.map((error) => error.path),
+          ),
         );
 
   const antiSquatInput = buildAntiDiveInput(model, acceleration);
@@ -551,14 +561,20 @@ function buildLongitudinal(
           'Anti-squat · rear',
           '%',
           'Rear anti-squat',
-          `Anti-squat needs ${missingCopy(antiSquatInput.errors.map((error) => error.path))}.`,
+          missingRefusal(
+            'Anti-squat',
+            antiSquatInput.errors.map((error) => error.path),
+          ),
         );
 
   const curveInput = buildAntiDiveInput(model, 0);
   const chart = curveInput.ok ? buildAntiDiveChart(solveAntiDiveCurve(curveInput.value)) : null;
   const chartRefusal = curveInput.ok
     ? null
-    : `The curve needs ${missingCopy(curveInput.errors.map((error) => error.path))}.`;
+    : (() => {
+        const refs = curveInput.errors.map((error) => error.path);
+        return `The curve needs ${missingCopy(refs)}. ${missingAdvice(refs)}`;
+      })();
 
   return {
     antiDive,
@@ -581,7 +597,10 @@ export function buildTransferPage(
     return absentPage(
       lateralG,
       longitudinalG,
-      `Load transfer needs ${missingCopy(loadInput.errors.map((error) => error.path))}.`,
+      missingRefusal(
+        'Load transfer',
+        loadInput.errors.map((error) => error.path),
+      ),
     );
   }
 

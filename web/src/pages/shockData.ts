@@ -39,7 +39,7 @@ import type { SceneLabels } from '../scene/FrontViewScene.js';
 import { buildSceneLabels } from '../view/endSummary.js';
 import type { ValueProvenance } from '../view/Value.js';
 import { provenanceForSolved } from '../view/provenance.js';
-import { missingCopy, undefinedReasonCopy } from './geometryData.js';
+import { missingAdvice, missingCopy, missingRefusal, undefinedRefusal } from '../view/refusal.js';
 
 export interface ShockValue {
   readonly id: string;
@@ -52,6 +52,7 @@ export interface ShockValue {
   readonly reason?: string;
   readonly accessibleName: string;
   readonly size: 'large' | 'medium';
+  readonly delta?: string | null;
 }
 
 export interface ShockSettings {
@@ -105,7 +106,7 @@ function missingValue(
     unit,
     provenance: 'missing',
     band: null,
-    bandReason: 'not a number',
+    bandReason: 'there is no number to compare',
     reason,
     accessibleName,
     size,
@@ -127,7 +128,7 @@ function undefinedValue(
     unit,
     provenance: 'undefined',
     band: null,
-    bandReason: 'not a number',
+    bandReason: 'there is no number to compare',
     reason,
     accessibleName,
     size,
@@ -151,7 +152,7 @@ function solvedValue(
       label,
       unit,
       accessibleName,
-      `The ${accessibleName.toLowerCase()} needs ${missingCopy(solved.missing)}.`,
+      missingRefusal(`The ${accessibleName.toLowerCase()}`, solved.missing),
       size,
     );
   }
@@ -162,7 +163,7 @@ function solvedValue(
         label,
         unit,
         accessibleName,
-        `The ${accessibleName.toLowerCase()} needs ${missingCopy(solved.inputs)}.`,
+        missingRefusal(`The ${accessibleName.toLowerCase()}`, solved.inputs),
         size,
       );
     }
@@ -171,9 +172,7 @@ function solvedValue(
       label,
       unit,
       accessibleName,
-      `The ${accessibleName.toLowerCase()} is undefined because ${undefinedReasonCopy(
-        solved.reason,
-      )}.`,
+      undefinedRefusal(`The ${accessibleName.toLowerCase()}`, solved.reason),
       size,
     );
   }
@@ -253,7 +252,10 @@ function buildColumn(
   const rates = ratesResult.ok ? ratesResult.value : null;
   const ratesRefusal = ratesResult.ok
     ? null
-    : `The ${axleName} rates need ${missingCopy(ratesResult.errors.map((error) => error.path))}.`;
+    : (() => {
+        const refs = ratesResult.errors.map((error) => error.path);
+        return `The ${axleName} rates need ${missingCopy(refs)}. ${missingAdvice(refs)}`;
+      })();
 
   const motionRatioText =
     rates !== null && rates.installationRatio.kind === 'defined'
@@ -272,9 +274,8 @@ function buildColumn(
       damperMotionRatio: motionRatioText,
     });
   } else {
-    drawingRefusal = `The ${axleName} drawing needs ${missingCopy(
-      viewInput.errors.map((error) => error.path),
-    )}.`;
+    const refs = viewInput.errors.map((error) => error.path);
+    drawingRefusal = `The ${axleName} drawing needs ${missingCopy(refs)}. ${missingAdvice(refs)}`;
   }
 
   const missingRates = (label: string, unit: string, id: string, size: 'large' | 'medium' = 'medium') =>
@@ -283,7 +284,8 @@ function buildColumn(
       label,
       unit,
       `${axleLabel} ${label.toLowerCase()}`,
-      ratesRefusal ?? `The ${axleName} ${label.toLowerCase()} needs a complete rate set.`,
+      ratesRefusal ??
+        `The ${axleName} ${label.toLowerCase()} needs a complete rate set. Measure the corner on Geometry, then set the rate on Shock.`,
       size,
     );
 
@@ -378,7 +380,8 @@ function buildColumn(
           'ARB wheel rate',
           WHEEL_RATE_UNIT,
           `${axleLabel} ARB wheel rate`,
-          rollRefusal ?? `The ${axleName} bar rate needs the bar geometry and motion ratio.`,
+          rollRefusal ??
+            `The ${axleName} bar rate needs the bar geometry and motion ratio. Measure the corner on Geometry, then set the rate on Shock.`,
         )
       : solvedValue(
           'arb-wheel-rate',
@@ -398,7 +401,8 @@ function buildColumn(
           'Axle roll stiffness',
           ROLL_STIFFNESS_UNIT,
           `${axleLabel} axle roll stiffness`,
-          rollRefusal ?? `The ${axleName} roll stiffness needs the spring rate and track.`,
+          rollRefusal ??
+            `The ${axleName} roll stiffness needs the spring rate and track. Measure the corner on Geometry, then set the rate on Shock.`,
         )
       : solvedValue(
           'axle-roll-stiffness',
@@ -446,7 +450,10 @@ export function buildShockPage(
   const roll = rollInput.ok ? solveRollStiffness(rollInput.value) : null;
   const rollRefusal = rollInput.ok
     ? null
-    : `The roll stiffness needs ${missingCopy(rollInput.errors.map((error) => error.path))}.`;
+    : (() => {
+        const refs = rollInput.errors.map((error) => error.path);
+        return `The roll stiffness needs ${missingCopy(refs)}. ${missingAdvice(refs)}`;
+      })();
 
   const frontShare: ShockValue =
     roll === null
@@ -455,7 +462,8 @@ export function buildShockPage(
           'Front roll-stiffness share',
           FRONT_SHARE_UNIT,
           'Front roll-stiffness share',
-          rollRefusal ?? 'The front roll-stiffness share needs both axles.',
+          rollRefusal ??
+            'The front roll-stiffness share needs both axles. Measure the corners on Geometry, then set the rates on Shock.',
         )
       : solvedValue(
           'front-share',

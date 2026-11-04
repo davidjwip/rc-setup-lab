@@ -11,6 +11,7 @@ import { CamberGainChart } from '../scene/CamberGainChart.js';
 import { FrontViewScene } from '../scene/FrontViewScene.js';
 import { ToeGainChart } from '../scene/ToeGainChart.js';
 import { useSetupStore, type SetupStore } from '../state/setupStore.js';
+import { attachDeltas } from '../view/delta.js';
 import { InstantCentreToggle } from '../view/EndPanels.js';
 import { Value } from '../view/Value.js';
 import {
@@ -34,6 +35,7 @@ function GeometryReading({ reading }: { readonly reading: GeometryValue }) {
       accessibleName={reading.accessibleName}
       size={reading.size}
       {...(reading.reason === undefined ? {} : { reason: reading.reason })}
+      {...(reading.delta === undefined || reading.delta === null ? {} : { delta: reading.delta })}
     />
   );
 }
@@ -338,7 +340,9 @@ function GeometryColumnView({
         {column.scene !== null && column.labels !== null ? (
           <FrontViewScene scene={column.scene} labels={column.labels} interactive={false} />
         ) : (
-          <p className="no-answer">{column.refusal ?? 'The drawing needs a solved corner.'}</p>
+          <p className="no-answer">
+            {column.refusal ?? 'The drawing needs a complete corner. Measure the missing points on Geometry.'}
+          </p>
         )}
         <InstantCentreToggle value={includeInstantCentre} onToggle={store.toggleInstantCentre} />
         <div className="geometry-headline" aria-label={`${label} headline numbers`}>
@@ -359,12 +363,16 @@ function GeometryColumnView({
 
       <section className="geometry-charts" data-block="charts" aria-label={`${label} gain curves`}>
         {column.camber === null ? (
-          <p className="no-answer">Camber-gain curve not computable.</p>
+          <p className="no-answer">
+            Camber-gain curve not computable. Measure the missing points on Geometry.
+          </p>
         ) : (
           <CamberGainChart view={column.camber} />
         )}
         {column.toe === null ? (
-          <p className="no-answer">Toe-gain curve not computable.</p>
+          <p className="no-answer">
+            Toe-gain curve not computable. Add the tie-rod points on Geometry.
+          </p>
         ) : (
           <ToeGainChart view={column.toe} />
         )}
@@ -428,6 +436,24 @@ export function GeometryPage({ store }: PageProps) {
       snapshot.baseline,
     ),
   ];
+  const columnsWithDeltas = snapshot.edited
+    ? attachDeltas(columns, [
+        buildGeometryColumn(
+          snapshot.baseline,
+          'front',
+          snapshot.includeInstantCentre,
+          false,
+          snapshot.baseline,
+        ),
+        buildGeometryColumn(
+          snapshot.baseline,
+          'rear',
+          snapshot.includeInstantCentre,
+          false,
+          snapshot.baseline,
+        ),
+      ])
+    : columns;
 
   return (
     <main className="shell geometry-page" data-page="geometry">
@@ -441,7 +467,7 @@ export function GeometryPage({ store }: PageProps) {
       </header>
 
       <div className="geometry-columns">
-        {columns.map((column) => (
+        {columnsWithDeltas.map((column) => (
           <GeometryColumnView
             key={column.axle}
             column={column}

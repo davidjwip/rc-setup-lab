@@ -90,13 +90,29 @@ function cgRouteLabel(model: SetupSnapshot['model']): string {
 
 function modelClass(model: SetupSnapshot['model']): string {
   const value = asRecord(model.raw)?.['class'];
+  if (value === 'touring_car_1_10') return '1/10 touring car';
   return typeof value === 'string' ? value : 'class not stated';
 }
 
 function sourceLabel(model: SetupSnapshot['model'], source: string | null): string {
   if (source === null) return 'source not recorded';
   const record = model.sources[source];
-  return record?.method === undefined ? source : `${record.type} · ${record.method}`;
+  switch (record?.type) {
+    case 'measured':
+      return 'measured on the reference car';
+    case 'derived':
+      return 'derived from measured weights';
+    case 'estimated':
+    case 'assumed':
+      return 'estimated, not measured';
+    case 'modelled':
+      return 'modelled, not measured';
+    case 'manufacturer':
+    case 'library':
+      return 'from another car';
+    default:
+      return 'source recorded';
+  }
 }
 
 function baselineRows(model: SetupSnapshot['model']): readonly BaselineRow[] {
@@ -218,7 +234,9 @@ function BaselineValue({
       <label htmlFor={id}>{row.label}</label>
       <div className="baseline-control">
         {row.value === null ? (
-          <span className="no-answer">Not computable yet</span>
+          <span className="no-answer">
+            Not computable yet. Measure it on Home, or add it to the car file.
+          </span>
         ) : (
           <>
             <input
@@ -241,7 +259,7 @@ function BaselineValue({
         )}
         <span className={`value-badge value-badge-${badge}`}>{badge}</span>
         <span className="value-band">
-          {row.confidence === null ? 'no stored provenance' : 'no stored tolerance'}
+          {row.confidence === null ? 'source not recorded' : 'no tolerance recorded'}
         </span>
       </div>
       <p className="baseline-source">
@@ -263,8 +281,8 @@ export function HomePage({ store }: PageProps) {
         <p className="eyebrow">Setup Lab</p>
         <h1>Home</h1>
         <p className="lede">
-          Choose the model and set the baseline. The model as loaded is the baseline the interpreter
-          compares every edit against; the baseline values below define the vehicle.
+          Choose the car and set the baseline. The car as loaded is the baseline every edit is
+          compared against. The values below define the vehicle.
         </p>
       </header>
 
@@ -281,12 +299,11 @@ export function HomePage({ store }: PageProps) {
             </p>
           </div>
           <p className="hint">
-            Only one model is bundled with this build, so it is selected. A list appears here when
-            more than one model ships.
+            This build includes one car, so it is selected. Your garage will list more when you add
+            them.
           </p>
           <p className="footnote">
-            Fields are counted from the document&apos;s stored provenance; each number keeps its own
-            source when edited.
+            Each value keeps its source. Changing it does not turn it into a measurement.
           </p>
         </article>
 
@@ -295,8 +312,8 @@ export function HomePage({ store }: PageProps) {
             <div>
               <h2 id="baseline-heading">Settings — the baseline</h2>
               <p className="hint">
-                The model as loaded. These are the vehicle-level values the interpreter compares
-                edits against; setup values live on their own pages.
+                The car as loaded. These vehicle-level values are what every edit is compared
+                against; setup values live on their own pages.
               </p>
             </div>
           </div>

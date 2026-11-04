@@ -531,9 +531,12 @@ Geometry, and every later page, renders every number through one component:
   surface, never after every value.
 - `band` is a formatted `±x` string, or `null`. A null band prints `no band` plus a `bandReason`
   naming why the source stores no tolerance. The component never invents one.
+- `delta` is a signed change from the loaded baseline, with its unit, or `null`/absent when the
+  value has not moved. It sits in the same value block as the number; a baseline page shows no
+  delta at all.
 - `accessibleName` is the property and end ("Front roll-centre height"). The rendered group's
-  accessibility name appends the number, unit, band, provenance and validation in that order, so the
-  number, unit and ring are not read as three separate nodes.
+  accessibility name appends the number, unit, band, delta when present, provenance and validation
+  in that order, so the number, unit and ring are not read as three separate nodes.
 - Numerals use `font-variant-numeric: tabular-nums`. Large is `numLarge`; every other value is
   `numMedium` or smaller, and no value is larger than the page `h1`.
 - For `missing` and `undefined` there is no numeral: the component prints **Not computable yet** or
