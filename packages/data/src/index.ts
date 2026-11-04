@@ -60,6 +60,7 @@ export {
   buildLoadTransferInput,
   buildRatesInput,
   buildRollStiffnessInput,
+  buildToeInput,
   cornerFor,
 } from './build.js';
 export {

@@ -55,6 +55,8 @@ export interface CornerDamperDocument {
 
 export interface CornerDocument {
   readonly armType: ArmTypeDocument;
+  /** Per-wheel static toe, positive = toe-in (D-17); never negated on mirror. */
+  readonly toe: MeasuredValue<number> | null;
   readonly points: Partial<Record<CornerPointKey, MeasuredPoint>>;
   readonly damper: CornerDamperDocument | null;
 }
